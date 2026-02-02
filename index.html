@@ -325,6 +325,54 @@ select{cursor:pointer}
 </div>
 <div class="toast-wrap" id="toastWrap"></div>
 <script>
+function showBlockCtx(e, idx) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const menu = document.getElementById('ctxMenu');
+
+  menu.innerHTML = `
+    <div class="ctx-item" onclick="duplicateBlock(${idx})">
+      <span class="ctx-icon">📄</span> 블록 복제
+    </div>
+    <div class="ctx-item danger" onclick="deleteBlockByIdx(${idx})">
+      <span class="ctx-icon">🗑️</span> 블록 삭제
+    </div>
+  `;
+
+  menu.style.left = e.pageX + 'px';
+  menu.style.top = e.pageY + 'px';
+  menu.classList.add('open');
+}
+
+/* 블록 삭제 (index 기준) */
+function deleteBlockByIdx(idx) {
+  if (!page || page.blocks.length <= 1) return;
+  page.blocks.splice(idx, 1);
+  renderBlocks();
+  triggerAS();
+  closeCtxMenu();
+}
+
+/* 블록 복제 */
+function duplicateBlock(idx) {
+  if (!page || !page.blocks[idx]) return;
+  const copy = JSON.parse(JSON.stringify(page.blocks[idx]));
+  copy.id = genId();
+  page.blocks.splice(idx + 1, 0, copy);
+  renderBlocks();
+  triggerAS();
+  closeCtxMenu();
+}
+
+/* 컨텍스트 메뉴 닫기 */
+function closeCtxMenu() {
+  const menu = document.getElementById('ctxMenu');
+  menu.classList.remove('open');
+}
+
+/* 외부 클릭 시 닫기 */
+document.addEventListener('click', closeCtxMenu);
 (function(){
 var DB='docspace_v7',SUPER='admin8184';
 var ICONS=['📄','📝','📋','📁','📚','📖','📌','💡','⭐','🔥','✨','🚀','🎨','💻','📊','🎯','👋','❤️','🏠','📱','🔧','⚙️','🎁','💎','🌟','📈','🔒','💬','📮','🗂️','📑','🔖','🎵','🎬','📷','🌍','⚡','🔔','✅','❌','⚠️','💰','🎓','🏆','🌈','☀️','🌙'];
