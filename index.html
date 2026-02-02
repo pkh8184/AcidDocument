@@ -337,6 +337,17 @@ select{cursor:pointer}
 
   /* 외부 클릭 시 닫기 */
   document.addEventListener('click', hideCtx);
+
+  function hideSlash() {
+    const menu = document.getElementById('slashMenu');
+    if (menu) menu.style.display = 'none';
+  }
+
+  function hideFmtBar() {
+    const bar = document.getElementById('fmtBar');
+    if (bar) bar.style.display = 'none';
+  }
+
 function showBlockCtx(e, idx) {
   e.preventDefault();
   e.stopPropagation();
