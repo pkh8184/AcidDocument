@@ -110,20 +110,46 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .block-file{margin:16px 0;padding:16px;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rad);display:flex;align-items:center;gap:12px}
 .block-file-icon{font-size:28px}.block-file-name{flex:1;font-weight:500;color:var(--acc);text-decoration:none}.block-file-name:hover{text-decoration:underline}
 .block-table{margin:20px 0}
-.block-table-wrap{border:1px solid var(--bdr);border-radius:var(--rad);overflow:auto;max-height:500px;resize:both}
-.block-table table{width:100%;border-collapse:collapse;min-width:400px}
-.block-table th,.block-table td{padding:10px 14px;border:1px solid var(--bdr);text-align:left;min-width:80px;outline:none}
+.block-table-wrap{border:1px solid var(--bdr);border-radius:var(--rad);overflow:auto;max-height:500px}
+.block-table table{width:100%;border-collapse:collapse;table-layout:fixed}
+.block-table th,.block-table td{padding:10px 14px;border:1px solid var(--bdr);text-align:left;min-width:60px;outline:none;position:relative;overflow:hidden;word-wrap:break-word}
+.block-table th{background:var(--bg3);font-weight:600}
+.block-table td{background:var(--bg2)}
+.col-resizer{position:absolute;right:0;top:0;width:6px;height:100%;cursor:col-resize;background:transparent;z-index:5}
+.col-resizer:hover,.col-resizer.active{background:var(--acc)}
+.row-resizer{position:absolute;left:0;bottom:0;width:100%;height:6px;cursor:row-resize;background:transparent;z-index:5}
+.row-resizer:hover,.row-resizer.active{background:var(--acc)}
+.block-table table{width:100%;border-collapse:collapse;table-layout:fixed}
+.block-table th,.block-table td{padding:10px 14px;border:1px solid var(--bdr);text-align:left;min-width:60px;outline:none;position:relative;overflow:hidden;word-wrap:break-word}
 .block-table th{background:var(--bg3);font-weight:600;position:sticky;top:0;z-index:1}
 .block-table td{background:var(--bg2)}
-.block-table-tools{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.col-resizer{position:absolute;right:0;top:0;width:6px;height:100%;cursor:col-resize;background:transparent;z-index:2}
+.col-resizer:hover,.col-resizer.active{background:var(--acc)}
+.row-resizer{position:absolute;left:0;bottom:0;width:100%;height:6px;cursor:row-resize;background:transparent;z-index:2}
+.row-resizer:hover,.row-resizer.active{background:var(--acc)}
+.block-table-tools{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;padding:12px;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rad)}
+.block-table-tools .btn{background:var(--bg3);border:1px solid var(--bdr)}
+.block-table-tools .btn:hover{background:var(--bg4);border-color:var(--acc)}
+.block-table-tools select{padding:6px 10px;font-size:13px;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--rad);color:var(--t2);cursor:pointer;min-width:80px}
+.block-table-tools select:hover{border-color:var(--acc)}
+.block-table-tools .tool-group{display:flex;gap:4px;padding-right:12px;border-right:1px solid var(--bdr)}
+.block-table-tools .tool-group:last-child{border-right:none;padding-right:0}
 .block-toc{margin:20px 0}
 .block-toc-wrap{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rad);padding:20px}
 .block-toc-title{font-weight:600;margin-bottom:14px}
 .block-toc-list{list-style:none}.block-toc-item{padding:6px 0}.block-toc-item a{color:var(--t2);font-size:14px;text-decoration:none}.block-toc-item a:hover{color:var(--acc)}
 .block-toc-item.l2{padding-left:20px}.block-toc-item.l3{padding-left:40px}
 .block-columns{margin:20px 0}
-.block-columns-wrap{display:flex;gap:16px}
-.block-col{flex:1;min-width:0;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rad);padding:16px}
+.block-columns-wrap{display:flex;gap:0;position:relative}
+.block-col{flex:1;min-width:80px;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rad);padding:16px;position:relative}
+.block-col:not(:last-child){border-right:none;border-radius:var(--rad) 0 0 var(--rad)}
+.block-col:not(:first-child){border-radius:0 var(--rad) var(--rad) 0}
+.block-col:not(:first-child):not(:last-child){border-radius:0}
+.block-col:focus-within{border-color:var(--acc);z-index:1}
+.col-divider{width:8px;background:var(--bdr);cursor:col-resize;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.col-divider:hover,.col-divider.active{background:var(--acc)}
+.col-divider::after{content:'⋮';color:var(--t4);font-size:12px}
+.col-divider::after{content:'⋮';color:var(--t4);font-size:12px}
 .block-col:focus-within{border-color:var(--acc)}
 .block-col-content{outline:none;min-height:60px;line-height:1.6}
 .panel{position:fixed;top:0;right:0;width:380px;height:100%;background:var(--bg2);border-left:1px solid var(--bdr);transform:translateX(100%);transition:transform .2s;z-index:100;display:flex;flex-direction:column}
@@ -336,7 +362,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 <div class="modal-bg" id="pdfModal" onclick="if(event.target===this)closeModal('pdfModal')"><div class="modal" style="max-width:420px"><div class="modal-head"><h2>📄 PDF</h2><button class="btn btn-i btn-g" onclick="closeModal('pdfModal')">✕</button></div><div class="modal-body"><div class="fg"><label>PDF URL</label><input id="pdfUrl" placeholder="https://..."></div></div><div class="modal-foot"><button class="btn btn-s" onclick="closeModal('pdfModal')">취소</button><button class="btn btn-p" onclick="insertPdf()">삽입</button></div></div></div>
 <div class="modal-bg" id="fileModal" onclick="if(event.target===this)closeModal('fileModal')"><div class="modal" style="max-width:420px"><div class="modal-head"><h2>📎 파일</h2><button class="btn btn-i btn-g" onclick="closeModal('fileModal')">✕</button></div><div class="modal-body"><div class="fg"><label>파일 URL</label><input id="fileUrl" placeholder="https://github.com/..."></div><div class="fg"><label>파일명</label><input id="fileName" placeholder="파일명.확장자"></div></div><div class="modal-foot"><button class="btn btn-s" onclick="closeModal('fileModal')">취소</button><button class="btn btn-p" onclick="insertFile()">삽입</button></div></div></div>
 <div class="modal-bg" id="colorModal" onclick="if(event.target===this)closeModal('colorModal')"><div class="modal" style="max-width:320px"><div class="modal-head"><h2>🎨 텍스트 색상</h2><button class="btn btn-i btn-g" onclick="closeModal('colorModal')">✕</button></div><div class="modal-body"><div class="color-grid" id="colorGrid"></div></div></div></div>
-<div class="modal-bg" id="tagModal" onclick="if(event.target===this)closeModal('tagModal')"><div class="modal" style="max-width:360px"><div class="modal-head"><h2>🏷️ 태그 추가</h2><button class="btn btn-i btn-g" onclick="closeModal('tagModal')">✕</button></div><div class="modal-body"><div class="fg"><label>태그 이름</label><input type="text" id="tagInput" placeholder="태그를 입력하세요"></div></div><div class="modal-foot"><button class="btn btn-s" onclick="closeModal('tagModal')">취소</button><button class="btn btn-p" onclick="submitTag()">추가</button></div></div></div>
+<div class="modal-bg" id="tagModal" onclick="if(event.target===this)closeModal('tagModal')"><div class="modal" style="max-width:400px"><div class="modal-head"><h2>🏷️ 태그 추가</h2><button class="btn btn-i btn-g" onclick="closeModal('tagModal')">✕</button></div><div class="modal-body"><div class="fg"><label>태그 이름</label><input type="text" id="tagInput" placeholder="예: 중요, 진행중, 완료"></div><div style="margin-top:12px"><p style="font-size:13px;color:var(--t4);margin-bottom:8px">추천 태그</p><div style="display:flex;flex-wrap:wrap;gap:6px"><span class="tag" style="cursor:pointer" onclick="quickTag('중요')">🔴 중요</span><span class="tag" style="cursor:pointer" onclick="quickTag('진행중')">🟡 진행중</span><span class="tag" style="cursor:pointer" onclick="quickTag('완료')">🟢 완료</span><span class="tag" style="cursor:pointer" onclick="quickTag('검토필요')">🔵 검토필요</span></div></div></div><div class="modal-foot"><button class="btn btn-s" onclick="closeModal('tagModal')">취소</button><button class="btn btn-p" onclick="submitTag()">추가</button></div></div></div>
 <div class="modal-bg" id="editCommentModal" onclick="if(event.target===this)closeModal('editCommentModal')"><div class="modal" style="max-width:400px"><div class="modal-head"><h2>✏️ 댓글 수정</h2><button class="btn btn-i btn-g" onclick="closeModal('editCommentModal')">✕</button></div><div class="modal-body"><div class="fg"><label>댓글 내용</label><textarea id="editCommentInput" rows="4"></textarea></div></div><div class="modal-foot"><button class="btn btn-s" onclick="closeModal('editCommentModal')">취소</button><button class="btn btn-p" onclick="submitEditComment()">저장</button></div></div></div>
 <div class="modal-bg" id="deleteConfirmModal"><div class="modal" style="max-width:360px"><div class="modal-head"><h2>🗑️ 삭제 확인</h2></div><div class="modal-body"><p id="deleteConfirmText">이 페이지를 삭제하시겠습니까?</p></div><div class="modal-foot"><button class="btn btn-s" onclick="closeModal('deleteConfirmModal')">취소</button><button class="btn btn-d" onclick="confirmDelete()">삭제</button></div></div></div>
 <div class="ctx-menu" id="ctxMenu"></div>
@@ -581,6 +607,7 @@ function renderMeta(){var authorName=user.nickname||page.author;$('pageMeta').in
 function renderTags(){var html='';for(var i=0;i<page.tags.length;i++)html+='<span class="tag" onclick="removeTag(\''+esc(page.tags[i])+'\')">'+esc(page.tags[i])+' ×</span>';html+='<span class="tag tag-add" onclick="openTagModal()">+ 태그</span>';$('pageTags').innerHTML=html}
 function openTagModal(){$('tagInput').value='';openModal('tagModal');setTimeout(function(){$('tagInput').focus()},100)}
 function submitTag(){var t=$('tagInput').value.trim();if(!t){toast('태그를 입력하세요','err');return}if(page.tags.indexOf(t)!==-1){toast('이미 존재하는 태그','err');return}page.tags.push(t);saveDB();renderTags();closeModal('tagModal');toast('태그 추가')}
+function quickTag(t){if(page.tags.indexOf(t)!==-1){toast('이미 존재하는 태그','err');return}page.tags.push(t);saveDB();renderTags();closeModal('tagModal');toast('태그 추가')}
 function removeTag(t){page.tags=page.tags.filter(function(x){return x!==t});saveDB();renderTags()}
 
 // 트리 렌더링 (드래그앤드롭)
@@ -630,21 +657,39 @@ function createBlockEl(b,idx){
     case'pdf':inner='<iframe src="'+esc(b.src||'')+'#toolbar=1" style="width:100%;height:500px;border:1px solid var(--bdr);border-radius:var(--rad)"></iframe>';break;
     case'file':inner='<div class="block-file"><span class="block-file-icon">📎</span><a href="'+esc(b.url||'')+'" target="_blank" class="block-file-name">'+esc(b.name||'파일')+'</a></div>';break;
     case'table':
-      var rows=b.rows||[['','',''],['','','']],thc=b.headerColor||'',tdc=b.cellColor||'';
+      var rows=b.rows||[['','',''],['','','']],thc=b.headerColor||'',tdc=b.cellColor||'',colWidths=b.colWidths||[];
       var th='<div class="block-table-wrap"><table>';
-      for(var r=0;r<rows.length;r++){th+='<tr>';for(var c=0;c<rows[r].length;c++){var st=r===0&&thc?'background:'+thc:r>0&&tdc?'background:'+tdc:'';th+=(r===0?'<th':'<td')+'+ce+'+(st?' style="'+st+'"':'')+'>'+(rows[r][c]||'')+(r===0?'</th>':'</td>')}th+='</tr>'}
-      th+='</table></div><div class="block-table-tools">';
-      th+='<button class="btn btn-sm btn-s" onclick="addTblRow(\''+b.id+'\')">+행</button>';
-      th+='<button class="btn btn-sm btn-s" onclick="addTblCol(\''+b.id+'\')">+열</button>';
-      th+='<button class="btn btn-sm btn-s" onclick="delTblRow(\''+b.id+'\')">-행</button>';
-      th+='<button class="btn btn-sm btn-s" onclick="delTblCol(\''+b.id+'\')">-열</button>';
-      th+='<select onchange="setTblColor(\''+b.id+'\',\'header\',this.value)"><option value="">헤더색</option><option value="#58a6ff">파랑</option><option value="#3fb950">초록</option><option value="#d29922">노랑</option><option value="#f85149">빨강</option></select>';
-      th+='<select onchange="setTblColor(\''+b.id+'\',\'cell\',this.value)"><option value="">셀색</option><option value="#161b22">어둡게</option><option value="#21262d">기본</option><option value="#30363d">밝게</option></select>';
-      th+='</div>';inner=th;break;
+      for(var r=0;r<rows.length;r++){
+        th+='<tr>';
+        for(var c=0;c<rows[r].length;c++){
+          var st=r===0&&thc?'background:'+thc+';':r>0&&tdc?'background:'+tdc+';':'';
+          var w=colWidths[c]?'width:'+colWidths[c]+'px;':'';
+          th+=(r===0?'<th':'<td')+' '+ce+' style="'+st+w+'" data-col="'+c+'">'+(rows[r][c]||'');
+          if(editMode)th+='<div class="col-resizer" data-col="'+c+'"></div>';
+          th+=(r===0?'</th>':'</td>');
+        }
+        th+='</tr>';
+      }
+      th+='</table></div>';
+      if(editMode){
+        th+='<div class="block-table-tools">';
+        th+='<div class="tool-group"><button class="btn btn-sm" onclick="addTblRow(\''+b.id+'\')">➕ 행</button><button class="btn btn-sm" onclick="addTblCol(\''+b.id+'\')">➕ 열</button></div>';
+        th+='<div class="tool-group"><button class="btn btn-sm" onclick="delTblRow(\''+b.id+'\')">➖ 행</button><button class="btn btn-sm" onclick="delTblCol(\''+b.id+'\')">➖ 열</button></div>';
+        th+='<div class="tool-group"><select onchange="setTblColor(\''+b.id+'\',\'header\',this.value)"><option value="">🎨 헤더</option><option value="#58a6ff">파랑</option><option value="#3fb950">초록</option><option value="#d29922">노랑</option><option value="#f85149">빨강</option><option value="#a855f7">보라</option></select>';
+        th+='<select onchange="setTblColor(\''+b.id+'\',\'cell\',this.value)"><option value="">🎨 셀</option><option value="#1a1a2e">어둡게</option><option value="#21262d">기본</option><option value="#2d333b">밝게</option></select></div>';
+        th+='</div>';
+      }
+      inner=th;break;
     case'toc':inner='<div class="block-toc-wrap">'+genTOC()+'</div>';break;
     case'columns':
-      var cols=b.columns||['',''];
-      inner='<div class="block-columns-wrap">';for(var ci=0;ci<cols.length;ci++)inner+='<div class="block-col"><div class="block-col-content'+ce+'>'+(cols[ci]||'')+'</div></div>';inner+='</div>';break;
+      var cols=b.columns||['',''],colW=b.colWidths||[];
+      inner='<div class="block-columns-wrap">';
+      for(var ci=0;ci<cols.length;ci++){
+        var cw=colW[ci]?'flex:0 0 '+colW[ci]+'px;':'';
+        inner+='<div class="block-col" style="'+cw+'" data-col="'+ci+'"><div class="block-col-content'+ce+'>'+(cols[ci]||'')+'</div></div>';
+        if(editMode&&ci<cols.length-1)inner+='<div class="col-divider" data-col="'+ci+'"></div>';
+      }
+      inner+='</div>';break;
     case'bullet':case'number':if(b.type==='number')div.setAttribute('data-num',b.num||1);inner='<div class="block-content'+ce+'>'+(b.content||'')+'</div>';break;
     default:inner='<div class="block-content'+ce+'>'+(b.content||'')+'</div>'
   }
@@ -661,7 +706,7 @@ function setupBlockEv(div,b,idx){
     el.addEventListener('compositionend',function(){isComp=false});
     el.addEventListener('mouseup',showFmtBar);
   })(cons[i])}
-  div.addEventListener('click',function(e){if(e.target.closest('.block-handle'))return;var con=div.querySelector('.block-content');if(con&&!con.contains(e.target)){con.focus()}});
+  div.addEventListener('click',function(e){if(e.target.closest('.block-handle')||e.target.closest('.col-resizer')||e.target.closest('.col-divider'))return;var con=div.querySelector('.block-content');if(con&&!con.contains(e.target)){con.focus()}});
   var cells=div.querySelectorAll('th,td');for(var j=0;j<cells.length;j++){cells[j].addEventListener('input',triggerAS);cells[j].addEventListener('paste',handlePaste)}
   var colCons=div.querySelectorAll('.block-col-content');
   for(var k=0;k<colCons.length;k++){(function(el){
@@ -673,6 +718,10 @@ function setupBlockEv(div,b,idx){
   var caption=div.querySelector('.block-image-caption');if(caption){caption.addEventListener('input',triggerAS);caption.addEventListener('paste',handlePaste)}
   if(b.type==='todo'){var cb=div.querySelector('input[type="checkbox"]');if(cb)cb.addEventListener('change',function(){b.checked=cb.checked;div.classList.toggle('done',b.checked);triggerAS()})}
   if(b.type==='toggle'){var head=div.querySelector('.block-toggle-head'),body=div.querySelector('.block-toggle-body');if(head)head.addEventListener('click',function(e){if(e.target.getAttribute('contenteditable')==='true')return;b.open=!b.open;head.classList.toggle('open',b.open);body.classList.toggle('open',b.open);triggerAS()})}
+  // 테이블 열 리사이즈
+  if(b.type==='table'){setupTableResize(div,b)}
+  // 레이아웃 열 리사이즈
+  if(b.type==='columns'){setupColResize(div,b)}
 }
 function handleKey(e,b,idx,el){
   if(isComp)return;
@@ -700,12 +749,77 @@ function addTblCol(id){for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].i
 function delTblRow(id){for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){var b=page.blocks[i];if(!b.rows||b.rows.length<=1)return;b.rows.pop();renderBlocks();triggerAS();toast('행 삭제');return}}}
 function delTblCol(id){for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){var b=page.blocks[i];if(!b.rows||b.rows[0].length<=1)return;for(var j=0;j<b.rows.length;j++)b.rows[j].pop();renderBlocks();triggerAS();toast('열 삭제');return}}}
 function setTblColor(id,type,color){if(!color)return;for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){var b=page.blocks[i];if(type==='header')b.headerColor=color;else b.cellColor=color;renderBlocks();triggerAS();return}}}
+function setupTableResize(div,b){
+  var resizers=div.querySelectorAll('.col-resizer');
+  resizers.forEach(function(resizer){
+    var colIdx=parseInt(resizer.getAttribute('data-col'));
+    var startX,startW,th;
+    resizer.addEventListener('mousedown',function(e){
+      e.preventDefault();e.stopPropagation();
+      th=div.querySelector('th[data-col="'+colIdx+'"]');
+      if(!th)return;
+      startX=e.pageX;startW=th.offsetWidth;
+      resizer.classList.add('active');
+      document.addEventListener('mousemove',onMouseMove);
+      document.addEventListener('mouseup',onMouseUp);
+    });
+    function onMouseMove(e){
+      if(!th)return;
+      var w=Math.max(60,startW+(e.pageX-startX));
+      th.style.width=w+'px';
+      var tds=div.querySelectorAll('td[data-col="'+colIdx+'"]');
+      tds.forEach(function(td){td.style.width=w+'px'});
+    }
+    function onMouseUp(){
+      resizer.classList.remove('active');
+      document.removeEventListener('mousemove',onMouseMove);
+      document.removeEventListener('mouseup',onMouseUp);
+      if(th){
+        if(!b.colWidths)b.colWidths=[];
+        b.colWidths[colIdx]=th.offsetWidth;
+        triggerAS();
+      }
+    }
+  });
+}
+function setupColResize(div,b){
+  var dividers=div.querySelectorAll('.col-divider');
+  dividers.forEach(function(divider){
+    var colIdx=parseInt(divider.getAttribute('data-col'));
+    var startX,col,startW,wrap;
+    divider.addEventListener('mousedown',function(e){
+      e.preventDefault();e.stopPropagation();
+      wrap=div.querySelector('.block-columns-wrap');
+      col=wrap.children[colIdx*2];
+      if(!col)return;
+      startX=e.pageX;startW=col.offsetWidth;
+      divider.classList.add('active');
+      document.addEventListener('mousemove',onMouseMove);
+      document.addEventListener('mouseup',onMouseUp);
+    });
+    function onMouseMove(e){
+      if(!col)return;
+      var w=Math.max(80,startW+(e.pageX-startX));
+      col.style.flex='0 0 '+w+'px';
+    }
+    function onMouseUp(){
+      divider.classList.remove('active');
+      document.removeEventListener('mousemove',onMouseMove);
+      document.removeEventListener('mouseup',onMouseUp);
+      if(col){
+        if(!b.colWidths)b.colWidths=[];
+        b.colWidths[colIdx]=col.offsetWidth;
+        triggerAS();
+      }
+    }
+  });
+}
 function scrollToBlk(id){var el=document.querySelector('[data-id="'+id+'"]');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.background='var(--accM)';setTimeout(function(){el.style.background=''},2000)}}
 function copyCode(btn){var wrap=btn.closest('.block-code-wrap'),code=wrap.querySelector('.block-content').textContent;navigator.clipboard.writeText(code).then(function(){toast('복사됨')})}
 function getYTId(url){if(!url)return null;var m=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);return m?m[1]:null}
 function insertBlock(idx,b){page.blocks.splice(idx,0,b);renderBlocks();setTimeout(function(){var el=$('editor').children[idx];if(el){var c=el.querySelector('.block-content');if(c)c.focus()}},20)}
 function deleteBlock(idx){if(page.blocks.length<=1)return;page.blocks.splice(idx,1);renderBlocks();setTimeout(function(){var fi=Math.max(0,idx-1),el=$('editor').children[fi];if(el){var c=el.querySelector('.block-content');if(c){c.focus();var rng=document.createRange();rng.selectNodeContents(c);rng.collapse(false);var sel=window.getSelection();sel.removeAllRanges();sel.addRange(rng)}}},20)}
-function collectBlocks(){var blks=[],chs=$('editor').children;for(var i=0;i<chs.length;i++){var el=chs[i],id=el.getAttribute('data-id'),orig=null;for(var j=0;j<page.blocks.length;j++){if(page.blocks[j].id===id){orig=page.blocks[j];break}}if(!orig)continue;var b=JSON.parse(JSON.stringify(orig)),con=el.querySelector('.block-content');if(con)b.content=con.innerHTML;if(b.type==='todo'){var cb=el.querySelector('input[type="checkbox"]');b.checked=cb?cb.checked:false}if(b.type==='toggle'){var inn=el.querySelector('.block-toggle-body .block-content');if(inn)b.innerContent=inn.innerHTML;var hd=el.querySelector('.block-toggle-head');b.open=hd?hd.classList.contains('open'):false}if(b.type==='image'){var cap=el.querySelector('.block-image-caption');if(cap)b.caption=cap.innerHTML}if(b.type==='table'){var rows=[],trs=el.querySelectorAll('tr');for(var ri=0;ri<trs.length;ri++){var cls=[],tds=trs[ri].querySelectorAll('th,td');for(var ci=0;ci<tds.length;ci++)cls.push(tds[ci].innerHTML);rows.push(cls)}b.rows=rows}if(b.type==='columns'){var cols=[],ces=el.querySelectorAll('.block-col-content');for(var coi=0;coi<ces.length;coi++)cols.push(ces[coi].innerHTML);b.columns=cols}blks.push(b)}return blks}
+function collectBlocks(){var blks=[],chs=$('editor').children;for(var i=0;i<chs.length;i++){var el=chs[i],id=el.getAttribute('data-id'),orig=null;for(var j=0;j<page.blocks.length;j++){if(page.blocks[j].id===id){orig=page.blocks[j];break}}if(!orig)continue;var b=JSON.parse(JSON.stringify(orig)),con=el.querySelector('.block-content');if(con)b.content=con.innerHTML;if(b.type==='todo'){var cb=el.querySelector('input[type="checkbox"]');b.checked=cb?cb.checked:false}if(b.type==='toggle'){var inn=el.querySelector('.block-toggle-body .block-content');if(inn)b.innerContent=inn.innerHTML;var hd=el.querySelector('.block-toggle-head');b.open=hd?hd.classList.contains('open'):false}if(b.type==='image'){var cap=el.querySelector('.block-image-caption');if(cap)b.caption=cap.innerHTML}if(b.type==='table'){var rows=[],trs=el.querySelectorAll('tr'),cws=[];for(var ri=0;ri<trs.length;ri++){var cls=[],tds=trs[ri].querySelectorAll('th,td');for(var ci=0;ci<tds.length;ci++){cls.push(tds[ci].innerHTML.replace(/<div class="col-resizer"[^>]*><\/div>/g,''));if(ri===0&&tds[ci].offsetWidth)cws[ci]=tds[ci].offsetWidth}rows.push(cls)}b.rows=rows;if(cws.length)b.colWidths=cws}if(b.type==='columns'){var cols=[],ces=el.querySelectorAll('.block-col-content'),cwc=[];for(var coi=0;coi<ces.length;coi++){cols.push(ces[coi].innerHTML);var colEl=ces[coi].closest('.block-col');if(colEl&&colEl.offsetWidth)cwc[coi]=colEl.offsetWidth}b.columns=cols;if(cwc.length)b.colWidths=cwc}blks.push(b)}return blks}
 function updateNums(){var n=0,chs=$('editor').children;for(var i=0;i<chs.length;i++){if(chs[i].classList.contains('block-number')){n++;chs[i].setAttribute('data-num',n)}else if(!chs[i].classList.contains('block-bullet'))n=0}}
 function genTOC(){var hs=[];for(var i=0;i<page.blocks.length;i++){var b=page.blocks[i];if(b.type==='h1'||b.type==='h2'||b.type==='h3')hs.push(b)}if(hs.length===0)return'<div class="block-toc-title">📑 목차</div><p style="color:var(--t4)">제목이 없습니다</p>';var html='<div class="block-toc-title">📑 목차</div><ul class="block-toc-list">';for(var j=0;j<hs.length;j++){var h=hs[j],txt=(h.content||'').replace(/<[^>]*>/g,''),lv=h.type==='h1'?1:h.type==='h2'?2:3;html+='<li class="block-toc-item l'+lv+'"><a href="#" onclick="scrollToBlk(\''+h.id+'\');return false">'+esc(txt)+'</a></li>'}html+='</ul>';return html}
 
@@ -884,7 +998,7 @@ function init(){
   if(db.session){var u=null;for(var i=0;i<db.users.length;i++){if(db.users[i].id===db.session&&db.users[i].active){u=db.users[i];break}}if(u){user=u;initApp()}}
 }
 // 전역
-window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.insertVideo=insertVideo;window.insertPdf=insertPdf;window.insertFile=insertFile;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;
+window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.insertVideo=insertVideo;window.insertPdf=insertPdf;window.insertFile=insertFile;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
