@@ -388,6 +388,10 @@ function duplicateBlock(idx) {
   closeCtxMenu();
 }
 
+function dupBlock(idx) {
+  duplicateBlock(idx);
+}
+
 /* 컨텍스트 메뉴 닫기 */
 function closeCtxMenu() {
   const menu = document.getElementById('ctxMenu');
@@ -396,7 +400,65 @@ function closeCtxMenu() {
 
 /* 외부 클릭 시 닫기 */
 document.addEventListener('click', closeCtxMenu);
-(function(){
+
+/* 추가 유틸리티 함수들 */
+function deleteBlock(idx) {
+  deleteBlockByIdx(idx);
+}
+
+function openVersions() {
+  toast('버전 기록 기능은 준비중입니다');
+}
+
+function openComments() {
+  toast('댓글 기능은 준비중입니다');
+}
+
+function closePanel() {
+  const panels = document.querySelectorAll('.side-panel');
+  panels.forEach(p => p.classList.remove('open'));
+}
+
+function insertImage() {
+  const url = prompt('이미지 URL을 입력하세요:');
+  if (url) {
+    const block = {id: genId(), type: 'image', content: url};
+    page.blocks.push(block);
+    renderBlocks();
+    triggerAS();
+  }
+}
+
+function insertVideo() {
+  const url = prompt('YouTube URL을 입력하세요:');
+  if (url) {
+    const block = {id: genId(), type: 'video', content: url};
+    page.blocks.push(block);
+    renderBlocks();
+    triggerAS();
+  }
+}
+
+function addComment() {
+  toast('댓글 추가 기능은 준비중입니다');
+}
+
+function restoreVer() {
+  toast('버전 복원 기능은 준비중입니다');
+}
+
+function fmtCmd(cmd) {
+  document.execCommand(cmd, false, null);
+}
+
+function openColorPicker() {
+  toast('색상 선택 기능은 준비중입니다');
+}
+
+function applyColor(color) {
+  document.execCommand('foreColor', false, color);
+}
+
 var DB='docspace_v7',SUPER='admin8184';
 var ICONS=['📄','📝','📋','📁','📚','📖','📌','💡','⭐','🔥','✨','🚀','🎨','💻','📊','🎯','👋','❤️','🏠','📱','🔧','⚙️','🎁','💎','🌟','📈','🔒','💬','📮','🗂️','📑','🔖','🎵','🎬','📷','🌍','⚡','🔔','✅','❌','⚠️','💰','🎓','🏆','🌈','☀️','🌙'];
 var COLORS=['#f85149','#ff7b72','#ffa657','#d29922','#3fb950','#56d364','#58a6ff','#79b8ff','#a371f7','#bc8cff','#f0f6fc','#8b949e','#6e7681','#30363d'];
