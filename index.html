@@ -648,11 +648,11 @@ function createBlockEl(b,idx){
   var inner='',ce=editMode?' contenteditable="true"':'';
   switch(b.type){
     case'divider':inner='<hr>';break;
-    case'todo':if(b.checked)div.classList.add('done');inner='<input type="checkbox"'+(b.checked?' checked':'')+'><div class="block-content'+ce+'>'+(b.content||'')+'</div>';break;
-    case'toggle':inner='<div class="block-toggle-head'+(b.open?' open':'')+'"><span class="block-toggle-arrow">▶</span><div class="block-content'+ce+'>'+(b.content||'')+'</div></div><div class="block-toggle-body'+(b.open?' open':'')+'"><div class="block-content'+ce+'>'+(b.innerContent||'')+'</div></div>';break;
-    case'callout':var ct=b.calloutType||'info',ic={info:'💡',success:'✅',warning:'⚠️',danger:'❌'};inner='<div class="block-callout-wrap '+ct+'"><div class="block-callout-icon">'+ic[ct]+'</div><div style="flex:1"><div class="block-content'+ce+'>'+(b.content||'')+'</div></div></div>';break;
-    case'code':inner='<div class="block-code-wrap"><div class="block-code-head"><span class="block-code-lang">'+esc(b.lang||'code')+'</span><button class="btn btn-sm btn-s" onclick="copyCode(this)">복사</button></div><div class="block-content'+ce+'>'+(b.content||'')+'</div></div>';break;
-    case'image':inner='<img src="'+esc(b.src||'')+'" onerror="this.style.display=\'none\'"><div class="block-image-caption'+ce+'>'+(b.caption||'')+'</div>';break;
+    case'todo':if(b.checked)div.classList.add('done');inner='<input type="checkbox"'+(b.checked?' checked':'')+'><div class="block-content"'+ce+'>'+(b.content||'')+'</div>';break;
+    case'toggle':inner='<div class="block-toggle-head'+(b.open?' open':'')+'"><span class="block-toggle-arrow">▶</span><div class="block-content"'+ce+'>'+(b.content||'')+'</div></div><div class="block-toggle-body'+(b.open?' open':'')+'"><div class="block-content"'+ce+'>'+(b.innerContent||'')+'</div></div>';break;
+    case'callout':var ct=b.calloutType||'info',ic={info:'💡',success:'✅',warning:'⚠️',danger:'❌'};inner='<div class="block-callout-wrap '+ct+'"><div class="block-callout-icon">'+ic[ct]+'</div><div style="flex:1"><div class="block-content"'+ce+'>'+(b.content||'')+'</div></div></div>';break;
+    case'code':inner='<div class="block-code-wrap"><div class="block-code-head"><span class="block-code-lang">'+esc(b.lang||'code')+'</span><button class="btn btn-sm btn-s" onclick="copyCode(this)">복사</button></div><div class="block-content"'+ce+'>'+(b.content||'')+'</div></div>';break;
+    case'image':inner='<img src="'+esc(b.src||'')+'" onerror="this.style.display=\'none\'"><div class="block-image-caption"'+ce+'>'+(b.caption||'')+'</div>';break;
     case'video':var vid=getYTId(b.url);inner=vid?'<iframe src="https://www.youtube.com/embed/'+vid+'" allowfullscreen></iframe>':'<div style="color:var(--err);padding:16px">유효하지 않은 URL</div>';break;
     case'pdf':inner='<iframe src="'+esc(b.src||'')+'#toolbar=1" style="width:100%;height:500px;border:1px solid var(--bdr);border-radius:var(--rad)"></iframe>';break;
     case'file':inner='<div class="block-file"><span class="block-file-icon">📎</span><a href="'+esc(b.url||'')+'" target="_blank" class="block-file-name">'+esc(b.name||'파일')+'</a></div>';break;
@@ -686,12 +686,12 @@ function createBlockEl(b,idx){
       inner='<div class="block-columns-wrap">';
       for(var ci=0;ci<cols.length;ci++){
         var cw=colW[ci]?'flex:0 0 '+colW[ci]+'px;':'';
-        inner+='<div class="block-col" style="'+cw+'" data-col="'+ci+'"><div class="block-col-content'+ce+'>'+(cols[ci]||'')+'</div></div>';
+        inner+='<div class="block-col" style="'+cw+'" data-col="'+ci+'"><div class="block-col-content"'+ce+'>'+(cols[ci]||'')+'</div></div>';
         if(editMode&&ci<cols.length-1)inner+='<div class="col-divider" data-col="'+ci+'"></div>';
       }
       inner+='</div>';break;
-    case'bullet':case'number':if(b.type==='number')div.setAttribute('data-num',b.num||1);inner='<div class="block-content'+ce+'>'+(b.content||'')+'</div>';break;
-    default:inner='<div class="block-content'+ce+'>'+(b.content||'')+'</div>'
+    case'bullet':case'number':if(b.type==='number')div.setAttribute('data-num',b.num||1);inner='<div class="block-content"'+ce+'>'+(b.content||'')+'</div>';break;
+    default:inner='<div class="block-content"'+ce+'>'+(b.content||'')+'</div>'
   }
   div.innerHTML='<div class="block-handle"><button class="btn btn-i" onclick="showBlockCtx(event,'+idx+')">⋮</button></div>'+inner;
   setupBlockEv(div,b,idx);return div
