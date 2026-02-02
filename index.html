@@ -691,7 +691,7 @@ function createBlockEl(b,idx){
         th+='</div>';
       }
       inner=th;break;
-    case'toc':inner='<div class="block-toc-wrap">'+genTOC()+'</div>'+(editMode?'<div class="block-add-below" onclick="addBlockBelow('+idx+')">+ 아래에 블록 추가</div>':'');break;
+    case'toc':inner='<div class="block-toc-wrap">'+genTOC()+'</div>';if(editMode)inner+='<div class="block-add-below" onclick="addBlockBelow('+idx+')">+ 아래에 블록 추가</div>';break;
     case'columns':
       var cols=b.columns||['',''],colW=b.colWidths||[];
       inner='<div class="block-columns-wrap">';
@@ -877,10 +877,10 @@ function filterSlash(q){renderSlashMenu(q)}
 function moveSlashSel(dir){var menu=$('slashMenu'),items=menu.querySelectorAll('.slash-item');if(!items.length)return;var cur=-1;for(var i=0;i<items.length;i++){if(items[i].classList.contains('sel')){cur=i;break}}var n=cur+dir;if(n<0)n=items.length-1;if(n>=items.length)n=0;for(var j=0;j<items.length;j++)items[j].classList.remove('sel');items[n].classList.add('sel');items[n].scrollIntoView({block:'nearest'})}
 function execSlash(type){
   var idx=slashSt.idx;hideSlash();if(idx===null)return;
-  if(type==='image'){slashSt.idx=idx;openModal('imageModal');return}
-  if(type==='video'){slashSt.idx=idx;openModal('videoModal');return}
-  if(type==='pdf'){slashSt.idx=idx;openModal('pdfModal');return}
-  if(type==='file'){slashSt.idx=idx;openModal('fileModal');return}
+  if(type==='image'){slashSt.idx=idx;insertImage();return}
+  if(type==='video'){slashSt.idx=idx;insertVideo();return}
+  if(type==='pdf'){slashSt.idx=idx;insertPdf();return}
+  if(type==='file'){slashSt.idx=idx;insertFile();return}
   var b=page.blocks[idx];b.type=type;b.content='';
   switch(type){
     case'table':b.rows=[['','',''],['','','']];break;
@@ -891,8 +891,16 @@ function execSlash(type){
     case'col2':b.type='columns';b.colType='col2';b.columns=['',''];break;
     case'col3':b.type='columns';b.colType='col3';b.columns=['','',''];break;
   }
+  // toc, divider 등 편집 불가 블록은 아래에 빈 블록 추가
+  if(type==='toc'||type==='divider'){
+    page.blocks.splice(idx+1,0,{id:genId(),type:'text',content:''});
+  }
   renderBlocks();
-  setTimeout(function(){var el=$('editor').children[idx];if(el){var c=el.querySelector('.block-content')||el.querySelector('.block-col-content');if(c)c.focus()}},30)
+  setTimeout(function(){
+    var focusIdx=(type==='toc'||type==='divider')?idx+1:idx;
+    var el=$('editor').children[focusIdx];
+    if(el){var c=el.querySelector('.block-content')||el.querySelector('.block-col-content');if(c)c.focus()}
+  },30)
 }
 var currentEditBlockId=null;
 function insertImage(){openModal('imageUploadModal');$('imageUrlInput').value='';$('imageFileInput').value=''}
