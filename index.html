@@ -296,7 +296,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 </div>
 </div>
 <div class="editor-wrap" id="editorWrap">
-<div class="editor-inner">
+<div class="editor-inner" id="editorInner">
 <div class="page-head">
 <div class="page-icon" id="pageIcon" onclick="openIconPicker()">📄</div>
 <input type="text" class="page-title" id="pageTitle" placeholder="제목 없음" oninput="onTitleChange()">
@@ -304,6 +304,14 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 <div class="page-tags" id="pageTags"></div>
 </div>
 <div class="editor" id="editor"></div>
+</div>
+<div class="empty-state" id="emptyState" style="display:none">
+<div style="text-align:center;padding:80px 20px">
+<div style="font-size:64px;margin-bottom:20px">📭</div>
+<h2 style="font-size:24px;color:var(--t2);margin-bottom:12px">생성된 페이지가 없습니다</h2>
+<p style="color:var(--t4);margin-bottom:24px">새 페이지를 만들어 문서를 작성해보세요</p>
+<button class="btn btn-p" onclick="showTemplates()" style="padding:12px 24px;font-size:15px">➕ 새 페이지 만들기</button>
+</div>
 </div>
 </div>
 </main>
@@ -521,6 +529,7 @@ function loadPage(id){
   if(editMode&&hasChanges()){
     if(confirm('작성한 내용을 저장하시겠습니까?')){saveDoc()}
   }
+  showEditor();
   editMode=false;editBackup=null;
   page=p;
   $('pageIcon').textContent=p.icon;$('pageTitle').value=p.title;$('pageTitle').setAttribute('readonly','readonly');
@@ -587,7 +596,7 @@ function deletePage(id){deleteTargetId=id;var p=getPage(id);$('deleteConfirmText
 function confirmDelete(){
   var id=deleteTargetId;closeModal('deleteConfirmModal');
   var p=getPage(id);if(!p)return;p.deleted=true;p.deletedAt=Date.now();saveDB();
-  if(page&&page.id===id){var pgs=getPages(null);pgs.length>0?loadPage(pgs[0].id):createPage()}
+  if(page&&page.id===id){var pgs=getPages(null);pgs.length>0?loadPage(pgs[0].id):showEmptyState()}
   renderTree();toast('휴지통으로 이동')
 }
 function restorePage(id){var p=getPage(id);if(p){p.deleted=false;delete p.deletedAt;saveDB();showTrash();renderTree();toast('복원됨')}}
@@ -961,7 +970,20 @@ function initApp(){
   updateNoticeBar();
   renderTree();
   var pgs=getPages(null);
-  if(pgs.length>0)loadPage(pgs[0].id);else createPage()
+  if(pgs.length>0){showEditor();loadPage(pgs[0].id)}else{showEmptyState()}
+}
+function showEmptyState(){
+  page=null;
+  $('editorInner').style.display='none';
+  $('emptyState').style.display='block';
+  $('editBtn').style.display='none';
+  $('deletePageBtn').style.display='none';
+  $('saveBtn').style.display='none';
+  $('cancelBtn').style.display='none';
+}
+function showEditor(){
+  $('editorInner').style.display='block';
+  $('emptyState').style.display='none';
 }
 function init(){
   initDB();setupListeners();
@@ -971,7 +993,7 @@ function init(){
   if(db.session){var u=null;for(var i=0;i<db.users.length;i++){if(db.users[i].id===db.session&&db.users[i].active){u=db.users[i];break}}if(u){user=u;initApp()}}
 }
 // 전역
-window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.renamePage=renamePage;window.submitRename=submitRename;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.insertVideo=insertVideo;window.insertPdf=insertPdf;window.insertFile=insertFile;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;
+window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.renamePage=renamePage;window.submitRename=submitRename;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.insertVideo=insertVideo;window.insertPdf=insertPdf;window.insertFile=insertFile;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;window.showEmptyState=showEmptyState;window.showEditor=showEditor;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
