@@ -76,6 +76,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .block-handle .btn-i{width:28px;height:28px;font-size:16px;color:var(--t4)}.block-handle .btn-i:hover{background:var(--bg4);color:var(--t1)}
 .block-content{outline:none;min-height:24px;line-height:1.7;word-break:break-word;padding:2px 4px;border-radius:var(--rad);transition:background .15s}
 .block-content:empty::before{content:'텍스트를 입력하세요';color:var(--t4);pointer-events:none}
+.block-toggle-body .block-content:empty::before{content:'토글 내용을 입력하세요'}
 .block-content:focus{background:var(--bg2)}
 .edit-mode .block-content:hover{background:var(--bg2)}
 .block-content b,.block-content strong{font-weight:600}.block-content i,.block-content em{font-style:italic}.block-content u{text-decoration:underline}
@@ -92,10 +93,15 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .block-todo .block-content{flex:1}
 .block-todo.done .block-content{text-decoration:line-through;color:var(--t4)}
 .block-toggle{margin:10px 0}
-.block-toggle-head{display:flex;align-items:flex-start;gap:6px;cursor:pointer;padding:4px 0}
-.block-toggle-arrow{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--t4);transition:transform .15s;margin-top:2px}
+.block-toggle-wrap{padding:4px 0}
+.block-toggle-head{display:flex;align-items:flex-start;gap:6px}
+.block-toggle-arrow{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--t4);transition:transform .15s;margin-top:2px;cursor:pointer;border-radius:4px;flex-shrink:0}
+.block-toggle-arrow:hover{background:var(--bg3);color:var(--t1)}
 .block-toggle-head.open .block-toggle-arrow{transform:rotate(90deg)}
-.block-toggle-body{margin-left:28px;padding-left:14px;border-left:2px solid var(--bdr);margin-top:6px;display:none}.block-toggle-body.open{display:block}
+.block-toggle-head .block-content{flex:1;cursor:text}
+.block-toggle-body{margin-left:28px;padding-left:14px;border-left:2px solid var(--bdr);margin-top:6px;display:none}
+.block-toggle-body.open{display:block}
+.block-toggle-body .block-content{min-height:30px}
 .block-code{margin:16px 0}
 .block-code-wrap{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rad);overflow:hidden}
 .block-code-head{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:var(--bg3);border-bottom:1px solid var(--bdr)}
@@ -676,8 +682,15 @@ function createBlockEl(b,idx){
       inner='<label class="todo-wrap"><input type="checkbox"'+(b.checked?' checked':'')+(editMode?'':' onclick="return false"')+'><div class="block-content"'+ce+'>'+(b.content||'')+'</div></label>';
       break;
     case'toggle':
-      inner='<div class="block-toggle-head'+(b.open?' open':'')+'"><span class="block-toggle-arrow">▶</span><div class="block-content"'+ce+'>'+(b.content||'')+'</div></div>';
-      inner+='<div class="block-toggle-body'+(b.open?' open':'')+'"><div class="block-content"'+ce+'>'+(b.innerContent||'')+'</div></div>';
+      inner='<div class="block-toggle-wrap">';
+      inner+='<div class="block-toggle-head'+(b.open?' open':'')+'">';
+      inner+='<span class="block-toggle-arrow" data-id="'+b.id+'">▶</span>';
+      inner+='<div class="block-content"'+ce+'>'+(b.content||'')+'</div>';
+      inner+='</div>';
+      inner+='<div class="block-toggle-body'+(b.open?' open':'')+'">';
+      inner+='<div class="block-content"'+ce+' data-placeholder="토글 내용을 입력하세요">'+(b.innerContent||'')+'</div>';
+      inner+='</div>';
+      inner+='</div>';
       break;
     case'callout':
       var ct=b.calloutType||'info',cIcon=b.icon||{info:'💡',success:'✅',warning:'⚠️',danger:'❌'}[ct];
@@ -838,14 +851,31 @@ function setupBlockEv(div,b,idx){
   
   // 토글
   if(b.type==='toggle'){
-    var head=div.querySelector('.block-toggle-head'),body=div.querySelector('.block-toggle-body');
-    if(head){
-      head.querySelector('.block-toggle-arrow').addEventListener('click',function(e){
+    var arrow=div.querySelector('.block-toggle-arrow');
+    var head=div.querySelector('.block-toggle-head');
+    var body=div.querySelector('.block-toggle-body');
+    if(arrow){
+      arrow.addEventListener('click',function(e){
+        e.preventDefault();
         e.stopPropagation();
         b.open=!b.open;
         head.classList.toggle('open',b.open);
         body.classList.toggle('open',b.open);
-        if(editMode)triggerAS();
+        // 상태 저장 (triggerAS 대신 직접 저장)
+        for(var i=0;i<page.blocks.length;i++){
+          if(page.blocks[i].id===b.id){page.blocks[i].open=b.open;break}
+        }
+      });
+    }
+    // 토글 바디의 block-content에 별도 이벤트
+    var bodyContent=body.querySelector('.block-content');
+    if(bodyContent){
+      bodyContent.addEventListener('keydown',function(e){
+        // Enter 시 같은 토글 내에서 처리 (새 블록 생성 안함)
+        if(e.key==='Enter'&&!e.shiftKey){
+          e.stopPropagation();
+          // 기본 줄바꿈 허용
+        }
       });
     }
   }
