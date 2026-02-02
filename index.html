@@ -447,7 +447,7 @@ el.addEventListener('input',triggerAS);
 el.addEventListener('paste',handlePaste);
 el.addEventListener('mouseup',showFmtBar);
 el.addEventListener('keydown',function(e){
-if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();document.execCommand('insertLineBreak')}
+if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();var wrap=el.closest('.block');if(wrap){var nidx=parseInt(wrap.getAttribute('data-idx'))+1;insertBlock(nidx,{id:genId(),type:'text',content:''})}}
 if(e.key==='Tab'){e.preventDefault();var next=el.closest('.block-col').nextElementSibling;if(next){var nc=next.querySelector('.block-col-content');if(nc)nc.focus()}else{var wrap=el.closest('.block');if(wrap){var nidx=parseInt(wrap.getAttribute('data-idx'))+1;insertBlock(nidx,{id:genId(),type:'text',content:''})}}}
 })})(colCons[k])}
 if(b.type==='todo'){var cb=div.querySelector('input[type="checkbox"]');if(cb)cb.addEventListener('change',function(){b.checked=cb.checked;div.classList.toggle('done',b.checked);triggerAS()})}
