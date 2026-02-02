@@ -325,6 +325,18 @@ select{cursor:pointer}
 </div>
 <div class="toast-wrap" id="toastWrap"></div>
 <script>
+(function(){
+
+  /* ===============================
+     컨텍스트 메뉴 닫기 (누락 수정)
+     =============================== */
+  function hideCtx() {
+    const menu = document.getElementById('ctxMenu');
+    if (menu) menu.classList.remove('open');
+  }
+
+  /* 외부 클릭 시 닫기 */
+  document.addEventListener('click', hideCtx);
 function showBlockCtx(e, idx) {
   e.preventDefault();
   e.stopPropagation();
