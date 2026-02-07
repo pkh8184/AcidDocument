@@ -477,7 +477,7 @@ function initDB(){
     }
   }).catch(function(e){console.error('DB 로드 실패:',e);toast('데이터 로드 실패','err')});
 }
-// rows 배열을 JSON 문자열로 변환 (저장용)
+// rows/columns 배열을 JSON 문자열로 변환 (저장용)
 function convertRowsForSave(obj){
   if(!obj)return obj;
   if(Array.isArray(obj)){
@@ -488,6 +488,8 @@ function convertRowsForSave(obj){
     for(var key in obj){
       if(key==='rows'&&Array.isArray(obj[key])){
         newObj.rowsJson=JSON.stringify(obj[key]);
+      }else if(key==='columns'&&Array.isArray(obj[key])){
+        newObj.columnsJson=JSON.stringify(obj[key]);
       }else{
         newObj[key]=convertRowsForSave(obj[key]);
       }
@@ -496,7 +498,7 @@ function convertRowsForSave(obj){
   }
   return obj;
 }
-// JSON 문자열을 rows 배열로 변환 (로드용)
+// JSON 문자열을 rows/columns 배열로 변환 (로드용)
 function convertRowsForLoad(obj){
   if(!obj)return obj;
   if(Array.isArray(obj)){
@@ -506,7 +508,9 @@ function convertRowsForLoad(obj){
     var newObj={};
     for(var key in obj){
       if(key==='rowsJson'){
-        try{newObj.rows=JSON.parse(obj[key])}catch(e){newObj.rows=[]}
+        try{newObj.rows=JSON.parse(obj[key])}catch(e){newObj.rows=[['','',''],['','','']]}
+      }else if(key==='columnsJson'){
+        try{newObj.columns=JSON.parse(obj[key])}catch(e){newObj.columns=['','']}
       }else{
         newObj[key]=convertRowsForLoad(obj[key]);
       }
