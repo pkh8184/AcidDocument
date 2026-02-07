@@ -270,20 +270,21 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 /* 차트 */
 .block-chart-wrap{padding:20px;background:var(--bg2);border-radius:var(--rad);border:1px solid var(--bdr)}
 .chart-title{font-size:16px;font-weight:600;margin-bottom:16px;text-align:center;color:var(--t1)}
-.chart-bar-container{display:flex;flex-direction:column;gap:8px}
+.chart-bar-container{display:flex;flex-direction:column;gap:12px}
 .chart-bar-row{display:flex;align-items:center;gap:12px}
-.chart-bar-label{width:80px;text-align:right;font-size:13px;color:var(--t2);flex-shrink:0}
-.chart-bar-track{flex:1;height:28px;background:var(--bg3);border-radius:6px;overflow:hidden;position:relative}
-.chart-bar-fill{height:100%;border-radius:6px;transition:width 0.5s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:12px;color:#fff;font-weight:500}
-.chart-bar-value{margin-left:8px;font-size:13px;color:var(--t2);width:50px}
+.chart-bar-label{width:80px;text-align:right;font-size:13px;color:var(--t2);flex-shrink:0;font-weight:500}
+.chart-bar-track{flex:1;height:32px;background:var(--bg3);border-radius:8px;overflow:hidden;position:relative}
+.chart-bar-fill{height:100%;border-radius:8px;transition:width 0.5s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:10px;font-size:13px;color:#fff;font-weight:600;min-width:40px}
+.chart-bar-axis{display:flex;justify-content:space-between;margin-top:8px;padding:0 92px 0 92px;font-size:11px;color:var(--t4);border-top:1px solid var(--bdr);padding-top:8px}
 .chart-pie-container{display:flex;justify-content:center;align-items:center;gap:30px;flex-wrap:wrap}
 .chart-pie-svg{width:200px;height:200px}
 .chart-pie-legend{display:flex;flex-direction:column;gap:8px}
 .chart-pie-legend-item{display:flex;align-items:center;gap:8px;font-size:13px}
 .chart-pie-legend-color{width:14px;height:14px;border-radius:3px}
-.chart-line-container{position:relative;height:200px;border-left:2px solid var(--bdr);border-bottom:2px solid var(--bdr);margin:20px 10px 30px 50px}
+.chart-line-container{position:relative;height:220px;border-left:2px solid var(--t4);border-bottom:2px solid var(--t4);margin:20px 20px 30px 60px;background:linear-gradient(to top,var(--bg3) 1px,transparent 1px);background-size:100% 25%}
 .chart-line-svg{width:100%;height:100%}
-.chart-line-labels{display:flex;justify-content:space-around;margin-left:50px;margin-right:10px;font-size:11px;color:var(--t4)}
+.chart-line-y-axis{position:absolute;left:-55px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:space-between;font-size:11px;color:var(--t4);text-align:right;padding:5px 0}
+.chart-line-labels{display:flex;justify-content:space-between;margin-left:60px;margin-right:20px;font-size:12px;color:var(--t2);font-weight:500}
 .chart-data-input{margin-top:16px;padding-top:16px;border-top:1px dashed var(--bdr)}
 .chart-data-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
 .chart-data-row input{flex:1;padding:6px 10px;border:1px solid var(--bdr);border-radius:4px;background:var(--bg3);color:var(--t1);font-size:13px}
@@ -1340,6 +1341,14 @@ function handleKey(e,b,idx,el){
     return;
   }
   
+  // Tab 들여쓰기
+  if(e.key==='Tab'){
+    e.preventDefault();
+    document.execCommand('insertText',false,'    '); // 4칸 스페이스
+    triggerAS();
+    return;
+  }
+  
   // 규칙 9: 서식 단축키
   if((e.metaKey||e.ctrlKey)&&!e.shiftKey){
     if(e.key==='b'){e.preventDefault();document.execCommand('bold');return}
@@ -1591,6 +1600,8 @@ function renderChart(b,idx){
       html+='<div class="chart-bar-track"><div class="chart-bar-fill" style="width:'+pct+'%;background:'+CHART_COLORS[i%CHART_COLORS.length]+'">'+data[i].value+'</div></div>';
       html+='</div>';
     }
+    // 축 표시
+    html+='<div class="chart-bar-axis"><span>0</span><span>'+Math.round(maxVal/4)+'</span><span>'+Math.round(maxVal/2)+'</span><span>'+Math.round(maxVal*3/4)+'</span><span>'+maxVal+'</span></div>';
     html+='</div>';
   }else if(type==='chart-pie'){
     var total=data.reduce(function(s,d){return s+d.value},0)||1;
@@ -1618,20 +1629,33 @@ function renderChart(b,idx){
     html+='</div></div>';
   }else if(type==='chart-line'){
     var maxVal=Math.max.apply(null,data.map(function(d){return d.value}))||1;
+    // Y축 레이블
+    html+='<div style="position:relative">';
+    html+='<div class="chart-line-y-axis"><span>'+maxVal+'</span><span>'+Math.round(maxVal*3/4)+'</span><span>'+Math.round(maxVal/2)+'</span><span>'+Math.round(maxVal/4)+'</span><span>0</span></div>';
     html+='<div class="chart-line-container"><svg class="chart-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none">';
+    // 그리드 라인
+    html+='<line x1="0" y1="25" x2="100" y2="25" stroke="var(--bdr)" stroke-width="0.5" stroke-dasharray="2"/>';
+    html+='<line x1="0" y1="50" x2="100" y2="50" stroke="var(--bdr)" stroke-width="0.5" stroke-dasharray="2"/>';
+    html+='<line x1="0" y1="75" x2="100" y2="75" stroke="var(--bdr)" stroke-width="0.5" stroke-dasharray="2"/>';
+    // 라인 그래프
     var points=[];
     for(var i=0;i<data.length;i++){
-      var x=(i/(data.length-1||1))*100;
+      var x=data.length>1?(i/(data.length-1))*100:50;
       var y=100-(data[i].value/maxVal)*100;
       points.push(x+','+y);
     }
-    html+='<polyline points="'+points.join(' ')+'" fill="none" stroke="'+CHART_COLORS[0]+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+    // 영역 채우기
+    html+='<polygon points="0,100 '+points.join(' ')+' 100,100" fill="'+CHART_COLORS[0]+'" fill-opacity="0.1"/>';
+    // 굵은 라인
+    html+='<polyline points="'+points.join(' ')+'" fill="none" stroke="'+CHART_COLORS[0]+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+    // 포인트
     for(var i=0;i<data.length;i++){
-      var x=(i/(data.length-1||1))*100;
+      var x=data.length>1?(i/(data.length-1))*100:50;
       var y=100-(data[i].value/maxVal)*100;
-      html+='<circle cx="'+x+'" cy="'+y+'" r="3" fill="'+CHART_COLORS[0]+'"/>';
+      html+='<circle cx="'+x+'" cy="'+y+'" r="4" fill="#fff" stroke="'+CHART_COLORS[0]+'" stroke-width="2"/>';
     }
-    html+='</svg></div>';
+    html+='</svg></div></div>';
+    // X축 레이블
     html+='<div class="chart-line-labels">';
     for(var i=0;i<data.length;i++)html+='<span>'+esc(data[i].label)+'</span>';
     html+='</div>';
