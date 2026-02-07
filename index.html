@@ -752,7 +752,7 @@ function createBlockEl(b,idx){
     case'code':
       inner='<div class="block-code-wrap"><div class="block-code-head">';
       inner+='<span class="block-code-lang"'+(editMode?' onclick="openCodeSetting(\''+b.id+'\')" style="cursor:pointer"':'')+'>'+esc(b.lang||'code')+'</span>';
-      inner+='<button class="btn btn-sm btn-s" onclick="copyCode(this)">복사</button></div>';
+      inner+='<button class="btn btn-sm btn-s" onclick="copyCode(this)">복사</button><button class="btn btn-sm btn-s" onclick="downloadCode(this)" style="margin-left:4px">다운로드</button></div>';
       inner+='<div class="block-content"'+ce+' style="font-family:monospace;white-space:pre-wrap">'+(b.content||'')+'</div></div>';
       break;
     case'image':
@@ -1134,6 +1134,7 @@ function setupColResize(div,b){
 }
 function scrollToBlk(id){var el=document.querySelector('[data-id="'+id+'"]');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.background='var(--accM)';setTimeout(function(){el.style.background=''},2000)}}
 function copyCode(btn){var wrap=btn.closest('.block-code-wrap'),code=wrap.querySelector('.block-content').textContent;navigator.clipboard.writeText(code).then(function(){toast('복사됨')})}
+function downloadCode(btn){var wrap=btn.closest('.block-code-wrap'),code=wrap.querySelector('.block-content').textContent,lang=wrap.querySelector('.block-code-lang');var ext=lang?lang.textContent.toLowerCase():'txt';var exts={javascript:'js',python:'py',java:'java',html:'html',css:'css',json:'json',typescript:'ts',ruby:'rb',php:'php',go:'go',rust:'rs',cpp:'cpp',c:'c'};ext=exts[ext]||ext||'txt';var blob=new Blob([code],{type:'text/plain'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='code.'+ext;a.click();URL.revokeObjectURL(url);toast('다운로드됨')}
 function getYTId(url){if(!url)return null;var m=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);return m?m[1]:null}
 /* ========== 블록 생성/삭제 규칙 ==========
  * 1. insertBlock: 지정 위치에 블록 삽입 후 포커스
@@ -1235,7 +1236,7 @@ function moveBlockDown(idx){
   renderBlocks();
   focusBlock(idx+1);
 }
-function collectBlocks(){var blks=[],chs=$('editor').children;for(var i=0;i<chs.length;i++){var el=chs[i],id=el.getAttribute('data-id'),orig=null;for(var j=0;j<page.blocks.length;j++){if(page.blocks[j].id===id){orig=page.blocks[j];break}}if(!orig)continue;var b=JSON.parse(JSON.stringify(orig)),con=el.querySelector('.block-content');if(con)b.content=con.innerHTML;if(b.type==='todo'){var cb=el.querySelector('input[type="checkbox"]');b.checked=cb?cb.checked:false}if(b.type==='toggle'){var inn=el.querySelector('.block-toggle-body .block-content');if(inn)b.innerContent=inn.innerHTML;var hd=el.querySelector('.block-toggle-head');b.open=hd?hd.classList.contains('open'):false}if(b.type==='image'){var cap=el.querySelector('.block-image-caption');if(cap)b.caption=cap.innerHTML}if(b.type==='table'){var rows=[],trs=el.querySelectorAll('tr'),cws=[];for(var ri=0;ri<trs.length;ri++){var cls=[],tds=trs[ri].querySelectorAll('th,td');for(var ci=0;ci<tds.length;ci++){cls.push(tds[ci].innerHTML.replace(/<div class="col-resizer"[^>]*><\/div>/g,''));if(ri===0&&tds[ci].offsetWidth)cws[ci]=tds[ci].offsetWidth}rows.push(cls)}b.rows=rows;if(cws.length)b.colWidths=cws}if(b.type==='columns'){var cols=[],ces=el.querySelectorAll('.block-col-content'),cwc=[];for(var coi=0;coi<ces.length;coi++){cols.push(ces[coi].innerHTML);var colEl=ces[coi].closest('.block-col');if(colEl&&colEl.offsetWidth)cwc[coi]=colEl.offsetWidth}b.columns=cols;if(cwc.length)b.colWidths=cwc}blks.push(b)}return blks}
+function collectBlocks(){var blks=[],chs=$('editor').children;for(var i=0;i<chs.length;i++){var el=chs[i],id=el.getAttribute('data-id'),orig=null;for(var j=0;j<page.blocks.length;j++){if(page.blocks[j].id===id){orig=page.blocks[j];break}}if(!orig)continue;var b=JSON.parse(JSON.stringify(orig));if(b.type==='toggle'){var headCon=el.querySelector('.block-toggle-head .block-content');if(headCon)b.content=headCon.innerHTML;var bodyCon=el.querySelector('.block-toggle-body .block-content');if(bodyCon)b.innerContent=bodyCon.innerHTML;var hd=el.querySelector('.block-toggle-head');b.open=hd?hd.classList.contains('open'):false}else{var con=el.querySelector('.block-content');if(con)b.content=con.innerHTML}if(b.type==='todo'){var cb=el.querySelector('input[type="checkbox"]');b.checked=cb?cb.checked:false}if(b.type==='image'){var cap=el.querySelector('.block-image-caption');if(cap)b.caption=cap.innerHTML}if(b.type==='table'){var rows=[],trs=el.querySelectorAll('tr'),cws=[];for(var ri=0;ri<trs.length;ri++){var cls=[],tds=trs[ri].querySelectorAll('th,td');for(var ci=0;ci<tds.length;ci++){cls.push(tds[ci].innerHTML.replace(/<div class="col-resizer"[^>]*><\/div>/g,''));if(ri===0&&tds[ci].offsetWidth)cws[ci]=tds[ci].offsetWidth}rows.push(cls)}b.rows=rows;if(cws.length)b.colWidths=cws}if(b.type==='columns'){var cols=[],ces=el.querySelectorAll('.block-col-content'),cwc=[];for(var coi=0;coi<ces.length;coi++){cols.push(ces[coi].innerHTML);var colEl=ces[coi].closest('.block-col');if(colEl&&colEl.offsetWidth)cwc[coi]=colEl.offsetWidth}b.columns=cols;if(cwc.length)b.colWidths=cwc}blks.push(b)}return blks}
 function updateNums(){var n=0,chs=$('editor').children;for(var i=0;i<chs.length;i++){if(chs[i].classList.contains('block-number')){n++;chs[i].setAttribute('data-num',n)}else if(!chs[i].classList.contains('block-bullet'))n=0}}
 function genTOC(){var hs=[];for(var i=0;i<page.blocks.length;i++){var b=page.blocks[i];if(b.type==='h1'||b.type==='h2'||b.type==='h3')hs.push(b)}if(hs.length===0)return'<div class="block-toc-title">📑 목차</div><p style="color:var(--t4)">제목이 없습니다</p>';var html='<div class="block-toc-title">📑 목차</div><ul class="block-toc-list">';for(var j=0;j<hs.length;j++){var h=hs[j],txt=(h.content||'').replace(/<[^>]*>/g,''),lv=h.type==='h1'?1:h.type==='h2'?2:3;html+='<li class="block-toc-item l'+lv+'"><a href="#" onclick="scrollToBlk(\''+h.id+'\');return false">'+esc(txt)+'</a></li>'}html+='</ul>';return html}
 
@@ -1303,7 +1304,16 @@ function execSlash(type){
   },30)
 }
 var currentEditBlockId=null;
-function insertImage(){openModal('imageUploadModal');$('imageUrlInput').value='';$('imageFileInput').value=''}
+var currentInsertIdx=null;
+function getCurrentBlockIdx(){
+  var focused=document.activeElement;
+  if(focused){
+    var block=focused.closest('.block');
+    if(block)return parseInt(block.getAttribute('data-idx'));
+  }
+  return page.blocks.length-1;
+}
+function insertImage(){currentInsertIdx=getCurrentBlockIdx();openModal('imageUploadModal');$('imageUrlInput').value='';$('imageFileInput').value=''}
 function submitImage(){
   var url=$('imageUrlInput').value.trim(),file=$('imageFileInput').files[0];
   if(file){
@@ -1315,10 +1325,12 @@ function submitImage(){
 }
 function addImageBlock(src){
   var b={id:genId(),type:'image',src:src,caption:''};
-  if(slashSt.idx!==null){page.blocks[slashSt.idx]=b;slashSt.idx=null}else page.blocks.push(b);
+  if(slashSt.idx!==null){page.blocks[slashSt.idx]=b;slashSt.idx=null}
+  else if(currentInsertIdx!==null){page.blocks.splice(currentInsertIdx+1,0,b);currentInsertIdx=null}
+  else page.blocks.push(b);
   renderBlocks();triggerAS();closeModal('imageUploadModal');toast('이미지 삽입')
 }
-function insertVideo(){openModal('videoUploadModal');$('videoUrlInput').value='';$('videoFileInput').value=''}
+function insertVideo(){currentInsertIdx=getCurrentBlockIdx();openModal('videoUploadModal');$('videoUrlInput').value='';$('videoFileInput').value=''}
 function submitVideo(){
   var url=$('videoUrlInput').value.trim(),file=$('videoFileInput').files[0];
   if(file){
@@ -1333,10 +1345,12 @@ function submitVideo(){
 }
 function addVideoBlock(src,fname){
   var b={id:genId(),type:'video',url:src,isFile:!!fname,fileName:fname||''};
-  if(slashSt.idx!==null){page.blocks[slashSt.idx]=b;slashSt.idx=null}else page.blocks.push(b);
+  if(slashSt.idx!==null){page.blocks[slashSt.idx]=b;slashSt.idx=null}
+  else if(currentInsertIdx!==null){page.blocks.splice(currentInsertIdx+1,0,b);currentInsertIdx=null}
+  else page.blocks.push(b);
   renderBlocks();triggerAS();closeModal('videoUploadModal');toast('동영상 삽입')
 }
-function insertPdf(){openModal('pdfUploadModal');$('pdfUrlInput').value='';$('pdfFileInput').value=''}
+function insertPdf(){currentInsertIdx=getCurrentBlockIdx();openModal('pdfUploadModal');$('pdfUrlInput').value='';$('pdfFileInput').value=''}
 function submitPdf(){
   var url=$('pdfUrlInput').value.trim(),file=$('pdfFileInput').files[0];
   if(file){
@@ -1348,17 +1362,21 @@ function submitPdf(){
 }
 function addPdfBlock(src){
   var b={id:genId(),type:'pdf',src:src};
-  if(slashSt.idx!==null){page.blocks[slashSt.idx]=b;slashSt.idx=null}else page.blocks.push(b);
+  if(slashSt.idx!==null){page.blocks[slashSt.idx]=b;slashSt.idx=null}
+  else if(currentInsertIdx!==null){page.blocks.splice(currentInsertIdx+1,0,b);currentInsertIdx=null}
+  else page.blocks.push(b);
   renderBlocks();triggerAS();closeModal('pdfUploadModal');toast('PDF 삽입')
 }
-function insertFile(){openModal('fileUploadModal');$('fileFileInput').value=''}
+function insertFile(){currentInsertIdx=getCurrentBlockIdx();openModal('fileUploadModal');$('fileFileInput').value=''}
 function submitFile(){
   var file=$('fileFileInput').files[0];
   if(!file){toast('파일을 선택하세요','err');return}
   var reader=new FileReader();
   reader.onload=function(e){
     var b={id:genId(),type:'file',url:e.target.result,name:file.name};
-    if(slashSt.idx!==null){page.blocks[slashSt.idx]=b;slashSt.idx=null}else page.blocks.push(b);
+    if(slashSt.idx!==null){page.blocks[slashSt.idx]=b;slashSt.idx=null}
+    else if(currentInsertIdx!==null){page.blocks.splice(currentInsertIdx+1,0,b);currentInsertIdx=null}
+    else page.blocks.push(b);
     renderBlocks();triggerAS();closeModal('fileUploadModal');toast('파일 삽입')
   };
   reader.readAsDataURL(file)
@@ -1623,7 +1641,7 @@ function init(){
   });
 }
 // 전역
-window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;
+window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.downloadCode=downloadCode;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 } // startApp 함수 끝
 </script>
