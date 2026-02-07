@@ -545,7 +545,7 @@ function handleLogin(e){
     $('loginError').textContent=errMsg;$('loginError').style.display='block';$('loginPw').value='';saveLoginState(st);return
   }
   st.attempts=0;st.lockUntil=0;saveLoginState(st);
-  db.session=u.id;saveDB();user=u;$('loginError').style.display='none';
+  localStorage.setItem('ad_session',u.id);user=u;$('loginError').style.display='none';
   if(u.needPw){$('loginScreen').classList.add('hidden');openModal('pwChangeModal')}else initApp()
 }
 function showLockTimer(until){
@@ -568,7 +568,7 @@ function submitPwChange(){
   }
   saveDB();closeModal('pwChangeModal');toast('설정 완료');initApp()
 }
-function logout(){db.session=null;saveDB();user=null;page=null;$('appWrap').style.display='none';$('loginScreen').classList.remove('hidden');$('loginId').value='';$('loginPw').value='';$('loginForm').style.display='block';$('loginLocked').style.display='none';closeAllModals();closeAllPanels()}
+function logout(){localStorage.removeItem('ad_session');user=null;page=null;$('appWrap').style.display='none';$('loginScreen').classList.remove('hidden');$('loginId').value='';$('loginPw').value='';$('loginForm').style.display='block';$('loginLocked').style.display='none';closeAllModals();closeAllPanels();location.hash=''}
 function isSuper(){return user&&user.id===SUPER}
 function toggleMobile(){$('sidebar').classList.toggle('open');$('mobOverlay').classList.toggle('open')}
 function closeMobile(){$('sidebar').classList.remove('open');$('mobOverlay').classList.remove('open')}
@@ -939,8 +939,8 @@ function handleKey(e,b,idx,el){
     if(e.key==='ArrowUp'){e.preventDefault();moveSlashSel(-1);return}
     if(e.key==='Enter'){e.preventDefault();var sel=menu.querySelector('.slash-item.sel');if(sel)execSlash(sel.getAttribute('data-type'));return}
     if(e.key==='Escape'){e.preventDefault();hideSlash();return}
-    if(e.key==='Backspace'){setTimeout(function(){var txt=el.textContent;if(!txt.startsWith('/'))hideSlash();else filterSlash(txt.slice(1))},0);return}
-    if(e.key.length===1&&!e.ctrlKey&&!e.metaKey){setTimeout(function(){var txt=el.textContent;if(txt.startsWith('/'))filterSlash(txt.slice(1))},0);return}
+    if(e.key==='Backspace'){setTimeout(function(){var txt=el.innerText||el.textContent;if(!txt.startsWith('/'))hideSlash();else filterSlash(txt.slice(1))},0);return}
+    if(e.key.length===1&&!e.ctrlKey&&!e.metaKey){setTimeout(function(){var txt=el.innerText||el.textContent;if(txt.startsWith('/'))filterSlash(txt.slice(1))},0);return}
   }
   
   /* ========== 텍스트 입력 규칙 ==========
@@ -1617,7 +1617,9 @@ function init(){
     var st=getLoginState();
     if(st.blocked){$('loginBlocked').style.display='block';$('loginForm').style.display='none';return}
     if(st.lockUntil>Date.now()){showLockTimer(st.lockUntil);return}
-    if(db.session){var u=null;for(var i=0;i<db.users.length;i++){if(db.users[i].id===db.session&&db.users[i].active){u=db.users[i];break}}if(u){user=u;initApp()}}
+    // 세션은 localStorage에서 확인 (기기별 독립)
+    var localSession=localStorage.getItem('ad_session');
+    if(localSession){var u=null;for(var i=0;i<db.users.length;i++){if(db.users[i].id===localSession&&db.users[i].active){u=db.users[i];break}}if(u){user=u;initApp()}}
   });
 }
 // 전역
