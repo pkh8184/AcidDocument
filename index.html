@@ -1243,8 +1243,20 @@ function genTOC(){var hs=[];for(var i=0;i<page.blocks.length;i++){var b=page.blo
 function showFmtBar(){var sel=window.getSelection();if(!sel.rangeCount||sel.isCollapsed){hideFmtBar();return}var rng=sel.getRangeAt(0),rect=rng.getBoundingClientRect();if(rect.width<5){hideFmtBar();return}var bar=$('fmtBar');bar.style.left=Math.max(10,rect.left+rect.width/2-110)+'px';bar.style.top=Math.max(10,rect.top-50)+'px';bar.classList.add('open')}
 function hideFmtBar(){$('fmtBar').classList.remove('open')}
 function fmtCmd(cmd){document.execCommand(cmd,false,null);triggerAS()}
-function openColorPicker(){var html='';for(var i=0;i<COLORS.length;i++)html+='<div class="color-item" style="background:'+COLORS[i]+'" onclick="applyColor(\''+COLORS[i]+'\')"></div>';$('colorGrid').innerHTML=html;openModal('colorModal')}
-function applyColor(c){closeModal('colorModal');document.execCommand('foreColor',false,c);triggerAS()}
+var savedSelection=null;
+function saveSelection(){
+  var sel=window.getSelection();
+  if(sel.rangeCount>0)savedSelection=sel.getRangeAt(0).cloneRange();
+}
+function restoreSelection(){
+  if(savedSelection){
+    var sel=window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedSelection);
+  }
+}
+function openColorPicker(){saveSelection();var html='';for(var i=0;i<COLORS.length;i++)html+='<div class="color-item" style="background:'+COLORS[i]+'" onclick="applyColor(\''+COLORS[i]+'\')"></div>';$('colorGrid').innerHTML=html;openModal('colorModal')}
+function applyColor(c){closeModal('colorModal');restoreSelection();document.execCommand('foreColor',false,c);triggerAS()}
 function showSlash(el){var rect=el.getBoundingClientRect(),menu=$('slashMenu');menu.style.left=Math.min(rect.left,window.innerWidth-320)+'px';menu.style.top=(rect.bottom+8)+'px';renderSlashMenu('');menu.classList.add('open')}
 function hideSlash(){$('slashMenu').classList.remove('open');slashSt={open:false,idx:null}}
 function renderSlashMenu(filter){
