@@ -455,7 +455,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 <div class="modal-bg" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')">
 <div class="modal lg">
 <div class="modal-head"><h2>⚙️ 설정</h2><button class="btn btn-i btn-g" onclick="closeModal('settingsModal')">✕</button></div>
-<div class="tabs-head"><div class="tab-btn on" onclick="showSettingsTab('profile',this)">프로필</div><div class="tab-btn" onclick="showSettingsTab('users',this)">사용자</div><div class="tab-btn" onclick="showSettingsTab('iplog',this)">접속 로그</div><div class="tab-btn" onclick="showSettingsTab('notice',this)">공지</div><div class="tab-btn" onclick="showSettingsTab('workspace',this)">워크스페이스</div></div>
+<div class="tabs-head"><div class="tab-btn on" onclick="showSettingsTab('profile',this)">프로필</div><div class="tab-btn" onclick="showSettingsTab('users',this)">사용자</div><div class="tab-btn" onclick="showSettingsTab('storage',this)">저장소</div><div class="tab-btn" onclick="showSettingsTab('iplog',this)">접속 로그</div><div class="tab-btn" onclick="showSettingsTab('notice',this)">공지</div><div class="tab-btn" onclick="showSettingsTab('workspace',this)">워크스페이스</div></div>
 <div class="tab-panel on" id="tabProfile">
 <div class="fg"><label>아이디</label><input id="setUserId" readonly></div>
 <div class="fg"><label>닉네임</label><input id="setNickname"></div>
@@ -479,6 +479,23 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 <div style="display:flex;gap:10px">
 <button class="btn btn-p" onclick="saveNotice()">공지 저장</button>
 <button class="btn btn-d" onclick="clearNotice()">공지 삭제</button>
+</div>
+</div>
+<div class="tab-panel" id="tabStorage">
+<div style="margin-bottom:20px">
+<h3 style="margin-bottom:12px;font-size:16px">📦 저장소 사용량</h3>
+<div id="storageUsageBar" style="background:var(--bg3);border-radius:8px;height:24px;overflow:hidden;margin-bottom:8px">
+<div id="storageUsageFill" style="height:100%;background:var(--acc);transition:width 0.3s"></div>
+</div>
+<div id="storageUsageText" style="font-size:13px;color:var(--t3)"></div>
+</div>
+<div style="padding:16px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--t3)">
+<p style="margin-bottom:8px"><strong>📌 용량 제한</strong></p>
+<ul style="margin-left:16px;line-height:1.8">
+<li>총 저장 공간: 5GB</li>
+<li>파일당 최대: 10MB</li>
+<li>허용 이미지: JPEG, PNG, GIF, WebP</li>
+</ul>
 </div>
 </div>
 <div class="tab-panel" id="tabIplog">
@@ -540,6 +557,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 <div class="toast-wrap" id="toastWrap"></div>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
 <script>
 // Firebase 로드 대기
 (function waitForFirebase(){
@@ -552,8 +570,15 @@ function startApp(){
 var firebaseConfig={apiKey:"AIzaSyBqHTIoLGKnCnR8n8jFGS3a4LGhIJe5xQI",authDomain:"aciddocument.firebaseapp.com",projectId:"aciddocument",storageBucket:"aciddocument.firebasestorage.app",messagingSenderId:"834603817632",appId:"1:834603817632:web:5bd935f6805e05582307c5"};
 firebase.initializeApp(firebaseConfig);
 var firestore=firebase.firestore();
+var storage=firebase.storage();
 
 var SUPER='admin8184',MAX_VER=10;
+// Storage 용량 제한 (bytes)
+var STORAGE_LIMIT=5*1024*1024*1024; // 5GB
+var MAX_FILE_SIZE=10*1024*1024; // 파일당 최대 10MB
+var ALLOWED_IMAGE_TYPES=['image/jpeg','image/png','image/gif','image/webp'];
+var ALLOWED_VIDEO_TYPES=['video/mp4','video/webm','video/ogg'];
+var ALLOWED_FILE_TYPES=['application/pdf','application/zip','application/x-zip-compressed','text/plain','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
 var ICONS=['📄','📝','📋','📁','📚','📖','📌','💡','⭐','🔥','✨','🚀','🎨','💻','📊','🎯','👋','❤️','🏠','📱','🔧','⚙️','🎁','💎','🌟','📈','🔒','💬','📮','🗂️','📑','🔖','🎵','🎬','📷','🌍','⚡','🔔','✅','❌','⚠️','💰','🎓','🏆','🌈','☀️','🌙'];
 var COLORS=['#f85149','#ff7b72','#ffa657','#d29922','#3fb950','#56d364','#58a6ff','#79b8ff','#a371f7','#bc8cff','#f0f6fc','#8b949e','#6e7681','#30363d'];
 var SLASH=[
@@ -688,6 +713,66 @@ function saveDB(){
 }function toast(m,t){t=t||'ok';var w=$('toastWrap'),e=document.createElement('div');e.className='toast '+t;var ic={ok:'✅',err:'❌',warn:'⚠️'};e.innerHTML='<span style="font-size:18px">'+(ic[t]||'💬')+'</span><span style="font-size:14px">'+esc(m)+'</span>';w.appendChild(e);setTimeout(function(){e.style.opacity='0';setTimeout(function(){e.remove()},200)},3000)}
 function setTheme(t){document.documentElement.setAttribute('data-theme',t);db.settings.theme=t;saveDB()}
 function toggleTheme(){setTheme(db.settings.theme==='dark'?'light':'dark')}
+
+// Storage 용량 체크 및 업로드
+function formatBytes(bytes){
+  if(bytes===0)return '0 Bytes';
+  var k=1024,sizes=['Bytes','KB','MB','GB'];
+  var i=Math.floor(Math.log(bytes)/Math.log(k));
+  return parseFloat((bytes/Math.pow(k,i)).toFixed(2))+' '+sizes[i];
+}
+function getStorageUsage(){
+  return new Promise(function(resolve){
+    if(!db.storageUsage)db.storageUsage=0;
+    resolve(db.storageUsage);
+  });
+}
+function updateStorageUsage(addBytes){
+  if(!db.storageUsage)db.storageUsage=0;
+  db.storageUsage+=addBytes;
+  saveDB();
+}
+function uploadToStorage(file,folder,allowedTypes){
+  return new Promise(function(resolve,reject){
+    // 파일 타입 체크
+    if(allowedTypes&&allowedTypes.indexOf(file.type)===-1){
+      reject(new Error('허용되지 않는 파일 형식입니다.\n허용: '+allowedTypes.join(', ')));
+      return;
+    }
+    // 파일 크기 체크
+    if(file.size>MAX_FILE_SIZE){
+      reject(new Error('파일 크기가 너무 큽니다.\n최대: '+formatBytes(MAX_FILE_SIZE)));
+      return;
+    }
+    // 총 용량 체크
+    getStorageUsage().then(function(used){
+      if(used+file.size>STORAGE_LIMIT){
+        reject(new Error('저장 공간이 부족합니다.\n사용: '+formatBytes(used)+' / '+formatBytes(STORAGE_LIMIT)));
+        return;
+      }
+      // 업로드 진행
+      var fileName=folder+'/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'');
+      var ref=storage.ref().child(fileName);
+      var uploadTask=ref.put(file);
+      
+      uploadTask.on('state_changed',
+        function(snapshot){
+          var progress=Math.round((snapshot.bytesTransferred/snapshot.totalBytes)*100);
+          toast('업로드 중... '+progress+'%','warn');
+        },
+        function(error){
+          reject(error);
+        },
+        function(){
+          uploadTask.snapshot.ref.getDownloadURL().then(function(url){
+            updateStorageUsage(file.size);
+            resolve({url:url,size:file.size,name:file.name});
+          });
+        }
+      );
+    });
+  });
+}
 
 // IP 로깅
 function logLoginAttempt(userId,success){
@@ -1378,19 +1463,21 @@ function handlePaste(e){
   var txt=e.clipboardData.getData('text/plain');
   var files=e.clipboardData.files;
   
-  // 이미지 파일 붙여넣기
+  // 이미지 파일 붙여넣기 - Storage에 업로드
   if(files&&files.length>0){
     for(var i=0;i<files.length;i++){
       var file=files[i];
       if(file.type.startsWith('image/')){
-        var reader=new FileReader();
-        reader.onload=function(ev){
-          var b={id:genId(),type:'image',src:ev.target.result,caption:''};
+        uploadToStorage(file,'images',ALLOWED_IMAGE_TYPES).then(function(result){
+          var b={id:genId(),type:'image',src:result.url,caption:''};
           var idx=currentInsertIdx!==null?currentInsertIdx+1:page.blocks.length;
           page.blocks.splice(idx,0,b);
           renderBlocks();triggerAS();
-        };
-        reader.readAsDataURL(file);
+          toast('이미지 삽입');
+        }).catch(function(err){
+          console.error('이미지 업로드 실패:',err);
+          toast(err.message||'이미지 업로드 실패','err');
+        });
         return;
       }
     }
@@ -1911,9 +1998,12 @@ function insertImage(){openModal('imageUploadModal');$('imageUrlInput').value=''
 function submitImage(){
   var url=$('imageUrlInput').value.trim(),file=$('imageFileInput').files[0];
   if(file){
-    var reader=new FileReader();
-    reader.onload=function(e){addImageBlock(e.target.result)};
-    reader.readAsDataURL(file)
+    uploadToStorage(file,'images',ALLOWED_IMAGE_TYPES).then(function(result){
+      addImageBlock(result.url);
+    }).catch(function(err){
+      console.error('이미지 업로드 실패:',err);
+      toast(err.message||'이미지 업로드 실패','err');
+    });
   }else if(url){addImageBlock(url)}
   else{toast('URL 또는 파일을 선택하세요','err');return}
 }
@@ -2088,7 +2178,14 @@ function openSettings(){
   renderUsers();genNewUser();
   showSettingsTab('profile',document.querySelector('.tab-btn.on'))
 }
-function showSettingsTab(tab,btn){$$('.tab-btn').forEach(function(b){b.classList.remove('on')});$$('.tab-panel').forEach(function(p){p.classList.remove('on')});btn.classList.add('on');$('tab'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('on');if(tab==='iplog')renderIpLog()}
+function showSettingsTab(tab,btn){$$('.tab-btn').forEach(function(b){b.classList.remove('on')});$$('.tab-panel').forEach(function(p){p.classList.remove('on')});btn.classList.add('on');$('tab'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('on');if(tab==='iplog')renderIpLog();if(tab==='storage')renderStorageUsage()}
+function renderStorageUsage(){
+  var used=db.storageUsage||0;
+  var pct=Math.min((used/STORAGE_LIMIT)*100,100);
+  $('storageUsageFill').style.width=pct+'%';
+  $('storageUsageFill').style.background=pct>90?'var(--err)':pct>70?'var(--warn)':'var(--acc)';
+  $('storageUsageText').innerHTML='<strong>'+formatBytes(used)+'</strong> / '+formatBytes(STORAGE_LIMIT)+' 사용 ('+pct.toFixed(1)+'%)';
+}
 function renderIpLog(){
   var list=$('ipLogList');
   if(!isSuper()){list.innerHTML='<p style="color:var(--t4);text-align:center;padding:20px">최고관리자만 볼 수 있습니다.</p>';return}
