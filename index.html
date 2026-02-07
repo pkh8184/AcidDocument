@@ -436,7 +436,7 @@ function saveLoginState(st){localStorage.setItem('ad_login_state',JSON.stringify
 
 function initDB(){
   return firestore.collection('app').doc('data').get().then(function(doc){
-    if(doc.exists){db=doc.data()}
+    if(doc.exists){db=convertRowsForLoad(doc.data())}
     else{
       db={
         users:[
@@ -455,7 +455,7 @@ function initDB(){
         templates:[
           {id:'meeting',name:'회의록',icon:'📋',blocks:[
             {id:genId(),type:'h1',content:'📋 회의록'},
-            {id:genId(),type:'table',rows:[['항목','내용'],['📅 회의 일시',''],['📍 회의 장소',''],['👥 참여 대상',''],['📌 회의 주제',''],['🎤 발언자','']]},
+            {id:genId(),type:'table',rowsJson:'[["항목","내용"],["📅 회의 일시",""],["📍 회의 장소",""],["👥 참여 대상",""],["📌 회의 주제",""],["🎤 발언자",""]]'},
             {id:genId(),type:'h2',content:'📝 회의 내용'},{id:genId(),type:'text',content:''},
             {id:genId(),type:'h2',content:'✅ 회의 결론'},{id:genId(),type:'bullet',content:''},
             {id:genId(),type:'h2',content:'📌 Action Items'},{id:genId(),type:'todo',content:'',checked:false},
@@ -467,7 +467,7 @@ function initDB(){
             {id:genId(),type:'callout',content:'프로젝트 개요',calloutType:'info'},
             {id:genId(),type:'h2',content:'목표'},{id:genId(),type:'bullet',content:''},
             {id:genId(),type:'h2',content:'일정'},
-            {id:genId(),type:'table',rows:[['단계','시작일','종료일','담당자'],['기획','','',''],['개발','','',''],['테스트','','','']]}
+            {id:genId(),type:'table',rowsJson:'[["단계","시작일","종료일","담당자"],["기획","","",""],["개발","","",""],["테스트","","",""]]'}
           ]}
         ],
         settings:{wsName:'AcidDocument',theme:'dark',notice:''},
@@ -477,8 +477,48 @@ function initDB(){
     }
   }).catch(function(e){console.error('DB 로드 실패:',e);toast('데이터 로드 실패','err')});
 }
-function saveDB(){return firestore.collection('app').doc('data').set(db).catch(function(e){console.error('저장 실패:',e);toast('저장 오류','err')})}
-function toast(m,t){t=t||'ok';var w=$('toastWrap'),e=document.createElement('div');e.className='toast '+t;var ic={ok:'✅',err:'❌',warn:'⚠️'};e.innerHTML='<span style="font-size:18px">'+(ic[t]||'💬')+'</span><span style="font-size:14px">'+esc(m)+'</span>';w.appendChild(e);setTimeout(function(){e.style.opacity='0';setTimeout(function(){e.remove()},200)},3000)}
+// rows 배열을 JSON 문자열로 변환 (저장용)
+function convertRowsForSave(obj){
+  if(!obj)return obj;
+  if(Array.isArray(obj)){
+    return obj.map(function(item){return convertRowsForSave(item)});
+  }
+  if(typeof obj==='object'){
+    var newObj={};
+    for(var key in obj){
+      if(key==='rows'&&Array.isArray(obj[key])){
+        newObj.rowsJson=JSON.stringify(obj[key]);
+      }else{
+        newObj[key]=convertRowsForSave(obj[key]);
+      }
+    }
+    return newObj;
+  }
+  return obj;
+}
+// JSON 문자열을 rows 배열로 변환 (로드용)
+function convertRowsForLoad(obj){
+  if(!obj)return obj;
+  if(Array.isArray(obj)){
+    return obj.map(function(item){return convertRowsForLoad(item)});
+  }
+  if(typeof obj==='object'){
+    var newObj={};
+    for(var key in obj){
+      if(key==='rowsJson'){
+        try{newObj.rows=JSON.parse(obj[key])}catch(e){newObj.rows=[]}
+      }else{
+        newObj[key]=convertRowsForLoad(obj[key]);
+      }
+    }
+    return newObj;
+  }
+  return obj;
+}
+function saveDB(){
+  var dataToSave=convertRowsForSave(db);
+  return firestore.collection('app').doc('data').set(dataToSave).catch(function(e){console.error('저장 실패:',e);toast('저장 오류','err')});
+}function toast(m,t){t=t||'ok';var w=$('toastWrap'),e=document.createElement('div');e.className='toast '+t;var ic={ok:'✅',err:'❌',warn:'⚠️'};e.innerHTML='<span style="font-size:18px">'+(ic[t]||'💬')+'</span><span style="font-size:14px">'+esc(m)+'</span>';w.appendChild(e);setTimeout(function(){e.style.opacity='0';setTimeout(function(){e.remove()},200)},3000)}
 function setTheme(t){document.documentElement.setAttribute('data-theme',t);db.settings.theme=t;saveDB()}
 function toggleTheme(){setTheme(db.settings.theme==='dark'?'light':'dark')}
 
