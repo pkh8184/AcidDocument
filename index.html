@@ -257,6 +257,54 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .edit-mode-active .side-toolbar{display:flex}
 .side-toolbar-btn{background:transparent;border:none;padding:6px 8px;cursor:pointer;font-size:14px;border-radius:4px;transition:all .15s}
 .side-toolbar-btn:hover{background:var(--bg3)}
+/* 캘린더 */
+.block-calendar{border-collapse:collapse;width:100%;font-size:13px}
+.block-calendar th{background:var(--acc);color:#fff;padding:8px 4px;text-align:center;font-weight:500}
+.block-calendar td{border:1px solid var(--bdr);padding:6px;text-align:center;vertical-align:top;min-height:60px;height:60px}
+.block-calendar .cal-day{font-weight:600;margin-bottom:4px}
+.block-calendar .cal-sun{color:#e74c3c}
+.block-calendar .cal-sat{color:#3498db}
+.block-calendar .cal-other{color:var(--t4);opacity:0.5}
+.block-calendar .cal-today{background:var(--accM)}
+.cal-month-title{text-align:center;font-size:18px;font-weight:600;margin-bottom:12px;color:var(--t1)}
+/* 차트 */
+.block-chart-wrap{padding:20px;background:var(--bg2);border-radius:var(--rad);border:1px solid var(--bdr)}
+.chart-title{font-size:16px;font-weight:600;margin-bottom:16px;text-align:center;color:var(--t1)}
+.chart-bar-container{display:flex;flex-direction:column;gap:8px}
+.chart-bar-row{display:flex;align-items:center;gap:12px}
+.chart-bar-label{width:80px;text-align:right;font-size:13px;color:var(--t2);flex-shrink:0}
+.chart-bar-track{flex:1;height:28px;background:var(--bg3);border-radius:6px;overflow:hidden;position:relative}
+.chart-bar-fill{height:100%;border-radius:6px;transition:width 0.5s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:12px;color:#fff;font-weight:500}
+.chart-bar-value{margin-left:8px;font-size:13px;color:var(--t2);width:50px}
+.chart-pie-container{display:flex;justify-content:center;align-items:center;gap:30px;flex-wrap:wrap}
+.chart-pie-svg{width:200px;height:200px}
+.chart-pie-legend{display:flex;flex-direction:column;gap:8px}
+.chart-pie-legend-item{display:flex;align-items:center;gap:8px;font-size:13px}
+.chart-pie-legend-color{width:14px;height:14px;border-radius:3px}
+.chart-line-container{position:relative;height:200px;border-left:2px solid var(--bdr);border-bottom:2px solid var(--bdr);margin:20px 10px 30px 50px}
+.chart-line-svg{width:100%;height:100%}
+.chart-line-labels{display:flex;justify-content:space-around;margin-left:50px;margin-right:10px;font-size:11px;color:var(--t4)}
+.chart-data-input{margin-top:16px;padding-top:16px;border-top:1px dashed var(--bdr)}
+.chart-data-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.chart-data-row input{flex:1;padding:6px 10px;border:1px solid var(--bdr);border-radius:4px;background:var(--bg3);color:var(--t1);font-size:13px}
+.chart-data-row button{padding:6px 12px;border:none;border-radius:4px;cursor:pointer;font-size:12px}
+/* 인라인 태그 */
+.inline-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:13px;font-weight:500;cursor:default}
+.inline-tag.tag-red{background:#fee2e2;color:#dc2626}
+.inline-tag.tag-orange{background:#ffedd5;color:#ea580c}
+.inline-tag.tag-yellow{background:#fef9c3;color:#ca8a04}
+.inline-tag.tag-green{background:#dcfce7;color:#16a34a}
+.inline-tag.tag-blue{background:#dbeafe;color:#2563eb}
+.inline-tag.tag-purple{background:#f3e8ff;color:#9333ea}
+.inline-tag.tag-pink{background:#fce7f3;color:#db2777}
+.inline-tag.tag-gray{background:#f3f4f6;color:#4b5563}
+.tag-picker{position:absolute;background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:200;display:none}
+.tag-picker.open{display:block}
+.tag-picker-colors{display:flex;gap:6px;margin-bottom:8px}
+.tag-picker-color{width:24px;height:24px;border-radius:4px;cursor:pointer;border:2px solid transparent;transition:all .15s}
+.tag-picker-color:hover{transform:scale(1.1)}
+.tag-picker-color.selected{border-color:var(--t1)}
+.tag-picker-input{width:100%;padding:6px 8px;border:1px solid var(--bdr);border-radius:4px;background:var(--bg3);color:var(--t1);font-size:13px}
 @media(max-width:768px){
 .sidebar{position:fixed;left:0;top:0;z-index:100;transform:translateX(-100%);transition:transform .25s}.sidebar.open{transform:translateX(0)}
 .mob-menu{display:flex!important}
@@ -264,6 +312,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .page-icon{font-size:44px}.page-title{font-size:28px}
 .panel{width:100%}.modal{max-width:calc(100% - 20px)}
 .block-columns-wrap{flex-direction:column}
+.side-toolbar{left:10px}
 }
 </style>
 </head>
@@ -467,6 +516,19 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 <div class="modal-bg" id="deleteConfirmModal"><div class="modal" style="max-width:360px"><div class="modal-head"><h2>🗑️ 삭제 확인</h2></div><div class="modal-body"><p id="deleteConfirmText">이 페이지를 삭제하시겠습니까?</p></div><div class="modal-foot"><button class="btn btn-s" onclick="closeModal('deleteConfirmModal')">취소</button><button class="btn btn-d" onclick="confirmDelete()">삭제</button></div></div></div>
 <div class="ctx-menu" id="ctxMenu"></div>
 <div class="slash-menu" id="slashMenu"></div>
+<div class="tag-picker" id="tagPicker">
+<div class="tag-picker-colors">
+<div class="tag-picker-color" style="background:#fee2e2" data-color="red" onclick="changeTagColor('red')"></div>
+<div class="tag-picker-color" style="background:#ffedd5" data-color="orange" onclick="changeTagColor('orange')"></div>
+<div class="tag-picker-color" style="background:#fef9c3" data-color="yellow" onclick="changeTagColor('yellow')"></div>
+<div class="tag-picker-color" style="background:#dcfce7" data-color="green" onclick="changeTagColor('green')"></div>
+<div class="tag-picker-color" style="background:#dbeafe" data-color="blue" onclick="changeTagColor('blue')"></div>
+<div class="tag-picker-color" style="background:#f3e8ff" data-color="purple" onclick="changeTagColor('purple')"></div>
+<div class="tag-picker-color" style="background:#fce7f3" data-color="pink" onclick="changeTagColor('pink')"></div>
+<div class="tag-picker-color" style="background:#f3f4f6" data-color="gray" onclick="changeTagColor('gray')"></div>
+</div>
+<button class="btn btn-sm" style="width:100%;background:var(--err);color:#fff" onclick="removeInlineTag()">태그 삭제</button>
+</div>
 <div class="fmt-bar" id="fmtBar">
 <button class="btn btn-i btn-g" onclick="fmtCmd('bold')" title="굵게"><b>B</b></button>
 <button class="btn btn-i btn-g" onclick="fmtCmd('italic')" title="기울임"><i>I</i></button>
@@ -499,7 +561,8 @@ var SLASH=[
   {s:'기본',i:[{t:'text',c:'T',n:'텍스트',d:'일반 텍스트'},{t:'h1',c:'H1',n:'제목 1',d:'큰 제목'},{t:'h2',c:'H2',n:'제목 2',d:'중간 제목'},{t:'h3',c:'H3',n:'제목 3',d:'작은 제목'}]},
   {s:'리스트',i:[{t:'bullet',c:'•',n:'글머리 기호',d:'목록'},{t:'number',c:'1.',n:'번호 목록',d:'순서'},{t:'todo',c:'☑',n:'할 일',d:'체크리스트'},{t:'toggle',c:'▶',n:'토글',d:'접기/펼치기'}]},
   {s:'미디어',i:[{t:'image',c:'🖼',n:'이미지',d:'URL'},{t:'video',c:'🎬',n:'동영상',d:'YouTube'},{t:'pdf',c:'📄',n:'PDF',d:'PDF 뷰어'},{t:'file',c:'📎',n:'파일',d:'파일 링크'}]},
-  {s:'테이블/코드',i:[{t:'table',c:'▦',n:'표',d:'테이블'},{t:'code',c:'</>',n:'코드',d:'코드 블록'}]},
+  {s:'테이블/코드',i:[{t:'table',c:'▦',n:'표',d:'테이블'},{t:'code',c:'</>',n:'코드',d:'코드 블록'},{t:'calendar',c:'📅',n:'달력',d:'2026년 캘린더'}]},
+  {s:'차트',i:[{t:'chart-bar',c:'📊',n:'막대 그래프',d:'Bar Chart'},{t:'chart-pie',c:'🥧',n:'원형 그래프',d:'Pie Chart'},{t:'chart-line',c:'📈',n:'선형 그래프',d:'Line Chart'}]},
   {s:'레이아웃',i:[{t:'col2',c:'▐▌',n:'2열',d:'2컬럼'},{t:'col3',c:'▐▐▌',n:'3열',d:'3컬럼'}]},
   {s:'기타',i:[{t:'quote',c:'"',n:'인용',d:'인용문'},{t:'callout',c:'💡',n:'콜아웃',d:'강조'},{t:'divider',c:'—',n:'구분선',d:'구분'},{t:'toc',c:'📑',n:'목차',d:'자동 목차'}]}
 ];
@@ -938,6 +1001,16 @@ function createBlockEl(b,idx){
       div.setAttribute('data-num',b.num||1);
       inner='<div class="block-content"'+ce+'>'+(b.content||'')+'</div>';
       break;
+    case'calendar':
+      inner=renderCalendar(b,idx);
+      if(editMode)inner+='<div class="block-add-below" onclick="addBlockBelow('+idx+')">+ 블록 추가</div>';
+      break;
+    case'chart-bar':
+    case'chart-pie':
+    case'chart-line':
+      inner=renderChart(b,idx);
+      if(editMode)inner+='<div class="block-add-below" onclick="addBlockBelow('+idx+')">+ 블록 추가</div>';
+      break;
     default:
       inner='<div class="block-content"'+ce+'>'+(b.content||'')+'</div>';
   }
@@ -1148,6 +1221,25 @@ function handleKey(e,b,idx,el){
   
   // 규칙 1: Enter - 새 블록 생성
   if(e.key==='Enter'&&!e.shiftKey){
+    // @태그 처리
+    var txt=el.innerHTML;
+    var tagMatch=txt.match(/@([^@<>\s]+)$/);
+    if(tagMatch){
+      e.preventDefault();
+      var tagText=tagMatch[1];
+      var newHtml=txt.replace(/@([^@<>\s]+)$/,'<span class="inline-tag tag-blue" contenteditable="false">@'+tagText+'</span>&nbsp;');
+      el.innerHTML=newHtml;
+      // 커서를 끝으로 이동
+      var range=document.createRange();
+      var sel=window.getSelection();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      triggerAS();
+      return;
+    }
+    
     e.preventDefault();
     page.blocks[idx].content=el.innerHTML;
     var newType='text';
@@ -1423,6 +1515,144 @@ function downloadImage(idx){
 }
 function downloadFile(idx){var b=page.blocks[idx];if(b&&b.url){var a=document.createElement('a');a.href=b.url;a.download=b.name||'file';a.click();toast('다운로드 시작')}}
 function getYTId(url){if(!url)return null;var m=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);return m?m[1]:null}
+
+// 캘린더 렌더링
+function renderCalendar(b,idx){
+  var year=b.year||2026,month=b.month||1;
+  var months=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  var html='<div class="cal-month-title">'+year+'년 '+months[month-1]+'</div>';
+  if(editMode){
+    html+='<div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px">';
+    html+='<button class="btn btn-sm btn-s" onclick="changeCalMonth('+idx+',-1)">◀ 이전</button>';
+    html+='<button class="btn btn-sm btn-s" onclick="changeCalMonth('+idx+',1)">다음 ▶</button>';
+    html+='</div>';
+  }
+  html+='<table class="block-calendar"><thead><tr><th class="cal-sun">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class="cal-sat">토</th></tr></thead><tbody>';
+  var firstDay=new Date(year,month-1,1).getDay();
+  var lastDate=new Date(year,month,0).getDate();
+  var prevLastDate=new Date(year,month-1,0).getDate();
+  var today=new Date();
+  var isThisMonth=(today.getFullYear()===year&&today.getMonth()===month-1);
+  var day=1,nextDay=1;
+  for(var w=0;w<6;w++){
+    if(day>lastDate)break;
+    html+='<tr>';
+    for(var d=0;d<7;d++){
+      var cellClass='';
+      var cellDay='';
+      if(w===0&&d<firstDay){
+        cellDay=prevLastDate-firstDay+d+1;
+        cellClass='cal-other';
+      }else if(day>lastDate){
+        cellDay=nextDay++;
+        cellClass='cal-other';
+      }else{
+        cellDay=day;
+        if(d===0)cellClass='cal-sun';
+        if(d===6)cellClass='cal-sat';
+        if(isThisMonth&&day===today.getDate())cellClass+=' cal-today';
+        day++;
+      }
+      html+='<td class="'+cellClass+'"><div class="cal-day">'+cellDay+'</div></td>';
+    }
+    html+='</tr>';
+  }
+  html+='</tbody></table>';
+  return html;
+}
+function changeCalMonth(idx,dir){
+  var b=page.blocks[idx];
+  b.month=(b.month||1)+dir;
+  if(b.month<1){b.month=12;b.year--;}
+  if(b.month>12){b.month=1;b.year++;}
+  renderBlocks();triggerAS();
+}
+
+// 차트 렌더링
+var CHART_COLORS=['#3b82f6','#ef4444','#22c55e','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#84cc16'];
+function renderChart(b,idx){
+  var data=b.chartData||[{label:'항목1',value:30},{label:'항목2',value:50},{label:'항목3',value:20}];
+  var title=b.chartTitle||'차트';
+  var type=b.type;
+  var html='<div class="block-chart-wrap" data-block-idx="'+idx+'">';
+  html+='<div class="chart-title" contenteditable="'+(editMode?'true':'false')+'" onblur="updateChartTitle('+idx+',this.textContent)">'+esc(title)+'</div>';
+  
+  if(type==='chart-bar'){
+    var maxVal=Math.max.apply(null,data.map(function(d){return d.value}))||1;
+    html+='<div class="chart-bar-container">';
+    for(var i=0;i<data.length;i++){
+      var pct=Math.round((data[i].value/maxVal)*100);
+      html+='<div class="chart-bar-row">';
+      html+='<div class="chart-bar-label">'+esc(data[i].label)+'</div>';
+      html+='<div class="chart-bar-track"><div class="chart-bar-fill" style="width:'+pct+'%;background:'+CHART_COLORS[i%CHART_COLORS.length]+'">'+data[i].value+'</div></div>';
+      html+='</div>';
+    }
+    html+='</div>';
+  }else if(type==='chart-pie'){
+    var total=data.reduce(function(s,d){return s+d.value},0)||1;
+    html+='<div class="chart-pie-container">';
+    html+='<svg class="chart-pie-svg" viewBox="0 0 100 100">';
+    var cumulative=0;
+    for(var i=0;i<data.length;i++){
+      var pct=data[i].value/total;
+      var startAngle=cumulative*360;
+      var endAngle=(cumulative+pct)*360;
+      cumulative+=pct;
+      var x1=50+40*Math.cos((startAngle-90)*Math.PI/180);
+      var y1=50+40*Math.sin((startAngle-90)*Math.PI/180);
+      var x2=50+40*Math.cos((endAngle-90)*Math.PI/180);
+      var y2=50+40*Math.sin((endAngle-90)*Math.PI/180);
+      var largeArc=pct>0.5?1:0;
+      html+='<path d="M50,50 L'+x1+','+y1+' A40,40 0 '+largeArc+',1 '+x2+','+y2+' Z" fill="'+CHART_COLORS[i%CHART_COLORS.length]+'"/>';
+    }
+    html+='</svg>';
+    html+='<div class="chart-pie-legend">';
+    for(var i=0;i<data.length;i++){
+      var pct=Math.round((data[i].value/total)*100);
+      html+='<div class="chart-pie-legend-item"><div class="chart-pie-legend-color" style="background:'+CHART_COLORS[i%CHART_COLORS.length]+'"></div>'+esc(data[i].label)+' ('+pct+'%)</div>';
+    }
+    html+='</div></div>';
+  }else if(type==='chart-line'){
+    var maxVal=Math.max.apply(null,data.map(function(d){return d.value}))||1;
+    html+='<div class="chart-line-container"><svg class="chart-line-svg" preserveAspectRatio="none">';
+    var points=[];
+    for(var i=0;i<data.length;i++){
+      var x=(i/(data.length-1||1))*100;
+      var y=100-(data[i].value/maxVal)*100;
+      points.push(x+'%,'+y+'%');
+    }
+    html+='<polyline points="'+points.join(' ')+'" fill="none" stroke="'+CHART_COLORS[0]+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+    for(var i=0;i<data.length;i++){
+      var x=(i/(data.length-1||1))*100;
+      var y=100-(data[i].value/maxVal)*100;
+      html+='<circle cx="'+x+'%" cy="'+y+'%" r="5" fill="'+CHART_COLORS[0]+'"/>';
+    }
+    html+='</svg></div>';
+    html+='<div class="chart-line-labels">';
+    for(var i=0;i<data.length;i++)html+='<span>'+esc(data[i].label)+'</span>';
+    html+='</div>';
+  }
+  
+  if(editMode){
+    html+='<div class="chart-data-input">';
+    for(var i=0;i<data.length;i++){
+      html+='<div class="chart-data-row" data-row="'+i+'">';
+      html+='<input type="text" value="'+esc(data[i].label)+'" placeholder="항목명" onchange="updateChartData('+idx+','+i+',\'label\',this.value)">';
+      html+='<input type="number" value="'+data[i].value+'" placeholder="값" style="width:80px" onchange="updateChartData('+idx+','+i+',\'value\',parseFloat(this.value)||0)">';
+      html+='<button class="btn btn-sm" style="background:var(--err);color:#fff" onclick="removeChartData('+idx+','+i+')">✕</button>';
+      html+='</div>';
+    }
+    html+='<button class="btn btn-sm btn-s" onclick="addChartData('+idx+')" style="margin-top:8px">+ 항목 추가</button>';
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
+}
+function updateChartTitle(idx,title){page.blocks[idx].chartTitle=title;triggerAS()}
+function updateChartData(idx,row,field,value){page.blocks[idx].chartData[row][field]=value;renderBlocks();triggerAS()}
+function addChartData(idx){page.blocks[idx].chartData.push({label:'새 항목',value:10});renderBlocks();triggerAS()}
+function removeChartData(idx,row){if(page.blocks[idx].chartData.length>1){page.blocks[idx].chartData.splice(row,1);renderBlocks();triggerAS()}}
+
 /* ========== 블록 생성/삭제 규칙 ==========
  * 1. insertBlock: 지정 위치에 블록 삽입 후 포커스
  * 2. deleteBlock: 블록 삭제 후 이전/다음 블록 포커스
@@ -1584,14 +1814,21 @@ function execSlash(type){
     case'todo':b.checked=false;break;
     case'col2':b.type='columns';b.colType='col2';b.columns=['',''];break;
     case'col3':b.type='columns';b.colType='col3';b.columns=['','',''];break;
+    case'calendar':b.year=2026;b.month=new Date().getMonth()+1;break;
+    case'chart-bar':
+    case'chart-pie':
+    case'chart-line':
+      b.chartData=[{label:'항목1',value:30},{label:'항목2',value:50},{label:'항목3',value:20}];
+      b.chartTitle='차트 제목';
+      break;
   }
-  // toc, divider 등 편집 불가 블록은 아래에 빈 블록 추가
-  if(type==='toc'||type==='divider'){
+  // toc, divider, calendar, chart 등 편집 불가 블록은 아래에 빈 블록 추가
+  if(type==='toc'||type==='divider'||type==='calendar'||type.startsWith('chart-')){
     page.blocks.splice(idx+1,0,{id:genId(),type:'text',content:''});
   }
   renderBlocks();
   setTimeout(function(){
-    var focusIdx=(type==='toc'||type==='divider')?idx+1:idx;
+    var focusIdx=(type==='toc'||type==='divider'||type==='calendar'||type.startsWith('chart-'))?idx+1:idx;
     var el=$('editor').children[focusIdx];
     if(el){var c=el.querySelector('.block-content')||el.querySelector('.block-col-content');if(c)c.focus()}
   },30)
@@ -1878,13 +2115,58 @@ function exportPdf(){
   closeModal('exportModal');toast('PDF 인쇄 창 열림')
 }
 
+// 인라인 태그 관련
+var currentTagElement=null;
+function showTagPicker(el){
+  currentTagElement=el;
+  var picker=$('tagPicker');
+  var rect=el.getBoundingClientRect();
+  picker.style.left=(rect.left)+'px';
+  picker.style.top=(rect.bottom+5)+'px';
+  picker.classList.add('open');
+  // 현재 색상 표시
+  var colors=picker.querySelectorAll('.tag-picker-color');
+  for(var i=0;i<colors.length;i++){
+    colors[i].classList.remove('selected');
+    if(el.classList.contains('tag-'+colors[i].getAttribute('data-color'))){
+      colors[i].classList.add('selected');
+    }
+  }
+}
+function hideTagPicker(){$('tagPicker').classList.remove('open');currentTagElement=null}
+function changeTagColor(color){
+  if(!currentTagElement)return;
+  // 기존 색상 클래스 제거
+  var classes=currentTagElement.className.split(' ').filter(function(c){return!c.startsWith('tag-')});
+  classes.push('tag-'+color);
+  currentTagElement.className=classes.join(' ');
+  triggerAS();
+  hideTagPicker();
+}
+function removeInlineTag(){
+  if(!currentTagElement)return;
+  var text=currentTagElement.textContent.replace('@','');
+  var textNode=document.createTextNode(text+' ');
+  currentTagElement.parentNode.replaceChild(textNode,currentTagElement);
+  triggerAS();
+  hideTagPicker();
+}
+
 // 초기화
 function setupListeners(){
   setupBlockTracking();
   document.addEventListener('click',function(e){
     if(!$('ctxMenu').contains(e.target))hideCtx();
     if(!$('slashMenu').contains(e.target)&&!e.target.classList.contains('block-content'))hideSlash();
-    if(!$('fmtBar').contains(e.target)&&!e.target.closest('.block-content')&&!e.target.closest('.block-col-content'))hideFmtBar()
+    if(!$('fmtBar').contains(e.target)&&!e.target.closest('.block-content')&&!e.target.closest('.block-col-content'))hideFmtBar();
+    // 인라인 태그 클릭
+    if(e.target.classList.contains('inline-tag')&&editMode){
+      e.preventDefault();
+      e.stopPropagation();
+      showTagPicker(e.target);
+    }else if(!$('tagPicker').contains(e.target)){
+      hideTagPicker();
+    }
   });
   document.addEventListener('keydown',function(e){
     if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openSearch()}
@@ -2012,7 +2294,7 @@ function init(){
   });
 }
 // 전역
-window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.downloadCode=downloadCode;window.copyImageUrl=copyImageUrl;window.setImageScale=setImageScale;window.downloadImage=downloadImage;window.downloadFile=downloadFile;window.dupBlockCurrent=dupBlockCurrent;window.deleteBlockCurrent=deleteBlockCurrent;window.addBlockBelowCurrent=addBlockBelowCurrent;window.moveBlockUpCurrent=moveBlockUpCurrent;window.moveBlockDownCurrent=moveBlockDownCurrent;window.getCurrentIdx=getCurrentIdx;window.genId=genId;window.insertBlock=insertBlock;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.clearIpLog=clearIpLog;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;
+window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.downloadCode=downloadCode;window.copyImageUrl=copyImageUrl;window.setImageScale=setImageScale;window.downloadImage=downloadImage;window.downloadFile=downloadFile;window.dupBlockCurrent=dupBlockCurrent;window.deleteBlockCurrent=deleteBlockCurrent;window.addBlockBelowCurrent=addBlockBelowCurrent;window.moveBlockUpCurrent=moveBlockUpCurrent;window.moveBlockDownCurrent=moveBlockDownCurrent;window.getCurrentIdx=getCurrentIdx;window.genId=genId;window.insertBlock=insertBlock;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.clearIpLog=clearIpLog;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;window.changeCalMonth=changeCalMonth;window.updateChartTitle=updateChartTitle;window.updateChartData=updateChartData;window.addChartData=addChartData;window.removeChartData=removeChartData;window.changeTagColor=changeTagColor;window.removeInlineTag=removeInlineTag;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 } // startApp 함수 끝
 </script>
