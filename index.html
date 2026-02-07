@@ -849,7 +849,7 @@ function createBlockEl(b,idx){
         inner+='<button class="btn btn-sm btn-s" onclick="addTblCol(\''+b.id+'\')">+열</button>';
         inner+='<button class="btn btn-sm btn-s" onclick="delTblRow(\''+b.id+'\')">-행</button>';
         inner+='<button class="btn btn-sm btn-s" onclick="delTblCol(\''+b.id+'\')">-열</button>';
-        inner+='<select class="btn btn-sm btn-s" onchange="setTblAlign(\''+b.id+'\',this.value)"><option value="">정렬</option><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option></select>';
+        inner+='<select class="btn btn-sm btn-s" onchange="setTblAlign(\''+b.id+'\',this.value)"><option value="">정렬</option><option value="left"'+(tAlign==='left'?' selected':'')+'>왼쪽</option><option value="center"'+(tAlign==='center'?' selected':'')+'>가운데</option><option value="right"'+(tAlign==='right'?' selected':'')+'>오른쪽</option></select>';
         inner+='<button class="btn btn-sm" style="color:var(--err)" onclick="deleteTable(\''+b.id+'\')">삭제</button>';
         inner+='</div>';
         inner+='<div class="block-add-below" onclick="addBlockBelow('+idx+')">+ 블록 추가</div>';
@@ -924,15 +924,36 @@ function setupBlockEv(div,b,idx){
   
   // 컬럼 콘텐츠
   var colCons=div.querySelectorAll('.block-col-content');
-  for(var k=0;k<colCons.length;k++){(function(el){
-    el.addEventListener('dblclick',function(){if(!editMode){toggleEdit();setTimeout(function(){el.focus()},50)}});
-    el.addEventListener('input',triggerAS);
+  for(var k=0;k<colCons.length;k++){(function(el,colIdx){
+    el.setAttribute('data-col-content','true');
+    el.addEventListener('dblclick',function(e){e.stopPropagation();if(!editMode){toggleEdit();setTimeout(function(){el.focus()},50)}});
+    el.addEventListener('input',function(e){
+      e.stopPropagation();
+      // 해당 컬럼 데이터 직접 업데이트
+      var blockEl=el.closest('.block');
+      if(blockEl){
+        var blockId=blockEl.getAttribute('data-id');
+        for(var i=0;i<page.blocks.length;i++){
+          if(page.blocks[i].id===blockId&&page.blocks[i].columns){
+            page.blocks[i].columns[colIdx]=el.innerHTML;
+            break;
+          }
+        }
+      }
+      triggerAS();
+    });
     el.addEventListener('paste',handlePaste);
     el.addEventListener('mouseup',showFmtBar);
     el.addEventListener('keydown',function(e){
-      if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();var wrap=el.closest('.block');if(wrap){var nidx=parseInt(wrap.getAttribute('data-idx'))+1;insertBlock(nidx,{id:genId(),type:'text',content:''})}}
+      e.stopPropagation();
+      if(e.key==='Enter'&&!e.shiftKey){
+        e.preventDefault();
+        document.execCommand('insertLineBreak');
+      }
     });
-  })(colCons[k])}
+    el.addEventListener('focus',function(e){e.stopPropagation()});
+    el.addEventListener('click',function(e){e.stopPropagation()});
+  })(colCons[k],k)}
   
   // 이미지 캡션
   var caption=div.querySelector('.block-image-caption');
@@ -992,8 +1013,14 @@ function setupBlockEv(div,b,idx){
     // 토글 바디의 block-content에 별도 이벤트
     var bodyContent=body.querySelector('.block-content');
     if(bodyContent){
+      // 바디에 고유 식별자 추가
+      bodyContent.setAttribute('data-toggle-body','true');
       bodyContent.addEventListener('input',function(e){
         e.stopPropagation();
+        // 직접 innerContent 업데이트
+        for(var i=0;i<page.blocks.length;i++){
+          if(page.blocks[i].id===b.id){page.blocks[i].innerContent=bodyContent.innerHTML;break}
+        }
         triggerAS();
       });
       bodyContent.addEventListener('keydown',function(e){
@@ -1005,6 +1032,9 @@ function setupBlockEv(div,b,idx){
         }
       });
       bodyContent.addEventListener('focus',function(e){
+        e.stopPropagation();
+      });
+      bodyContent.addEventListener('click',function(e){
         e.stopPropagation();
       });
     }
@@ -1141,11 +1171,24 @@ function handleKey(e,b,idx,el){
   }
 }
 function handlePaste(e){e.preventDefault();var txt=e.clipboardData.getData('text/plain');document.execCommand('insertText',false,txt);triggerAS()}
-function addTblRow(id){for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){var b=page.blocks[i];if(!b.rows)return;var cols=b.rows[0]?b.rows[0].length:3,nr=[];for(var j=0;j<cols;j++)nr.push('');b.rows.push(nr);renderBlocks();triggerAS();toast('행 추가');return}}}
-function addTblCol(id){for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){var b=page.blocks[i];if(!b.rows)return;for(var j=0;j<b.rows.length;j++)b.rows[j].push('');renderBlocks();triggerAS();toast('열 추가');return}}}
-function delTblRow(id){for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){var b=page.blocks[i];if(!b.rows||b.rows.length<=1)return;b.rows.pop();renderBlocks();triggerAS();toast('행 삭제');return}}}
-function delTblCol(id){for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){var b=page.blocks[i];if(!b.rows||b.rows[0].length<=1)return;for(var j=0;j<b.rows.length;j++)b.rows[j].pop();renderBlocks();triggerAS();toast('열 삭제');return}}}
-function setTblColor(id,type,color){if(!color)return;for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){var b=page.blocks[i];if(type==='header')b.headerColor=color;else b.cellColor=color;renderBlocks();triggerAS();return}}}
+function collectTableData(id){
+  var el=document.querySelector('[data-id="'+id+'"]');
+  if(!el)return null;
+  var rows=[],trs=el.querySelectorAll('tr');
+  for(var ri=0;ri<trs.length;ri++){
+    var cls=[],tds=trs[ri].querySelectorAll('th,td');
+    for(var ci=0;ci<tds.length;ci++){
+      cls.push(tds[ci].innerHTML.replace(/<div class="col-resizer"[^>]*><\/div>/g,''));
+    }
+    rows.push(cls);
+  }
+  return rows;
+}
+function addTblRow(id){var rows=collectTableData(id);for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){var b=page.blocks[i];b.rows=rows||b.rows;if(!b.rows)return;var cols=b.rows[0]?b.rows[0].length:3,nr=[];for(var j=0;j<cols;j++)nr.push('');b.rows.push(nr);renderBlocks();triggerAS();toast('행 추가');return}}}
+function addTblCol(id){var rows=collectTableData(id);for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){var b=page.blocks[i];b.rows=rows||b.rows;if(!b.rows)return;for(var j=0;j<b.rows.length;j++)b.rows[j].push('');renderBlocks();triggerAS();toast('열 추가');return}}}
+function delTblRow(id){var rows=collectTableData(id);for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){var b=page.blocks[i];b.rows=rows||b.rows;if(!b.rows||b.rows.length<=1)return;b.rows.pop();renderBlocks();triggerAS();toast('행 삭제');return}}}
+function delTblCol(id){var rows=collectTableData(id);for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){var b=page.blocks[i];b.rows=rows||b.rows;if(!b.rows||b.rows[0].length<=1)return;for(var j=0;j<b.rows.length;j++)b.rows[j].pop();renderBlocks();triggerAS();toast('열 삭제');return}}}
+function setTblColor(id,type,color){if(!color)return;var rows=collectTableData(id);for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){var b=page.blocks[i];b.rows=rows||b.rows;if(type==='header')b.headerColor=color;else b.cellColor=color;renderBlocks();triggerAS();return}}}
 function setupTableResize(div,b){
   var resizers=div.querySelectorAll('.col-resizer');
   resizers.forEach(function(resizer){
@@ -1214,7 +1257,34 @@ function setupColResize(div,b){
 function scrollToBlk(id){var el=document.querySelector('[data-id="'+id+'"]');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.background='var(--accM)';setTimeout(function(){el.style.background=''},2000)}}
 function copyCode(btn){var wrap=btn.closest('.block-code-wrap'),code=wrap.querySelector('.block-content').textContent;navigator.clipboard.writeText(code).then(function(){toast('복사됨')})}
 function downloadCode(btn){var wrap=btn.closest('.block-code-wrap'),code=wrap.querySelector('.block-content').textContent,lang=wrap.querySelector('.block-code-lang');var ext=lang?lang.textContent.toLowerCase():'txt';var exts={javascript:'js',python:'py',java:'java',html:'html',css:'css',json:'json',typescript:'ts',ruby:'rb',php:'php',go:'go',rust:'rs',cpp:'cpp',c:'c'};ext=exts[ext]||ext||'txt';var blob=new Blob([code],{type:'text/plain'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='code.'+ext;a.click();URL.revokeObjectURL(url);toast('다운로드됨')}
-function copyImageUrl(idx){var b=page.blocks[idx];if(b&&b.src){navigator.clipboard.writeText(b.src).then(function(){toast('이미지 URL 복사됨')})}}
+function copyImageUrl(idx){
+  var b=page.blocks[idx];
+  if(b&&b.src){
+    // 이미지를 클립보드에 복사
+    var img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=function(){
+      var canvas=document.createElement('canvas');
+      canvas.width=img.naturalWidth;
+      canvas.height=img.naturalHeight;
+      var ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0);
+      canvas.toBlob(function(blob){
+        if(blob){
+          navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).then(function(){toast('이미지 복사됨')}).catch(function(){
+            // fallback: URL 복사
+            navigator.clipboard.writeText(b.src).then(function(){toast('URL 복사됨')});
+          });
+        }
+      },'image/png');
+    };
+    img.onerror=function(){
+      // 이미지 로드 실패 시 URL 복사
+      navigator.clipboard.writeText(b.src).then(function(){toast('URL 복사됨')});
+    };
+    img.src=b.src;
+  }
+}
 function setImageScale(idx,scale){page.blocks[idx].scale=scale;renderBlocks();triggerAS();toast(scale+'% 크기')}
 function downloadFile(idx){var b=page.blocks[idx];if(b&&b.url){var a=document.createElement('a');a.href=b.url;a.download=b.name||'file';a.click();toast('다운로드 시작')}}
 function getYTId(url){if(!url)return null;var m=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);return m?m[1]:null}
@@ -1481,7 +1551,29 @@ function setCalloutIcon(icon){if(!currentEditBlockId)return;for(var i=0;i<page.b
 function openCodeSetting(id){currentEditBlockId=id;for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){$('codeLangInput').value=page.blocks[i].lang||'';break}}openModal('codeSettingModal')}
 function submitCodeLang(){if(!currentEditBlockId)return;var lang=$('codeLangInput').value.trim();for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===currentEditBlockId){page.blocks[i].lang=lang;break}}renderBlocks();triggerAS();closeModal('codeSettingModal');currentEditBlockId=null;toast('저장됨')}
 function openTableSetting(id){currentEditBlockId=id;openModal('tableAlignModal')}
-function setTblAlign(id,align){if(!align)return;for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){page.blocks[i].align=align;break}}renderBlocks();triggerAS()}
+function setTblAlign(id,align){
+  if(!align)return;
+  // 먼저 현재 테이블 데이터 수집
+  var el=document.querySelector('[data-id="'+id+'"]');
+  if(el){
+    var rows=[],trs=el.querySelectorAll('tr');
+    for(var ri=0;ri<trs.length;ri++){
+      var cls=[],tds=trs[ri].querySelectorAll('th,td');
+      for(var ci=0;ci<tds.length;ci++){
+        cls.push(tds[ci].innerHTML.replace(/<div class="col-resizer"[^>]*><\/div>/g,''));
+      }
+      rows.push(cls);
+    }
+    for(var i=0;i<page.blocks.length;i++){
+      if(page.blocks[i].id===id){
+        page.blocks[i].rows=rows;
+        page.blocks[i].align=align;
+        break;
+      }
+    }
+  }
+  renderBlocks();triggerAS();toast(align==='left'?'왼쪽 정렬':align==='center'?'가운데 정렬':'오른쪽 정렬')
+}
 function deleteTable(id){if(!confirm('표를 삭제하시겠습니까?'))return;for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){page.blocks.splice(i,1);break}}renderBlocks();triggerAS();toast('표 삭제됨')}
 // 컨텍스트/버전/댓글
 function showPageCtx(e,id){var m=$('ctxMenu');m.innerHTML='<div class="ctx-item" onclick="loadPage(\''+id+'\');hideCtx()"><span class="ctx-icon">📄</span>열기</div><div class="ctx-item" onclick="createPage(\''+id+'\');hideCtx()"><span class="ctx-icon">➕</span>하위 페이지</div><div class="ctx-divider"></div><div class="ctx-item" onclick="toggleFavorite(\''+id+'\');hideCtx()"><span class="ctx-icon">⭐</span>즐겨찾기</div><div class="ctx-item" onclick="duplicatePage(\''+id+'\');hideCtx()"><span class="ctx-icon">📋</span>복제</div><div class="ctx-divider"></div><div class="ctx-item danger" onclick="deletePage(\''+id+'\');hideCtx()"><span class="ctx-icon">🗑️</span>삭제</div>';showCtxAt(e.pageX,e.pageY)}
