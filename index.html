@@ -400,14 +400,18 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 <div class="toast-wrap" id="toastWrap"></div>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
 <script>
-(function(){
+// Firebase 로드 대기
+(function waitForFirebase(){
+  if(typeof firebase==='undefined'){setTimeout(waitForFirebase,50);return}
+  startApp();
+})();
+
+function startApp(){
 // Firebase 초기화
 var firebaseConfig={apiKey:"AIzaSyBqHTIoLGKnCnR8n8jFGS3a4LGhIJe5xQI",authDomain:"aciddocument.firebaseapp.com",projectId:"aciddocument",storageBucket:"aciddocument.firebasestorage.app",messagingSenderId:"834603817632",appId:"1:834603817632:web:5bd935f6805e05582307c5"};
 firebase.initializeApp(firebaseConfig);
 var firestore=firebase.firestore();
-var fbStorage=firebase.storage();
 
 var SUPER='admin8184',MAX_VER=10;
 var ICONS=['📄','📝','📋','📁','📚','📖','📌','💡','⭐','🔥','✨','🚀','🎨','💻','📊','🎯','👋','❤️','🏠','📱','🔧','⚙️','🎁','💎','🌟','📈','🔒','💬','📮','🗂️','📑','🔖','🎵','🎬','📷','🌍','⚡','🔔','✅','❌','⚠️','💰','🎓','🏆','🌈','☀️','🌙'];
@@ -429,15 +433,6 @@ function fmtD(t){return new Date(t).toLocaleDateString('ko-KR',{year:'numeric',m
 function fmtDT(t){return new Date(t).toLocaleString('ko-KR')}
 function getLoginState(){var s=localStorage.getItem('ad_login_state');if(s){try{return JSON.parse(s)}catch(e){}}return{attempts:0,lockUntil:0,blocked:false}}
 function saveLoginState(st){localStorage.setItem('ad_login_state',JSON.stringify(st))}
-
-// Firebase Storage 파일 업로드
-function uploadToStorage(file){
-  return new Promise(function(resolve,reject){
-    var fileName=Date.now()+'_'+file.name;
-    var ref=fbStorage.ref().child('files/'+fileName);
-    ref.put(file).then(function(){return ref.getDownloadURL()}).then(resolve).catch(reject);
-  });
-}
 
 function initDB(){
   return firestore.collection('app').doc('data').get().then(function(doc){
@@ -1254,8 +1249,9 @@ function insertImage(){openModal('imageUploadModal');$('imageUrlInput').value=''
 function submitImage(){
   var url=$('imageUrlInput').value.trim(),file=$('imageFileInput').files[0];
   if(file){
-    toast('업로드 중...','warn');
-    uploadToStorage(file).then(function(downloadUrl){addImageBlock(downloadUrl)}).catch(function(){toast('업로드 실패','err')});
+    var reader=new FileReader();
+    reader.onload=function(e){addImageBlock(e.target.result)};
+    reader.readAsDataURL(file)
   }else if(url){addImageBlock(url)}
   else{toast('URL 또는 파일을 선택하세요','err');return}
 }
@@ -1268,8 +1264,9 @@ function insertVideo(){openModal('videoUploadModal');$('videoUrlInput').value=''
 function submitVideo(){
   var url=$('videoUrlInput').value.trim(),file=$('videoFileInput').files[0];
   if(file){
-    toast('업로드 중...','warn');
-    uploadToStorage(file).then(function(downloadUrl){addVideoBlock(downloadUrl,file.name)}).catch(function(){toast('업로드 실패','err')});
+    var reader=new FileReader();
+    reader.onload=function(e){addVideoBlock(e.target.result,file.name)};
+    reader.readAsDataURL(file)
   }else if(url){
     var vid=getYTId(url);
     if(!vid){toast('유효한 YouTube URL을 입력하세요','err');return}
@@ -1285,8 +1282,9 @@ function insertPdf(){openModal('pdfUploadModal');$('pdfUrlInput').value='';$('pd
 function submitPdf(){
   var url=$('pdfUrlInput').value.trim(),file=$('pdfFileInput').files[0];
   if(file){
-    toast('업로드 중...','warn');
-    uploadToStorage(file).then(function(downloadUrl){addPdfBlock(downloadUrl)}).catch(function(){toast('업로드 실패','err')});
+    var reader=new FileReader();
+    reader.onload=function(e){addPdfBlock(e.target.result)};
+    reader.readAsDataURL(file)
   }else if(url){addPdfBlock(url)}
   else{toast('URL 또는 파일을 선택하세요','err');return}
 }
@@ -1299,12 +1297,13 @@ function insertFile(){openModal('fileUploadModal');$('fileFileInput').value=''}
 function submitFile(){
   var file=$('fileFileInput').files[0];
   if(!file){toast('파일을 선택하세요','err');return}
-  toast('업로드 중...','warn');
-  uploadToStorage(file).then(function(downloadUrl){
-    var b={id:genId(),type:'file',url:downloadUrl,name:file.name};
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var b={id:genId(),type:'file',url:e.target.result,name:file.name};
     if(slashSt.idx!==null){page.blocks[slashSt.idx]=b;slashSt.idx=null}else page.blocks.push(b);
     renderBlocks();triggerAS();closeModal('fileUploadModal');toast('파일 삽입')
-  }).catch(function(){toast('업로드 실패','err')});
+  };
+  reader.readAsDataURL(file)
 }
 function openCalloutIconPicker(id){currentEditBlockId=id;var icons=['💡','✅','⚠️','❌','📌','🔔','💬','📝','🎯','⭐','🚀','💪','🔥','❤️','👍','📢'];var html='';for(var i=0;i<icons.length;i++)html+='<div class="icon-item" onclick="setCalloutIcon(\''+icons[i]+'\')">'+icons[i]+'</div>';$('calloutIconGrid').innerHTML=html;openModal('calloutIconModal')}
 function setCalloutIcon(icon){if(!currentEditBlockId)return;for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===currentEditBlockId){page.blocks[i].icon=icon;break}}renderBlocks();triggerAS();closeModal('calloutIconModal');currentEditBlockId=null}
@@ -1542,7 +1541,7 @@ function init(){
 // 전역
 window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-})();
+} // startApp 함수 끝
 </script>
 </body>
 </html>
