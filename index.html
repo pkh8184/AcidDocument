@@ -455,7 +455,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 <div class="modal-bg" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')">
 <div class="modal lg">
 <div class="modal-head"><h2>⚙️ 설정</h2><button class="btn btn-i btn-g" onclick="closeModal('settingsModal')">✕</button></div>
-<div class="tabs-head"><div class="tab-btn on" onclick="showSettingsTab('profile',this)">프로필</div><div class="tab-btn" onclick="showSettingsTab('users',this)">사용자</div><div class="tab-btn" onclick="showSettingsTab('storage',this)">저장소</div><div class="tab-btn" onclick="showSettingsTab('iplog',this)">접속 로그</div><div class="tab-btn" onclick="showSettingsTab('notice',this)">공지</div><div class="tab-btn" onclick="showSettingsTab('workspace',this)">워크스페이스</div></div>
+<div class="tabs-head"><div class="tab-btn on" onclick="showSettingsTab('profile',this)">프로필</div><div class="tab-btn" onclick="showSettingsTab('users',this)">사용자</div><div class="tab-btn" onclick="showSettingsTab('storage',this)">저장소</div><div class="tab-btn" onclick="showSettingsTab('deletelog',this)">삭제 로그</div><div class="tab-btn" onclick="showSettingsTab('iplog',this)">접속 로그</div><div class="tab-btn" onclick="showSettingsTab('notice',this)">공지</div><div class="tab-btn" onclick="showSettingsTab('workspace',this)">워크스페이스</div></div>
 <div class="tab-panel on" id="tabProfile">
 <div class="fg"><label>아이디</label><input id="setUserId" readonly></div>
 <div class="fg"><label>닉네임</label><input id="setNickname"></div>
@@ -489,7 +489,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 </div>
 <div id="storageUsageText" style="font-size:13px;color:var(--t3)"></div>
 </div>
-<div style="padding:16px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--t3)">
+<div style="padding:16px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--t3);margin-bottom:16px">
 <p style="margin-bottom:8px"><strong>📌 용량 제한</strong></p>
 <ul style="margin-left:16px;line-height:1.8">
 <li>총 저장 공간: 5GB</li>
@@ -497,6 +497,19 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 <li>허용 이미지: JPEG, PNG, GIF, WebP</li>
 </ul>
 </div>
+<div style="padding:16px;background:var(--bg3);border-radius:8px;font-size:13px">
+<p style="margin-bottom:12px"><strong>🔄 이미지 마이그레이션</strong></p>
+<p style="color:var(--t3);margin-bottom:12px">기존 base64 이미지를 Storage로 이전합니다.<br>Firestore 문서 크기 오류 해결에 필요합니다.</p>
+<div id="migrationStatus" style="margin-bottom:12px;padding:8px;background:var(--bg2);border-radius:4px;display:none"></div>
+<button class="btn btn-p" onclick="migrateImages()">마이그레이션 시작</button>
+</div>
+</div>
+<div class="tab-panel" id="tabDeletelog">
+<div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+<span style="color:var(--t4);font-size:13px">최근 200개 삭제 기록 (최고관리자 전용)</span>
+<button class="btn btn-sm btn-s" onclick="clearDeleteLog()">로그 삭제</button>
+</div>
+<div id="deleteLogList" style="max-height:400px;overflow-y:auto"></div>
 </div>
 <div class="tab-panel" id="tabIplog">
 <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
@@ -797,6 +810,25 @@ function fetchIP(){
     .catch(function(){return '(알 수 없음)'});
 }
 
+// 삭제 로그
+function logDeleteAction(pageId,pageTitle,action){
+  fetchIP().then(function(ip){
+    if(!db.deleteLogs)db.deleteLogs=[];
+    db.deleteLogs.unshift({
+      pageId:pageId,
+      pageTitle:pageTitle,
+      action:action, // 'trash' or 'permanent'
+      userId:user.id,
+      userNickname:user.nickname||user.id,
+      ip:ip,
+      time:Date.now()
+    });
+    // 최대 200개 유지
+    if(db.deleteLogs.length>200)db.deleteLogs=db.deleteLogs.slice(0,200);
+    saveDB();
+  });
+}
+
 // 로그인
 function handleLogin(e){
   e.preventDefault();
@@ -932,13 +964,35 @@ function onTitleChange(){triggerAS()}
 function deletePage(id){deleteTargetId=id;var p=getPage(id);$('deleteConfirmText').textContent='"'+p.title+'" 페이지를 삭제하시겠습니까?';openModal('deleteConfirmModal')}
 function confirmDelete(){
   var id=deleteTargetId;closeModal('deleteConfirmModal');
-  var p=getPage(id);if(!p)return;p.deleted=true;p.deletedAt=Date.now();saveDB();
+  var p=getPage(id);if(!p)return;
+  p.deleted=true;
+  p.deletedAt=Date.now();
+  p.deletedBy=user.id;
+  // 삭제 로그 기록
+  logDeleteAction(p.id,p.title,'trash');
+  saveDB();
   if(page&&page.id===id){var pgs=getPages(null);pgs.length>0?loadPage(pgs[0].id):createPage()}
   renderTree();toast('휴지통으로 이동')
 }
-function restorePage(id){var p=getPage(id);if(p){p.deleted=false;delete p.deletedAt;saveDB();showTrash();renderTree();toast('복원됨')}}
-function permanentDelete(id){if(!confirm('영구 삭제하시겠습니까?'))return;db.pages=db.pages.filter(function(p){return p.id!==id});saveDB();showTrash();toast('삭제됨')}
-function emptyTrash(){if(!isSuper()){toast('권한 없음','err');return}if(!confirm('휴지통을 비우시겠습니까? 모든 항목이 영구 삭제됩니다.'))return;db.pages=db.pages.filter(function(p){return!p.deleted});saveDB();showTrash();toast('휴지통 비움')}
+function restorePage(id){
+  var p=getPage(id);
+  if(p){
+    p.deleted=false;
+    delete p.deletedAt;
+    delete p.deletedBy;
+    saveDB();showTrash();renderTree();toast('복원됨')
+  }
+}
+function permanentDelete(id){
+  if(!confirm('영구 삭제하시겠습니까?'))return;
+  var p=getPage(id);
+  if(p){
+    logDeleteAction(p.id,p.title,'permanent');
+  }
+  db.pages=db.pages.filter(function(pg){return pg.id!==id});
+  saveDB();showTrash();toast('삭제됨')
+}
+function emptyTrash(){if(!isSuper()){toast('권한 없음','err');return}if(!confirm('휴지통을 비우시겠습니까? 모든 항목이 영구 삭제됩니다.'))return;var trashed=db.pages.filter(function(p){return p.deleted});for(var i=0;i<trashed.length;i++){logDeleteAction(trashed[i].id,trashed[i].title,'permanent')}db.pages=db.pages.filter(function(p){return!p.deleted});saveDB();showTrash();toast('휴지통 비움')}
 function duplicatePage(id){var o=getPage(id);if(!o)return;var c=JSON.parse(JSON.stringify(o));c.id=genId();c.title+=' (복사)';c.created=c.updated=Date.now();c.author=user.id;c.versions=[];c.comments=[];for(var i=0;i<c.blocks.length;i++)c.blocks[i].id=genId();db.pages.push(c);saveDB();renderTree();loadPage(c.id);toast('복제됨')}
 function toggleFavorite(id){var p=getPage(id);if(p){p.favorite=!p.favorite;saveDB();renderTree();toast(p.favorite?'즐겨찾기 추가':'즐겨찾기 해제')}}
 function movePage(id,newParentId){
@@ -2178,13 +2232,98 @@ function openSettings(){
   renderUsers();genNewUser();
   showSettingsTab('profile',document.querySelector('.tab-btn.on'))
 }
-function showSettingsTab(tab,btn){$$('.tab-btn').forEach(function(b){b.classList.remove('on')});$$('.tab-panel').forEach(function(p){p.classList.remove('on')});btn.classList.add('on');$('tab'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('on');if(tab==='iplog')renderIpLog();if(tab==='storage')renderStorageUsage()}
+function showSettingsTab(tab,btn){$$('.tab-btn').forEach(function(b){b.classList.remove('on')});$$('.tab-panel').forEach(function(p){p.classList.remove('on')});btn.classList.add('on');$('tab'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('on');if(tab==='iplog')renderIpLog();if(tab==='storage')renderStorageUsage();if(tab==='deletelog')renderDeleteLog()}
 function renderStorageUsage(){
   var used=db.storageUsage||0;
   var pct=Math.min((used/STORAGE_LIMIT)*100,100);
   $('storageUsageFill').style.width=pct+'%';
   $('storageUsageFill').style.background=pct>90?'var(--err)':pct>70?'var(--warn)':'var(--acc)';
   $('storageUsageText').innerHTML='<strong>'+formatBytes(used)+'</strong> / '+formatBytes(STORAGE_LIMIT)+' 사용 ('+pct.toFixed(1)+'%)';
+}
+// 이미지 마이그레이션 (base64 → Storage)
+function migrateImages(){
+  if(!isSuper()){toast('최고관리자만 가능합니다','err');return}
+  if(!confirm('기존 base64 이미지를 Storage로 이전합니다.\n시간이 걸릴 수 있습니다. 진행하시겠습니까?'))return;
+  
+  var status=$('migrationStatus');
+  status.style.display='block';
+  status.innerHTML='🔍 base64 이미지 검색 중...';
+  
+  // base64 이미지 찾기
+  var targets=[];
+  for(var i=0;i<db.pages.length;i++){
+    var pg=db.pages[i];
+    if(!pg.blocks)continue;
+    for(var j=0;j<pg.blocks.length;j++){
+      var blk=pg.blocks[j];
+      if(blk.type==='image'&&blk.src&&blk.src.startsWith('data:image/')){
+        targets.push({pageIdx:i,blockIdx:j,src:blk.src});
+      }
+    }
+  }
+  
+  if(targets.length===0){
+    status.innerHTML='✅ 마이그레이션할 이미지가 없습니다.';
+    toast('이미 완료됨');
+    return;
+  }
+  
+  status.innerHTML='📤 '+targets.length+'개 이미지 발견. 업로드 중... (0/'+targets.length+')';
+  
+  var completed=0;
+  var failed=0;
+  
+  function uploadNext(idx){
+    if(idx>=targets.length){
+      status.innerHTML='✅ 완료! 성공: '+completed+', 실패: '+failed;
+      if(completed>0){
+        saveDB().then(function(){
+          toast('마이그레이션 완료');
+          renderStorageUsage();
+        });
+      }
+      return;
+    }
+    
+    var t=targets[idx];
+    status.innerHTML='📤 업로드 중... ('+(idx+1)+'/'+targets.length+')';
+    
+    // base64 → Blob 변환
+    try{
+      var parts=t.src.split(',');
+      var mime=parts[0].match(/:(.*?);/)[1];
+      var bstr=atob(parts[1]);
+      var n=bstr.length;
+      var u8arr=new Uint8Array(n);
+      for(var k=0;k<n;k++)u8arr[k]=bstr.charCodeAt(k);
+      var blob=new Blob([u8arr],{type:mime});
+      
+      // Storage에 업로드
+      var ext=mime.split('/')[1]||'png';
+      var fileName='images/migrate_'+Date.now()+'_'+idx+'.'+ext;
+      var ref=storage.ref().child(fileName);
+      
+      ref.put(blob).then(function(snapshot){
+        return snapshot.ref.getDownloadURL();
+      }).then(function(url){
+        // 원본 교체
+        db.pages[t.pageIdx].blocks[t.blockIdx].src=url;
+        updateStorageUsage(blob.size);
+        completed++;
+        uploadNext(idx+1);
+      }).catch(function(err){
+        console.error('업로드 실패:',err);
+        failed++;
+        uploadNext(idx+1);
+      });
+    }catch(err){
+      console.error('변환 실패:',err);
+      failed++;
+      uploadNext(idx+1);
+    }
+  }
+  
+  uploadNext(0);
 }
 function renderIpLog(){
   var list=$('ipLogList');
@@ -2211,6 +2350,51 @@ function clearIpLog(){
   db.ipLogs=[];
   saveDB();
   renderIpLog();
+  toast('로그 삭제됨');
+}
+function renderDeleteLog(){
+  var list=$('deleteLogList');
+  if(!isSuper()){list.innerHTML='<p style="color:var(--t4);text-align:center;padding:20px">최고관리자만 볼 수 있습니다.</p>';return}
+  if(!db.deleteLogs||db.deleteLogs.length===0){list.innerHTML='<p style="color:var(--t4);text-align:center;padding:20px">삭제 기록이 없습니다.</p>';return}
+  var html='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)"><th style="padding:8px;text-align:left;border-bottom:1px solid var(--bdr)">시간</th><th style="padding:8px;text-align:left;border-bottom:1px solid var(--bdr)">문서</th><th style="padding:8px;text-align:left;border-bottom:1px solid var(--bdr)">삭제자</th><th style="padding:8px;text-align:left;border-bottom:1px solid var(--bdr)">IP</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--bdr)">유형</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--bdr)">복원</th></tr></thead><tbody>';
+  for(var i=0;i<db.deleteLogs.length;i++){
+    var log=db.deleteLogs[i];
+    var d=new Date(log.time);
+    var time=d.getFullYear()+'-'+(d.getMonth()+1).toString().padStart(2,'0')+'-'+d.getDate().toString().padStart(2,'0')+' '+d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+    var actionLabel=log.action==='trash'?'<span style="color:var(--warn)">🗑️ 휴지통</span>':'<span style="color:var(--err)">❌ 영구삭제</span>';
+    var canRestore=log.action==='trash'&&getPage(log.pageId);
+    html+='<tr style="border-bottom:1px solid var(--bdr)">';
+    html+='<td style="padding:8px">'+time+'</td>';
+    html+='<td style="padding:8px">'+esc(log.pageTitle)+'</td>';
+    html+='<td style="padding:8px">'+esc(log.userNickname||log.userId)+'</td>';
+    html+='<td style="padding:8px;font-family:monospace;font-size:12px">'+esc(log.ip)+'</td>';
+    html+='<td style="padding:8px;text-align:center">'+actionLabel+'</td>';
+    html+='<td style="padding:8px;text-align:center">'+(canRestore?'<button class="btn btn-sm btn-p" onclick="restoreFromLog(\''+log.pageId+'\')">복원</button>':'<span style="color:var(--t4)">-</span>')+'</td>';
+    html+='</tr>';
+  }
+  html+='</tbody></table>';
+  list.innerHTML=html;
+}
+function restoreFromLog(pageId){
+  var p=getPage(pageId);
+  if(p&&p.deleted){
+    p.deleted=false;
+    delete p.deletedAt;
+    delete p.deletedBy;
+    saveDB();
+    renderDeleteLog();
+    renderTree();
+    toast('복원됨');
+  }else{
+    toast('복원할 수 없습니다','err');
+  }
+}
+function clearDeleteLog(){
+  if(!isSuper()){toast('권한이 없습니다','err');return}
+  if(!confirm('모든 삭제 로그를 삭제하시겠습니까?'))return;
+  db.deleteLogs=[];
+  saveDB();
+  renderDeleteLog();
   toast('로그 삭제됨');
 }
 function saveNickname(){var nick=$('setNickname').value.trim();for(var i=0;i<db.users.length;i++){if(db.users[i].id===user.id){db.users[i].nickname=nick;break}}user.nickname=nick;saveDB();$('userName').textContent=nick||user.id;renderMeta();toast('닉네임 저장')}
@@ -2442,7 +2626,7 @@ function init(){
   });
 }
 // 전역
-window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.downloadCode=downloadCode;window.copyImageUrl=copyImageUrl;window.setImageScale=setImageScale;window.downloadImage=downloadImage;window.downloadFile=downloadFile;window.dupBlockCurrent=dupBlockCurrent;window.deleteBlockCurrent=deleteBlockCurrent;window.addBlockBelowCurrent=addBlockBelowCurrent;window.moveBlockUpCurrent=moveBlockUpCurrent;window.moveBlockDownCurrent=moveBlockDownCurrent;window.getCurrentIdx=getCurrentIdx;window.genId=genId;window.insertBlock=insertBlock;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.clearIpLog=clearIpLog;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;window.changeCalMonth=changeCalMonth;window.updateChartTitle=updateChartTitle;window.updateChartData=updateChartData;window.addChartData=addChartData;window.removeChartData=removeChartData;window.changeTagColor=changeTagColor;window.removeInlineTag=removeInlineTag;
+window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.downloadCode=downloadCode;window.copyImageUrl=copyImageUrl;window.setImageScale=setImageScale;window.downloadImage=downloadImage;window.downloadFile=downloadFile;window.dupBlockCurrent=dupBlockCurrent;window.deleteBlockCurrent=deleteBlockCurrent;window.addBlockBelowCurrent=addBlockBelowCurrent;window.moveBlockUpCurrent=moveBlockUpCurrent;window.moveBlockDownCurrent=moveBlockDownCurrent;window.getCurrentIdx=getCurrentIdx;window.genId=genId;window.insertBlock=insertBlock;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.clearIpLog=clearIpLog;window.clearDeleteLog=clearDeleteLog;window.restoreFromLog=restoreFromLog;window.migrateImages=migrateImages;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;window.changeCalMonth=changeCalMonth;window.updateChartTitle=updateChartTitle;window.updateChartData=updateChartData;window.addChartData=addChartData;window.removeChartData=removeChartData;window.changeTagColor=changeTagColor;window.removeInlineTag=removeInlineTag;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 } // startApp 함수 끝
 </script>
