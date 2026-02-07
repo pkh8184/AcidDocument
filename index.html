@@ -731,10 +731,12 @@ function isNestedArray(arr){
 function convertRowsForSave(obj){
   if(obj===null||obj===undefined)return obj;
   if(Array.isArray(obj)){
-    // 2D 배열이면 JSON 문자열로 변환
-    if(isNestedArray(obj)){
-      return JSON.stringify(obj);
+    // 배열 내에 객체나 배열이 있으면 JSON으로
+    var hasComplex=false;
+    for(var i=0;i<obj.length;i++){
+      if(typeof obj[i]==='object'&&obj[i]!==null){hasComplex=true;break}
     }
+    if(hasComplex)return JSON.stringify(obj);
     return obj.map(function(item){return convertRowsForSave(item)});
   }
   if(typeof obj==='object'){
@@ -742,11 +744,10 @@ function convertRowsForSave(obj){
     for(var key in obj){
       if(!obj.hasOwnProperty(key))continue;
       var val=obj[key];
-      // 특정 키들은 항상 JSON 문자열로 변환 (배열 또는 객체)
-      if((key==='rows'||key==='columns'||key==='chartData'||key==='colWidths'||key==='images')&&Array.isArray(val)){
+      // 특정 키들은 항상 JSON 문자열로 변환
+      if((key==='rows'||key==='columns'||key==='chartData'||key==='colWidths'||key==='images'||key==='ipLogs'||key==='deleteLogs')&&Array.isArray(val)){
         newObj[key+'Json']=JSON.stringify(val);
-      }else if(key==='events'&&typeof val==='object'){
-        // events는 객체 내부에 배열이 있으므로 전체를 JSON으로
+      }else if(key==='events'&&typeof val==='object'&&val!==null){
         newObj[key+'Json']=JSON.stringify(val);
       }else{
         newObj[key]=convertRowsForSave(val);
@@ -778,6 +779,10 @@ function convertRowsForLoad(obj){
         try{newObj.images=JSON.parse(obj[key])}catch(e){newObj.images=[]}
       }else if(key==='eventsJson'){
         try{newObj.events=JSON.parse(obj[key])}catch(e){newObj.events={}}
+      }else if(key==='ipLogsJson'){
+        try{newObj.ipLogs=JSON.parse(obj[key])}catch(e){newObj.ipLogs=[]}
+      }else if(key==='deleteLogsJson'){
+        try{newObj.deleteLogs=JSON.parse(obj[key])}catch(e){newObj.deleteLogs=[]}
       }else{
         newObj[key]=convertRowsForLoad(obj[key]);
       }
@@ -817,10 +822,22 @@ function updateStorageUsage(addBytes){
 }
 function uploadToStorage(file,folder,allowedTypes){
   return new Promise(function(resolve,reject){
-    // 파일 타입 체크
-    if(allowedTypes&&allowedTypes.indexOf(file.type)===-1){
-      reject(new Error('허용되지 않는 파일 형식입니다.\n허용: '+allowedTypes.join(', ')));
-      return;
+    // 파일 타입 체크 (더 유연하게)
+    var fileType=file.type||'';
+    var isAllowed=false;
+    if(allowedTypes){
+      for(var i=0;i<allowedTypes.length;i++){
+        if(fileType===allowedTypes[i]||fileType.indexOf(allowedTypes[i].split('/')[1])!==-1){
+          isAllowed=true;break;
+        }
+      }
+      // 확장자로도 체크
+      var ext=(file.name||'').split('.').pop().toLowerCase();
+      if(['jpg','jpeg','png','gif','webp'].indexOf(ext)!==-1)isAllowed=true;
+      if(!isAllowed){
+        reject(new Error('허용되지 않는 파일 형식입니다.\n파일 타입: '+fileType+'\n허용: '+allowedTypes.join(', ')));
+        return;
+      }
     }
     // 파일 크기 체크
     if(file.size>MAX_FILE_SIZE){
