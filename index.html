@@ -952,11 +952,31 @@ function setupBlockEv(div,b,idx){
     el.addEventListener('dblclick',function(){
       if(!editMode){toggleEdit();setTimeout(function(){focusBlock(idx)},50)}
     });
-    el.addEventListener('input',triggerAS);
+    el.addEventListener('input',function(){
+      triggerAS();
+      // 슬래시 메뉴 필터링
+      var menu=$('slashMenu');
+      if(menu.classList.contains('open')){
+        var txt=el.innerText||el.textContent;
+        txt=txt.replace(/\n/g,'').trim();
+        if(txt.startsWith('/'))filterSlash(txt.slice(1));
+        else hideSlash();
+      }
+    });
     el.addEventListener('keydown',function(e){handleKey(e,b,idx,el)});
     el.addEventListener('paste',handlePaste);
     el.addEventListener('compositionstart',function(){isComp=true});
-    el.addEventListener('compositionend',function(){isComp=false});
+    el.addEventListener('compositionend',function(){
+      isComp=false;
+      // 한글 조합 완료 후 슬래시 메뉴 필터링
+      var menu=$('slashMenu');
+      if(menu.classList.contains('open')){
+        var txt=el.innerText||el.textContent;
+        txt=txt.replace(/\n/g,'').trim();
+        if(txt.startsWith('/'))filterSlash(txt.slice(1));
+        else hideSlash();
+      }
+    });
     el.addEventListener('mouseup',showFmtBar);
     // 클릭 시 포커스
     el.addEventListener('click',function(e){
@@ -1108,8 +1128,9 @@ function handleKey(e,b,idx,el){
     if(e.key==='ArrowUp'){e.preventDefault();moveSlashSel(-1);return}
     if(e.key==='Enter'){e.preventDefault();var sel=menu.querySelector('.slash-item.sel');if(sel)execSlash(sel.getAttribute('data-type'));return}
     if(e.key==='Escape'){e.preventDefault();hideSlash();return}
-    if(e.key==='Backspace'){setTimeout(function(){var txt=el.innerText||el.textContent;if(!txt.startsWith('/'))hideSlash();else filterSlash(txt.slice(1))},0);return}
-    if(e.key.length===1&&!e.ctrlKey&&!e.metaKey){setTimeout(function(){var txt=el.innerText||el.textContent;if(txt.startsWith('/'))filterSlash(txt.slice(1))},0);return}
+    if(e.key==='Backspace'){setTimeout(function(){var txt=el.innerText||el.textContent;txt=txt.replace(/\n/g,'').trim();if(!txt.startsWith('/'))hideSlash();else filterSlash(txt.slice(1))},10);return}
+    // 한글 등 일반 문자 입력 시
+    if(e.key.length===1&&!e.ctrlKey&&!e.metaKey){setTimeout(function(){var txt=el.innerText||el.textContent;txt=txt.replace(/\n/g,'').trim();if(txt.startsWith('/'))filterSlash(txt.slice(1))},10);return}
   }
   
   /* ========== 텍스트 입력 규칙 ==========
