@@ -632,6 +632,8 @@ function convertRowsForSave(obj){
         newObj.rowsJson=JSON.stringify(obj[key]);
       }else if(key==='columns'&&Array.isArray(obj[key])){
         newObj.columnsJson=JSON.stringify(obj[key]);
+      }else if(key==='chartData'&&Array.isArray(obj[key])){
+        newObj.chartDataJson=JSON.stringify(obj[key]);
       }else{
         newObj[key]=convertRowsForSave(obj[key]);
       }
@@ -653,6 +655,8 @@ function convertRowsForLoad(obj){
         try{newObj.rows=JSON.parse(obj[key])}catch(e){newObj.rows=[['','',''],['','','']]}
       }else if(key==='columnsJson'){
         try{newObj.columns=JSON.parse(obj[key])}catch(e){newObj.columns=['','']}
+      }else if(key==='chartDataJson'){
+        try{newObj.chartData=JSON.parse(obj[key])}catch(e){newObj.chartData=[{label:'항목1',value:30}]}
       }else{
         newObj[key]=convertRowsForLoad(obj[key]);
       }
@@ -956,11 +960,11 @@ function createBlockEl(b,idx){
       break;
     case'table':
       var rows=b.rows||[['','',''],['','','']],thc=b.headerColor||'',tdc=b.cellColor||'',tAlign=b.align||'left';
-      inner='<div class="block-table-wrap"><table style="width:100%;border-collapse:collapse;text-align:'+tAlign+'">';
+      inner='<div class="block-table-wrap"><table style="width:100%;border-collapse:collapse">';
       for(var r=0;r<rows.length;r++){
         inner+='<tr>';
         for(var c=0;c<rows[r].length;c++){
-          var cs=(r===0&&thc?'background:'+thc+';':'')+(r>0&&tdc?'background:'+tdc+';':'')+'padding:10px;border:1px solid var(--bdr);';
+          var cs=(r===0&&thc?'background:'+thc+';':'')+(r>0&&tdc?'background:'+tdc+';':'')+'padding:10px;border:1px solid var(--bdr);text-align:'+tAlign+';';
           inner+=(r===0?'<th':'<td')+ce+' style="'+cs+'">'+(rows[r][c]||'')+(r===0?'</th>':'</td>');
         }
         inner+='</tr>';
@@ -1614,18 +1618,18 @@ function renderChart(b,idx){
     html+='</div></div>';
   }else if(type==='chart-line'){
     var maxVal=Math.max.apply(null,data.map(function(d){return d.value}))||1;
-    html+='<div class="chart-line-container"><svg class="chart-line-svg" preserveAspectRatio="none">';
+    html+='<div class="chart-line-container"><svg class="chart-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none">';
     var points=[];
     for(var i=0;i<data.length;i++){
       var x=(i/(data.length-1||1))*100;
       var y=100-(data[i].value/maxVal)*100;
-      points.push(x+'%,'+y+'%');
+      points.push(x+','+y);
     }
-    html+='<polyline points="'+points.join(' ')+'" fill="none" stroke="'+CHART_COLORS[0]+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+    html+='<polyline points="'+points.join(' ')+'" fill="none" stroke="'+CHART_COLORS[0]+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
     for(var i=0;i<data.length;i++){
       var x=(i/(data.length-1||1))*100;
       var y=100-(data[i].value/maxVal)*100;
-      html+='<circle cx="'+x+'%" cy="'+y+'%" r="5" fill="'+CHART_COLORS[0]+'"/>';
+      html+='<circle cx="'+x+'" cy="'+y+'" r="3" fill="'+CHART_COLORS[0]+'"/>';
     }
     html+='</svg></div>';
     html+='<div class="chart-line-labels">';
