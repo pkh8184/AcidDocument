@@ -489,6 +489,17 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 </div>
 <div id="storageUsageText" style="font-size:13px;color:var(--t3)"></div>
 </div>
+<div style="padding:16px;background:var(--bg3);border-radius:8px;font-size:13px;margin-bottom:16px">
+<p style="margin-bottom:12px"><strong>⚙️ 이미지 저장 방식</strong></p>
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px">
+<input type="radio" name="imgStorage" value="storage" id="imgStorageOn" onchange="setImageStorageMode('storage')">
+<span><strong>Storage 사용</strong> (권장) - 이미지를 Firebase Storage에 저장</span>
+</label>
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+<input type="radio" name="imgStorage" value="base64" id="imgStorageOff" onchange="setImageStorageMode('base64')">
+<span><strong>Base64 사용</strong> - 이미지를 문서에 직접 저장 (1MB 제한 주의)</span>
+</label>
+</div>
 <div style="padding:16px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--t3);margin-bottom:16px">
 <p style="margin-bottom:8px"><strong>📌 용량 제한</strong></p>
 <ul style="margin-left:16px;line-height:1.8">
@@ -1522,16 +1533,29 @@ function handlePaste(e){
     for(var i=0;i<files.length;i++){
       var file=files[i];
       if(file.type.startsWith('image/')){
-        uploadToStorage(file,'images',ALLOWED_IMAGE_TYPES).then(function(result){
-          var b={id:genId(),type:'image',src:result.url,caption:''};
-          var idx=currentInsertIdx!==null?currentInsertIdx+1:page.blocks.length;
-          page.blocks.splice(idx,0,b);
-          renderBlocks();triggerAS();
-          toast('이미지 삽입');
-        }).catch(function(err){
-          console.error('이미지 업로드 실패:',err);
-          toast(err.message||'이미지 업로드 실패','err');
-        });
+        var mode=db.settings.imageStorage||'storage';
+        if(mode==='storage'){
+          uploadToStorage(file,'images',ALLOWED_IMAGE_TYPES).then(function(result){
+            var b={id:genId(),type:'image',src:result.url,caption:''};
+            var idx=currentInsertIdx!==null?currentInsertIdx+1:page.blocks.length;
+            page.blocks.splice(idx,0,b);
+            renderBlocks();triggerAS();
+            toast('이미지 삽입');
+          }).catch(function(err){
+            console.error('이미지 업로드 실패:',err);
+            toast(err.message||'이미지 업로드 실패','err');
+          });
+        }else{
+          var reader=new FileReader();
+          reader.onload=function(ev){
+            var b={id:genId(),type:'image',src:ev.target.result,caption:''};
+            var idx=currentInsertIdx!==null?currentInsertIdx+1:page.blocks.length;
+            page.blocks.splice(idx,0,b);
+            renderBlocks();triggerAS();
+            toast('이미지 삽입');
+          };
+          reader.readAsDataURL(file);
+        }
         return;
       }
     }
@@ -2052,12 +2076,19 @@ function insertImage(){openModal('imageUploadModal');$('imageUrlInput').value=''
 function submitImage(){
   var url=$('imageUrlInput').value.trim(),file=$('imageFileInput').files[0];
   if(file){
-    uploadToStorage(file,'images',ALLOWED_IMAGE_TYPES).then(function(result){
-      addImageBlock(result.url);
-    }).catch(function(err){
-      console.error('이미지 업로드 실패:',err);
-      toast(err.message||'이미지 업로드 실패','err');
-    });
+    var mode=db.settings.imageStorage||'storage';
+    if(mode==='storage'){
+      uploadToStorage(file,'images',ALLOWED_IMAGE_TYPES).then(function(result){
+        addImageBlock(result.url);
+      }).catch(function(err){
+        console.error('이미지 업로드 실패:',err);
+        toast(err.message||'이미지 업로드 실패','err');
+      });
+    }else{
+      var reader=new FileReader();
+      reader.onload=function(e){addImageBlock(e.target.result)};
+      reader.readAsDataURL(file);
+    }
   }else if(url){addImageBlock(url)}
   else{toast('URL 또는 파일을 선택하세요','err');return}
 }
@@ -2239,6 +2270,10 @@ function renderStorageUsage(){
   $('storageUsageFill').style.width=pct+'%';
   $('storageUsageFill').style.background=pct>90?'var(--err)':pct>70?'var(--warn)':'var(--acc)';
   $('storageUsageText').innerHTML='<strong>'+formatBytes(used)+'</strong> / '+formatBytes(STORAGE_LIMIT)+' 사용 ('+pct.toFixed(1)+'%)';
+  // 이미지 저장 방식 라디오버튼 설정
+  var mode=db.settings.imageStorage||'storage';
+  $('imgStorageOn').checked=(mode==='storage');
+  $('imgStorageOff').checked=(mode==='base64');
 }
 // 이미지 마이그레이션 (base64 → Storage)
 function migrateImages(){
@@ -2324,6 +2359,11 @@ function migrateImages(){
   }
   
   uploadNext(0);
+}
+function setImageStorageMode(mode){
+  db.settings.imageStorage=mode;
+  saveDB();
+  toast(mode==='storage'?'Storage 사용':'Base64 사용');
 }
 function renderIpLog(){
   var list=$('ipLogList');
@@ -2626,7 +2666,7 @@ function init(){
   });
 }
 // 전역
-window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.downloadCode=downloadCode;window.copyImageUrl=copyImageUrl;window.setImageScale=setImageScale;window.downloadImage=downloadImage;window.downloadFile=downloadFile;window.dupBlockCurrent=dupBlockCurrent;window.deleteBlockCurrent=deleteBlockCurrent;window.addBlockBelowCurrent=addBlockBelowCurrent;window.moveBlockUpCurrent=moveBlockUpCurrent;window.moveBlockDownCurrent=moveBlockDownCurrent;window.getCurrentIdx=getCurrentIdx;window.genId=genId;window.insertBlock=insertBlock;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.clearIpLog=clearIpLog;window.clearDeleteLog=clearDeleteLog;window.restoreFromLog=restoreFromLog;window.migrateImages=migrateImages;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;window.changeCalMonth=changeCalMonth;window.updateChartTitle=updateChartTitle;window.updateChartData=updateChartData;window.addChartData=addChartData;window.removeChartData=removeChartData;window.changeTagColor=changeTagColor;window.removeInlineTag=removeInlineTag;
+window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.downloadCode=downloadCode;window.copyImageUrl=copyImageUrl;window.setImageScale=setImageScale;window.downloadImage=downloadImage;window.downloadFile=downloadFile;window.dupBlockCurrent=dupBlockCurrent;window.deleteBlockCurrent=deleteBlockCurrent;window.addBlockBelowCurrent=addBlockBelowCurrent;window.moveBlockUpCurrent=moveBlockUpCurrent;window.moveBlockDownCurrent=moveBlockDownCurrent;window.getCurrentIdx=getCurrentIdx;window.genId=genId;window.insertBlock=insertBlock;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.clearIpLog=clearIpLog;window.clearDeleteLog=clearDeleteLog;window.restoreFromLog=restoreFromLog;window.migrateImages=migrateImages;window.setImageStorageMode=setImageStorageMode;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;window.changeCalMonth=changeCalMonth;window.updateChartTitle=updateChartTitle;window.updateChartData=updateChartData;window.addChartData=addChartData;window.removeChartData=removeChartData;window.changeTagColor=changeTagColor;window.removeInlineTag=removeInlineTag;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 } // startApp 함수 끝
 </script>
