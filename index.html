@@ -752,7 +752,7 @@ function createBlockEl(b,idx){
     case'code':
       inner='<div class="block-code-wrap"><div class="block-code-head">';
       inner+='<span class="block-code-lang"'+(editMode?' onclick="openCodeSetting(\''+b.id+'\')" style="cursor:pointer"':'')+'>'+esc(b.lang||'code')+'</span>';
-      inner+='<button class="btn btn-sm btn-s" onclick="copyCode(this)">복사</button><button class="btn btn-sm btn-s" onclick="downloadCode(this)" style="margin-left:4px">다운로드</button></div>';
+      inner+='<div style="display:flex;gap:4px"><button class="btn btn-sm btn-s" onclick="copyCode(this)">복사</button><button class="btn btn-sm btn-s" onclick="downloadCode(this)">다운로드</button></div></div>';
       inner+='<div class="block-content"'+ce+' style="font-family:monospace;white-space:pre-wrap">'+(b.content||'')+'</div></div>';
       break;
     case'image':
@@ -921,12 +921,20 @@ function setupBlockEv(div,b,idx){
     // 토글 바디의 block-content에 별도 이벤트
     var bodyContent=body.querySelector('.block-content');
     if(bodyContent){
+      bodyContent.addEventListener('input',function(e){
+        e.stopPropagation();
+        triggerAS();
+      });
       bodyContent.addEventListener('keydown',function(e){
-        // Enter 시 같은 토글 내에서 처리 (새 블록 생성 안함)
+        e.stopPropagation();
+        // Enter 시 줄바꿈만 (새 블록 생성 안함)
         if(e.key==='Enter'&&!e.shiftKey){
-          e.stopPropagation();
-          // 기본 줄바꿈 허용
+          e.preventDefault();
+          document.execCommand('insertLineBreak');
         }
+      });
+      bodyContent.addEventListener('focus',function(e){
+        e.stopPropagation();
       });
     }
   }
@@ -1305,15 +1313,27 @@ function execSlash(type){
 }
 var currentEditBlockId=null;
 var currentInsertIdx=null;
-function getCurrentBlockIdx(){
+function trackCurrentBlock(){
   var focused=document.activeElement;
   if(focused){
     var block=focused.closest('.block');
-    if(block)return parseInt(block.getAttribute('data-idx'));
+    if(block){
+      currentInsertIdx=parseInt(block.getAttribute('data-idx'));
+      return;
+    }
   }
-  return page.blocks.length-1;
+  // 선택된 블록이 없으면 마지막 블록
+  currentInsertIdx=page.blocks.length-1;
 }
-function insertImage(){currentInsertIdx=getCurrentBlockIdx();openModal('imageUploadModal');$('imageUrlInput').value='';$('imageFileInput').value=''}
+// 에디터에서 포커스 변경 시 현재 블록 추적
+function setupBlockTracking(){
+  var ed=$('editor');
+  ed.addEventListener('focusin',function(e){
+    var block=e.target.closest('.block');
+    if(block)currentInsertIdx=parseInt(block.getAttribute('data-idx'));
+  });
+}
+function insertImage(){openModal('imageUploadModal');$('imageUrlInput').value='';$('imageFileInput').value=''}
 function submitImage(){
   var url=$('imageUrlInput').value.trim(),file=$('imageFileInput').files[0];
   if(file){
@@ -1330,7 +1350,7 @@ function addImageBlock(src){
   else page.blocks.push(b);
   renderBlocks();triggerAS();closeModal('imageUploadModal');toast('이미지 삽입')
 }
-function insertVideo(){currentInsertIdx=getCurrentBlockIdx();openModal('videoUploadModal');$('videoUrlInput').value='';$('videoFileInput').value=''}
+function insertVideo(){openModal('videoUploadModal');$('videoUrlInput').value='';$('videoFileInput').value=''}
 function submitVideo(){
   var url=$('videoUrlInput').value.trim(),file=$('videoFileInput').files[0];
   if(file){
@@ -1350,7 +1370,7 @@ function addVideoBlock(src,fname){
   else page.blocks.push(b);
   renderBlocks();triggerAS();closeModal('videoUploadModal');toast('동영상 삽입')
 }
-function insertPdf(){currentInsertIdx=getCurrentBlockIdx();openModal('pdfUploadModal');$('pdfUrlInput').value='';$('pdfFileInput').value=''}
+function insertPdf(){openModal('pdfUploadModal');$('pdfUrlInput').value='';$('pdfFileInput').value=''}
 function submitPdf(){
   var url=$('pdfUrlInput').value.trim(),file=$('pdfFileInput').files[0];
   if(file){
@@ -1367,7 +1387,7 @@ function addPdfBlock(src){
   else page.blocks.push(b);
   renderBlocks();triggerAS();closeModal('pdfUploadModal');toast('PDF 삽입')
 }
-function insertFile(){currentInsertIdx=getCurrentBlockIdx();openModal('fileUploadModal');$('fileFileInput').value=''}
+function insertFile(){openModal('fileUploadModal');$('fileFileInput').value=''}
 function submitFile(){
   var file=$('fileFileInput').files[0];
   if(!file){toast('파일을 선택하세요','err');return}
@@ -1525,6 +1545,7 @@ function exportPdf(){
 
 // 초기화
 function setupListeners(){
+  setupBlockTracking();
   document.addEventListener('click',function(e){
     if(!$('ctxMenu').contains(e.target))hideCtx();
     if(!$('slashMenu').contains(e.target)&&!e.target.classList.contains('block-content'))hideSlash();
