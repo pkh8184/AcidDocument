@@ -281,10 +281,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .chart-pie-legend{display:flex;flex-direction:column;gap:8px}
 .chart-pie-legend-item{display:flex;align-items:center;gap:8px;font-size:13px}
 .chart-pie-legend-color{width:14px;height:14px;border-radius:3px}
-.chart-line-container{position:relative;height:220px;border-left:2px solid var(--t4);border-bottom:2px solid var(--t4);margin:20px 20px 30px 60px;background:linear-gradient(to top,var(--bg3) 1px,transparent 1px);background-size:100% 25%}
-.chart-line-svg{width:100%;height:100%}
-.chart-line-y-axis{position:absolute;left:-55px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:space-between;font-size:11px;color:var(--t4);text-align:right;padding:5px 0}
-.chart-line-labels{display:flex;justify-content:space-between;margin-left:60px;margin-right:20px;font-size:12px;color:var(--t2);font-weight:500}
+.chart-line-container{height:200px;border-left:2px solid var(--t4);border-bottom:2px solid var(--t4);background:var(--bg3);border-radius:0 0 4px 0}
+.chart-line-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--t2);font-weight:500;padding:8px 0}
 .chart-data-input{margin-top:16px;padding-top:16px;border-top:1px dashed var(--bdr)}
 .chart-data-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
 .chart-data-row input{flex:1;padding:6px 10px;border:1px solid var(--bdr);border-radius:4px;background:var(--bg3);color:var(--t1);font-size:13px}
@@ -644,7 +642,7 @@ function convertRowsForSave(obj){
       if(!obj.hasOwnProperty(key))continue;
       var val=obj[key];
       // 특정 키들은 항상 JSON 문자열로 변환
-      if((key==='rows'||key==='columns'||key==='chartData')&&Array.isArray(val)){
+      if((key==='rows'||key==='columns'||key==='chartData'||key==='colWidths')&&Array.isArray(val)){
         newObj[key+'Json']=JSON.stringify(val);
       }else{
         newObj[key]=convertRowsForSave(val);
@@ -670,6 +668,8 @@ function convertRowsForLoad(obj){
         try{newObj.columns=JSON.parse(obj[key])}catch(e){newObj.columns=['','']}
       }else if(key==='chartDataJson'){
         try{newObj.chartData=JSON.parse(obj[key])}catch(e){newObj.chartData=[{label:'항목1',value:30}]}
+      }else if(key==='colWidthsJson'){
+        try{newObj.colWidths=JSON.parse(obj[key])}catch(e){newObj.colWidths=[]}
       }else{
         newObj[key]=convertRowsForLoad(obj[key]);
       }
@@ -680,7 +680,11 @@ function convertRowsForLoad(obj){
 }
 function saveDB(){
   var dataToSave=convertRowsForSave(db);
-  return firestore.collection('app').doc('data').set(dataToSave).catch(function(e){console.error('저장 실패:',e);toast('저장 오류','err')});
+  return firestore.collection('app').doc('data').set(dataToSave).catch(function(e){
+    console.error('저장 실패:',e);
+    console.log('저장 시도 데이터:',JSON.stringify(dataToSave).substring(0,500));
+    toast('저장 오류: '+e.message,'err');
+  });
 }function toast(m,t){t=t||'ok';var w=$('toastWrap'),e=document.createElement('div');e.className='toast '+t;var ic={ok:'✅',err:'❌',warn:'⚠️'};e.innerHTML='<span style="font-size:18px">'+(ic[t]||'💬')+'</span><span style="font-size:14px">'+esc(m)+'</span>';w.appendChild(e);setTimeout(function(){e.style.opacity='0';setTimeout(function(){e.remove()},200)},3000)}
 function setTheme(t){document.documentElement.setAttribute('data-theme',t);db.settings.theme=t;saveDB()}
 function toggleTheme(){setTheme(db.settings.theme==='dark'?'light':'dark')}
@@ -1642,35 +1646,42 @@ function renderChart(b,idx){
   }else if(type==='chart-line'){
     var maxVal=Math.max.apply(null,data.map(function(d){return d.value}))||1;
     // Y축 레이블
-    html+='<div style="position:relative">';
-    html+='<div class="chart-line-y-axis"><span>'+maxVal+'</span><span>'+Math.round(maxVal*3/4)+'</span><span>'+Math.round(maxVal/2)+'</span><span>'+Math.round(maxVal/4)+'</span><span>0</span></div>';
-    html+='<div class="chart-line-container"><svg class="chart-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none">';
+    html+='<div style="display:flex;gap:8px">';
+    html+='<div style="display:flex;flex-direction:column;justify-content:space-between;font-size:11px;color:var(--t4);text-align:right;width:40px;padding:5px 0"><span>'+maxVal+'</span><span>'+Math.round(maxVal*3/4)+'</span><span>'+Math.round(maxVal/2)+'</span><span>'+Math.round(maxVal/4)+'</span><span>0</span></div>';
+    html+='<div style="flex:1"><div class="chart-line-container">';
+    // SVG with proper aspect ratio
+    var svgW=400,svgH=200;
+    html+='<svg width="100%" height="100%" viewBox="0 0 '+svgW+' '+svgH+'" preserveAspectRatio="xMidYMid meet">';
     // 그리드 라인
-    html+='<line x1="0" y1="25" x2="100" y2="25" stroke="var(--bdr)" stroke-width="0.5" stroke-dasharray="2"/>';
-    html+='<line x1="0" y1="50" x2="100" y2="50" stroke="var(--bdr)" stroke-width="0.5" stroke-dasharray="2"/>';
-    html+='<line x1="0" y1="75" x2="100" y2="75" stroke="var(--bdr)" stroke-width="0.5" stroke-dasharray="2"/>';
-    // 라인 그래프
-    var points=[];
+    for(var g=1;g<4;g++){
+      var gy=svgH*g/4;
+      html+='<line x1="0" y1="'+gy+'" x2="'+svgW+'" y2="'+gy+'" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4"/>';
+    }
+    // 데이터 포인트 계산
+    var pts=[];
     for(var i=0;i<data.length;i++){
-      var x=data.length>1?(i/(data.length-1))*100:50;
-      var y=100-(data[i].value/maxVal)*100;
-      points.push(x+','+y);
+      var px=data.length>1?(i/(data.length-1))*svgW:svgW/2;
+      var py=svgH-(data[i].value/maxVal)*svgH;
+      pts.push({x:px,y:py});
     }
     // 영역 채우기
-    html+='<polygon points="0,100 '+points.join(' ')+' 100,100" fill="'+CHART_COLORS[0]+'" fill-opacity="0.1"/>';
-    // 굵은 라인
-    html+='<polyline points="'+points.join(' ')+'" fill="none" stroke="'+CHART_COLORS[0]+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+    var areaPath='M0,'+svgH+' ';
+    for(var i=0;i<pts.length;i++)areaPath+='L'+pts[i].x+','+pts[i].y+' ';
+    areaPath+='L'+svgW+','+svgH+' Z';
+    html+='<path d="'+areaPath+'" fill="'+CHART_COLORS[0]+'" fill-opacity="0.15"/>';
+    // 라인
+    var linePath='M'+pts[0].x+','+pts[0].y;
+    for(var i=1;i<pts.length;i++)linePath+=' L'+pts[i].x+','+pts[i].y;
+    html+='<path d="'+linePath+'" fill="none" stroke="'+CHART_COLORS[0]+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
     // 포인트
-    for(var i=0;i<data.length;i++){
-      var x=data.length>1?(i/(data.length-1))*100:50;
-      var y=100-(data[i].value/maxVal)*100;
-      html+='<circle cx="'+x+'" cy="'+y+'" r="4" fill="#fff" stroke="'+CHART_COLORS[0]+'" stroke-width="2"/>';
+    for(var i=0;i<pts.length;i++){
+      html+='<circle cx="'+pts[i].x+'" cy="'+pts[i].y+'" r="6" fill="#fff" stroke="'+CHART_COLORS[0]+'" stroke-width="3"/>';
     }
-    html+='</svg></div></div>';
+    html+='</svg></div>';
     // X축 레이블
     html+='<div class="chart-line-labels">';
     for(var i=0;i<data.length;i++)html+='<span>'+esc(data[i].label)+'</span>';
-    html+='</div>';
+    html+='</div></div></div>';
   }
   
   if(editMode){
