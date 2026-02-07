@@ -1825,7 +1825,22 @@ function init(){
     if(st.lockUntil>Date.now()){showLockTimer(st.lockUntil);return}
     // 세션은 localStorage에서 확인 (기기별 독립)
     var localSession=localStorage.getItem('ad_session');
-    if(localSession){var u=null;for(var i=0;i<db.users.length;i++){if(db.users[i].id===localSession&&db.users[i].active){u=db.users[i];break}}if(u){user=u;initApp()}}
+    if(localSession){
+      var u=null;
+      for(var i=0;i<db.users.length;i++){
+        if(db.users[i].id===localSession&&db.users[i].active){u=db.users[i];break}
+      }
+      if(u){
+        user=u;
+        // 비밀번호 변경 필요 여부 확인
+        if(u.needPw){
+          $('loginScreen').classList.add('hidden');
+          openModal('pwChangeModal');
+        }else{
+          initApp();
+        }
+      }
+    }
   });
 }
 // 전역
