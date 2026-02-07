@@ -227,6 +227,20 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .fmt-bar{position:fixed;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rad);padding:4px;display:none;z-index:350;box-shadow:0 4px 20px rgba(0,0,0,.2)}
 .fmt-bar.open{display:flex;gap:2px}
 .fmt-bar .btn-i{width:32px;height:32px;font-size:14px}
+.block-media-toolbar{display:flex;gap:4px;justify-content:center;margin-bottom:8px;flex-wrap:wrap}
+.block-image-wrap{position:relative;outline:none}.block-image-wrap:focus{outline:2px solid var(--acc);border-radius:var(--rad)}
+.block-file-wrap{outline:none}.block-file-wrap:focus{outline:2px solid var(--acc);border-radius:var(--rad)}
+.block-file{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rad)}
+.block-file a{color:var(--acc);text-decoration:none;flex:1}.block-file a:hover{text-decoration:underline}
+.block-file-actions{display:flex;gap:4px;margin-left:auto}
+.btn-danger{background:var(--err)!important;color:#fff!important}
+.btn-danger:hover{opacity:0.8}
+.editor-toolbar{display:none;position:sticky;top:0;z-index:50;background:var(--bg2);border-bottom:1px solid var(--bdr);padding:8px 16px;flex-wrap:wrap;gap:4px;align-items:center}
+.edit-mode-active .editor-toolbar{display:flex}
+.toolbar-group{display:flex;gap:2px}
+.toolbar-btn{background:var(--bg3);border:1px solid var(--bdr);border-radius:4px;padding:6px 10px;cursor:pointer;font-size:13px;color:var(--t2);transition:all .15s}
+.toolbar-btn:hover{background:var(--bg4);color:var(--t1)}
+.toolbar-divider{width:1px;height:24px;background:var(--bdr);margin:0 6px}
 @media(max-width:768px){
 .sidebar{position:fixed;left:0;top:0;z-index:100;transform:translateX(-100%);transition:transform .25s}.sidebar.open{transform:translateX(0)}
 .mob-menu{display:flex!important}
@@ -310,6 +324,41 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 </div>
 </div>
 <div class="editor-wrap" id="editorWrap">
+<div class="editor-toolbar" id="editorToolbar">
+<div class="toolbar-group">
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'h1',content:''})" title="제목1">H1</button>
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'h2',content:''})" title="제목2">H2</button>
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'h3',content:''})" title="제목3">H3</button>
+</div>
+<div class="toolbar-divider"></div>
+<div class="toolbar-group">
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'bullet',content:''})" title="글머리">•</button>
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'number',content:'',num:1})" title="번호">1.</button>
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'todo',content:'',checked:false})" title="할일">☑</button>
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'toggle',content:'',innerContent:'',open:false})" title="토글">▶</button>
+</div>
+<div class="toolbar-divider"></div>
+<div class="toolbar-group">
+<button class="toolbar-btn" onclick="insertImage()" title="이미지">🖼</button>
+<button class="toolbar-btn" onclick="insertVideo()" title="동영상">🎬</button>
+<button class="toolbar-btn" onclick="insertFile()" title="파일">📎</button>
+<button class="toolbar-btn" onclick="insertPdf()" title="PDF">📄</button>
+</div>
+<div class="toolbar-divider"></div>
+<div class="toolbar-group">
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'table',rows:[['','',''],['','','']]})" title="표">▦</button>
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'code',content:'',lang:''})" title="코드">&lt;/&gt;</button>
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'quote',content:''})" title="인용">"</button>
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'callout',content:'',calloutType:'info'})" title="콜아웃">💡</button>
+</div>
+<div class="toolbar-divider"></div>
+<div class="toolbar-group">
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'columns',colType:'col2',columns:['','']})" title="2열">▐▌</button>
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'columns',colType:'col3',columns:['','','']})" title="3열">▐▐▌</button>
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'divider'})" title="구분선">—</button>
+<button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'toc'})" title="목차">📑</button>
+</div>
+</div>
 <div class="editor-inner">
 <div class="page-head">
 <div class="page-icon" id="pageIcon" onclick="openIconPicker()">📄</div>
@@ -614,6 +663,7 @@ function toggleEdit(){
     editMode=true;
     editBackup={title:$('pageTitle').value,icon:$('pageIcon').textContent,blocks:JSON.parse(JSON.stringify(page.blocks))};
     $('editor').classList.remove('view-mode');$('editor').classList.add('edit-mode');
+    $('editorWrap').classList.add('edit-mode-active');
     $('pageTitle').removeAttribute('readonly');
     $('editBtn').style.display='none';$('deletePageBtn').style.display='none';
     $('saveBtn').style.display='inline-flex';$('cancelBtn').style.display='inline-flex';
@@ -646,6 +696,7 @@ function hasChanges(){
 function exitEditMode(){
   editMode=false;editBackup=null;
   $('editor').classList.remove('edit-mode');$('editor').classList.add('view-mode');
+  $('editorWrap').classList.remove('edit-mode-active');
   $('pageTitle').setAttribute('readonly','readonly');
   $('editBtn').style.display='inline-flex';$('deletePageBtn').style.display='inline-flex';
   $('saveBtn').style.display='none';$('cancelBtn').style.display='none';
@@ -756,8 +807,12 @@ function createBlockEl(b,idx){
       inner+='<div class="block-content"'+ce+' style="font-family:monospace;white-space:pre-wrap">'+(b.content||'')+'</div></div>';
       break;
     case'image':
-      inner='<img src="'+esc(b.src||'')+'" style="max-width:100%;border-radius:var(--rad)" onerror="this.style.display=\'none\'">';
+      var imgScale=b.scale||100;
+      inner='<div class="block-image-wrap" tabindex="0" data-block-idx="'+idx+'">';
+      if(editMode)inner+='<div class="block-media-toolbar"><button class="btn btn-sm btn-s" onclick="copyImageUrl('+idx+')">복사</button><button class="btn btn-sm btn-s" onclick="setImageScale('+idx+',25)">25%</button><button class="btn btn-sm btn-s" onclick="setImageScale('+idx+',50)">50%</button><button class="btn btn-sm btn-s" onclick="setImageScale('+idx+',75)">75%</button><button class="btn btn-sm btn-s" onclick="setImageScale('+idx+',100)">100%</button><button class="btn btn-sm btn-s btn-danger" onclick="deleteBlock('+idx+')">삭제</button></div>';
+      inner+='<img src="'+esc(b.src||'')+'" style="max-width:'+imgScale+'%;border-radius:var(--rad);display:block;margin:0 auto" onerror="this.style.display=\'none\'">';
       inner+='<div class="block-image-caption"'+ce+' style="text-align:center;color:var(--t4);font-size:13px;margin-top:8px">'+(b.caption||'')+'</div>';
+      inner+='</div>';
       if(editMode)inner+='<div class="block-add-below" onclick="addBlockBelow('+idx+')">+ 블록 추가</div>';
       break;
     case'video':
@@ -770,7 +825,10 @@ function createBlockEl(b,idx){
       if(editMode)inner+='<div class="block-add-below" onclick="addBlockBelow('+idx+')">+ 블록 추가</div>';
       break;
     case'file':
-      inner='<div class="block-file"><span>📎</span><a href="'+esc(b.url||'')+'" target="_blank">'+esc(b.name||'파일')+'</a></div>';
+      inner='<div class="block-file-wrap" tabindex="0" data-block-idx="'+idx+'">';
+      inner+='<div class="block-file"><span>📎</span><a href="'+esc(b.url||'')+'" download="'+esc(b.name||'file')+'" target="_blank">'+esc(b.name||'파일')+'</a>';
+      if(editMode)inner+='<span class="block-file-actions"><button class="btn btn-sm btn-s" onclick="downloadFile('+idx+')">다운로드</button><button class="btn btn-sm btn-s btn-danger" onclick="deleteBlock('+idx+')">삭제</button></span>';
+      inner+='</div></div>';
       if(editMode)inner+='<div class="block-add-below" onclick="addBlockBelow('+idx+')">+ 블록 추가</div>';
       break;
     case'table':
@@ -805,7 +863,7 @@ function createBlockEl(b,idx){
       var cols=b.columns||['',''];
       inner='<div class="block-columns-wrap" style="display:flex;gap:16px">';
       for(var ci=0;ci<cols.length;ci++){
-        inner+='<div class="block-col" style="flex:1;min-width:0"><div class="block-col-content"'+ce+' style="min-height:60px;padding:12px;border:1px dashed var(--bdr);border-radius:var(--rad)">'+(cols[ci]||'')+'</div></div>';
+        inner+='<div class="block-col" data-col-idx="'+ci+'" style="flex:1;min-width:0"><div class="block-col-content" data-col-idx="'+ci+'"'+ce+' style="min-height:60px;padding:12px;border:1px dashed var(--bdr);border-radius:var(--rad)">'+(cols[ci]||'')+'</div></div>';
       }
       inner+='</div>';
       if(editMode)inner+='<div class="block-add-below" onclick="addBlockBelow('+idx+')">+ 블록 추가</div>';
@@ -882,6 +940,19 @@ function setupBlockEv(div,b,idx){
     caption.addEventListener('input',triggerAS);
     caption.addEventListener('paste',handlePaste);
     caption.addEventListener('dblclick',function(){if(!editMode){toggleEdit();setTimeout(function(){caption.focus()},50)}});
+  }
+  
+  // 이미지/파일 블록 백스페이스 삭제
+  var mediaWrap=div.querySelector('.block-image-wrap,.block-file-wrap');
+  if(mediaWrap){
+    mediaWrap.addEventListener('keydown',function(e){
+      if(!editMode)return;
+      if(e.key==='Backspace'||e.key==='Delete'){
+        e.preventDefault();
+        deleteBlock(idx);
+      }
+    });
+    mediaWrap.addEventListener('click',function(){if(editMode)mediaWrap.focus()});
   }
   
   // 할일 체크박스
@@ -1143,6 +1214,9 @@ function setupColResize(div,b){
 function scrollToBlk(id){var el=document.querySelector('[data-id="'+id+'"]');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.background='var(--accM)';setTimeout(function(){el.style.background=''},2000)}}
 function copyCode(btn){var wrap=btn.closest('.block-code-wrap'),code=wrap.querySelector('.block-content').textContent;navigator.clipboard.writeText(code).then(function(){toast('복사됨')})}
 function downloadCode(btn){var wrap=btn.closest('.block-code-wrap'),code=wrap.querySelector('.block-content').textContent,lang=wrap.querySelector('.block-code-lang');var ext=lang?lang.textContent.toLowerCase():'txt';var exts={javascript:'js',python:'py',java:'java',html:'html',css:'css',json:'json',typescript:'ts',ruby:'rb',php:'php',go:'go',rust:'rs',cpp:'cpp',c:'c'};ext=exts[ext]||ext||'txt';var blob=new Blob([code],{type:'text/plain'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='code.'+ext;a.click();URL.revokeObjectURL(url);toast('다운로드됨')}
+function copyImageUrl(idx){var b=page.blocks[idx];if(b&&b.src){navigator.clipboard.writeText(b.src).then(function(){toast('이미지 URL 복사됨')})}}
+function setImageScale(idx,scale){page.blocks[idx].scale=scale;renderBlocks();triggerAS();toast(scale+'% 크기')}
+function downloadFile(idx){var b=page.blocks[idx];if(b&&b.url){var a=document.createElement('a');a.href=b.url;a.download=b.name||'file';a.click();toast('다운로드 시작')}}
 function getYTId(url){if(!url)return null;var m=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);return m?m[1]:null}
 /* ========== 블록 생성/삭제 규칙 ==========
  * 1. insertBlock: 지정 위치에 블록 삽입 후 포커스
@@ -1313,6 +1387,7 @@ function execSlash(type){
 }
 var currentEditBlockId=null;
 var currentInsertIdx=null;
+function getCurrentIdx(){return currentInsertIdx!==null?currentInsertIdx:(page&&page.blocks?page.blocks.length-1:0)}
 function trackCurrentBlock(){
   var focused=document.activeElement;
   if(focused){
@@ -1662,7 +1737,7 @@ function init(){
   });
 }
 // 전역
-window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.downloadCode=downloadCode;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;
+window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.downloadCode=downloadCode;window.copyImageUrl=copyImageUrl;window.setImageScale=setImageScale;window.downloadFile=downloadFile;window.getCurrentIdx=getCurrentIdx;window.genId=genId;window.insertBlock=insertBlock;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 } // startApp 함수 끝
 </script>
