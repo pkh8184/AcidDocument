@@ -592,6 +592,8 @@ function loadPage(id){
   }
   editMode=false;editBackup=null;
   page=p;
+  // URL 해시 업데이트
+  history.pushState(null,null,'#'+id);
   $('pageIcon').textContent=p.icon;$('pageTitle').value=p.title;$('pageTitle').setAttribute('readonly','readonly');
   $('editBtn').style.display='inline-flex';$('deletePageBtn').style.display='inline-flex';
   $('saveBtn').style.display='none';$('cancelBtn').style.display='none';
@@ -1570,8 +1572,32 @@ function initApp(){
   setTheme(db.settings.theme);
   updateNoticeBar();
   renderTree();
-  var pgs=getPages(null);
-  if(pgs.length>0)loadPage(pgs[0].id);else createPage()
+  // 해시 라우팅: URL에서 페이지 ID 읽기
+  var hashId=location.hash.slice(1);
+  var targetPage=hashId?getPage(hashId):null;
+  if(targetPage&&!targetPage.deleted){
+    loadPage(targetPage.id);
+  }else{
+    var pgs=getPages(null);
+    if(pgs.length>0)loadPage(pgs[0].id);else createPage()
+  }
+  // 브라우저 뒤로가기/앞으로가기 지원
+  window.addEventListener('popstate',function(){
+    var hid=location.hash.slice(1);
+    if(hid){var pg=getPage(hid);if(pg&&!pg.deleted)loadPageWithoutPush(hid)}
+  });
+}
+// 해시 업데이트 없이 페이지 로드 (popstate용)
+function loadPageWithoutPush(id){
+  var p=getPage(id);if(!p)return;
+  if(editMode&&hasChanges()){if(confirm('작성한 내용을 저장하시겠습니까?')){saveDoc()}}
+  editMode=false;editBackup=null;page=p;
+  $('pageIcon').textContent=p.icon;$('pageTitle').value=p.title;$('pageTitle').setAttribute('readonly','readonly');
+  $('editBtn').style.display='inline-flex';$('deletePageBtn').style.display='inline-flex';
+  $('saveBtn').style.display='none';$('cancelBtn').style.display='none';
+  renderMeta();renderTags();renderBlocks();renderBC();renderTree();renderVer();renderCmt();
+  db.recent=db.recent.filter(function(x){return x!==id});db.recent.unshift(id);if(db.recent.length>30)db.recent.pop();
+  saveDB();closeMobile();$('editorWrap').scrollTop=0
 }
 function init(){
   initDB().then(function(){
