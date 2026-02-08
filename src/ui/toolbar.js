@@ -36,7 +36,7 @@ export function renderSlashMenu(filter){
     for(var i=0;i<sec.i.length;i++){var it=sec.i[i];if(!q||it.n.toLowerCase().indexOf(q)!==-1||it.t.toLowerCase().indexOf(q)!==-1)filtered.push(it)}
     if(filtered.length===0)continue;
     hasItems=true;html+='<div class="slash-section">'+sec.s+'</div>';
-    for(var j=0;j<filtered.length;j++){var f=filtered[j];html+='<div class="slash-item'+(first?' sel':'')+'" data-type="'+f.t+'"><div class="slash-icon">'+f.c+'</div><div><div style="font-weight:500">'+f.n+'</div><div style="font-size:12px;color:var(--t4)">'+f.d+'</div></div></div>';first=false}
+    for(var j=0;j<filtered.length;j++){var f=filtered[j];html+='<div class="slash-item'+(first?' sel':'')+'" role="option" aria-selected="'+(first?'true':'false')+'" data-type="'+f.t+'"><div class="slash-icon">'+f.c+'</div><div><div style="font-weight:500">'+f.n+'</div><div style="font-size:12px;color:var(--t4)">'+f.d+'</div></div></div>';first=false}
   }
   if(!hasItems)html='<div style="padding:20px;text-align:center;color:var(--t4)">결과 없음</div>';
   menu.innerHTML=html;
@@ -44,7 +44,7 @@ export function renderSlashMenu(filter){
   for(var k=0;k<items.length;k++){(function(it){it.addEventListener('click',function(){execSlash(it.getAttribute('data-type'))});it.addEventListener('mouseenter',function(){var all=menu.querySelectorAll('.slash-item');for(var m=0;m<all.length;m++)all[m].classList.remove('sel');it.classList.add('sel')})})(items[k])}
 }
 export function filterSlash(q){renderSlashMenu(q)}
-export function moveSlashSel(dir){var menu=$('slashMenu'),items=menu.querySelectorAll('.slash-item');if(!items.length)return;var cur=-1;for(var i=0;i<items.length;i++){if(items[i].classList.contains('sel')){cur=i;break}}var n=cur+dir;if(n<0)n=items.length-1;if(n>=items.length)n=0;for(var j=0;j<items.length;j++)items[j].classList.remove('sel');items[n].classList.add('sel');items[n].scrollIntoView({block:'nearest'})}
+export function moveSlashSel(dir){var menu=$('slashMenu'),items=menu.querySelectorAll('.slash-item');if(!items.length)return;var cur=-1;for(var i=0;i<items.length;i++){if(items[i].classList.contains('sel')){cur=i;break}}var n=cur+dir;if(n<0)n=items.length-1;if(n>=items.length)n=0;for(var j=0;j<items.length;j++){items[j].classList.remove('sel');items[j].setAttribute('aria-selected','false')}items[n].classList.add('sel');items[n].setAttribute('aria-selected','true');items[n].scrollIntoView({block:'nearest'})}
 export function execSlash(type){
   var idx=state.slashMenuState.idx;hideSlash();if(idx===null)return;
   if(type==='image'){state.slashMenuState.idx=idx;insertImage();return}

@@ -70,7 +70,7 @@ export function createBlockEl(b,idx){
   switch(b.type){
     case'divider':
       inner='<hr>';
-      if(state.editMode)inner+='<div class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</div>';
+      if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;
     case'todo':
       if(b.checked)div.classList.add('done');
@@ -106,20 +106,20 @@ export function createBlockEl(b,idx){
       inner+='<img src="'+esc(b.src||'')+'" style="max-width:'+imgScale+'%;border-radius:var(--rad);display:block;margin:0 auto;cursor:'+(state.editMode?'default':'zoom-in')+'" onerror="this.style.display=\'none\'"'+(state.editMode?'':' onclick="openImageViewer([\''+esc(b.src||'')+'\'],0)"')+'>';
       inner+='<div class="block-image-caption"'+ce+' style="text-align:center;color:var(--t4);font-size:13px;margin-top:8px">'+sanitizeHTML(b.caption||'')+'</div>';
       inner+='</div>';
-      if(state.editMode)inner+='<div class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</div>';
+      if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;
     case'slide':
       inner=renderSlideBlock(b,idx);
-      if(state.editMode)inner+='<div class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</div>';
+      if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;
     case'video':
       if(b.isFile){inner='<video controls style="width:100%;max-height:500px;border-radius:var(--rad)"><source src="'+esc(b.url)+'"></video>';}
       else{var vid=getYTId(b.url);inner=vid?'<iframe src="https://www.youtube.com/embed/'+vid+'" style="width:100%;height:400px;border:none;border-radius:var(--rad)" allowfullscreen></iframe>':'<div style="color:var(--err);padding:16px">유효하지 않은 URL</div>';}
-      if(state.editMode)inner+='<div class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</div>';
+      if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;
     case'pdf':
       inner='<iframe src="'+esc(b.src||'')+'#toolbar=1" style="width:100%;height:500px;border:1px solid var(--bdr);border-radius:var(--rad)"></iframe>';
-      if(state.editMode)inner+='<div class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</div>';
+      if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;
     case'file':
       var fileExt=(b.name||'').split('.').pop().toLowerCase();
@@ -131,7 +131,7 @@ export function createBlockEl(b,idx){
       if(state.editMode)inner+='<div class="file-actions"><button class="media-btn" data-action="downloadFile" data-idx="'+idx+'" title="다운로드">💾</button><button class="media-btn danger" data-action="deleteBlock" data-idx="'+idx+'" title="삭제">🗑️</button></div>';
       else inner+='<a href="'+esc(b.url||'')+'" download="'+esc(b.name||'file')+'" class="file-download-btn">다운로드</a>';
       inner+='</div></div>';
-      if(state.editMode)inner+='<div class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</div>';
+      if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;
     case'bookmark':
       var domain='';
@@ -144,7 +144,7 @@ export function createBlockEl(b,idx){
       if(b.description)inner+='<div class="url-preview-desc">'+esc(b.description)+'</div>';
       inner+='<div class="url-preview-domain">'+esc(domain)+'</div>';
       inner+='</div></a>';
-      if(state.editMode)inner+='<div class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</div>';
+      if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;
     case'table':
       var rows=b.rows||[['','',''],['','','']],thc=b.headerColor||'',tdc=b.cellColor||'',tAlign=b.align||'left';
@@ -177,12 +177,12 @@ export function createBlockEl(b,idx){
         inner+='<button class="btn btn-sm btn-s" data-action="openColWidthModal" data-block-id="'+b.id+'">열 너비</button>';
         inner+='<button class="btn btn-sm" style="color:var(--err)" data-action="deleteTable" data-block-id="'+b.id+'">삭제</button>';
         inner+='</div>';
-        inner+='<div class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</div>';
+        inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       }
       break;
     case'toc':
       inner='<div class="block-toc-wrap">'+genTOC()+'</div>';
-      if(state.editMode)inner+='<div class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</div>';
+      if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;
     case'columns':
       var cols=b.columns||['',''];
@@ -191,7 +191,7 @@ export function createBlockEl(b,idx){
         inner+='<div class="block-col" data-col-idx="'+ci+'" style="flex:1;min-width:0"><div class="block-col-content" data-col-idx="'+ci+'"'+ce+' style="min-height:60px;padding:12px;border:1px dashed var(--bdr);border-radius:var(--rad)">'+sanitizeHTML(cols[ci]||'')+'</div></div>';
       }
       inner+='</div>';
-      if(state.editMode)inner+='<div class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</div>';
+      if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;
     case'quote':
       inner='<div class="block-content"'+ce+'>'+sanitizeHTML(b.content||'')+'</div>';
@@ -205,18 +205,18 @@ export function createBlockEl(b,idx){
       break;
     case'calendar':
       inner=renderCalendar(b,idx);
-      if(state.editMode)inner+='<div class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</div>';
+      if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;
     case'chart-bar':
     case'chart-pie':
     case'chart-line':
       inner=renderChart(b,idx);
-      if(state.editMode)inner+='<div class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</div>';
+      if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;
     default:
       inner='<div class="block-content"'+ce+'>'+sanitizeHTML(b.content||'')+'</div>';
   }
-  div.innerHTML='<div class="block-handle"><button class="btn btn-i" data-action="showBlockCtx" data-idx="'+idx+'">⋮</button></div>'+inner;
+  div.innerHTML='<div class="block-handle"><button class="btn btn-i" tabindex="0" data-action="showBlockCtx" data-idx="'+idx+'">⋮</button></div>'+inner;
   setupBlockEvents(div,b,idx);
   return div;
 }

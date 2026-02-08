@@ -10,9 +10,38 @@ import {getPage} from '../editor/blocks.js';
 import {renderBlocks} from '../editor/renderer.js';
 import {storage} from '../config/firebase.js';
 
-export function openModal(id){$(id).classList.add('open')}
-export function closeModal(id){$(id).classList.remove('open')}
-export function closeAllModals(){$$('.modal-bg').forEach(function(m){m.classList.remove('open')})}
+var _previousFocus=null;
+
+export function trapFocus(modalId){
+  var modal=$(modalId);
+  if(!modal)return;
+  var focusable=modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  if(focusable.length===0)return;
+  var first=focusable[0];
+  var last=focusable[focusable.length-1];
+  modal.addEventListener('keydown',function(e){
+    if(e.key==='Tab'){
+      if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
+      else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
+    }
+    if(e.key==='Escape')closeModal(modalId);
+  });
+  first.focus();
+}
+
+export function openModal(id){
+  _previousFocus=document.activeElement;
+  $(id).classList.add('open');
+  trapFocus(id);
+}
+export function closeModal(id){
+  $(id).classList.remove('open');
+  if(_previousFocus&&typeof _previousFocus.focus==='function'){
+    _previousFocus.focus();
+    _previousFocus=null;
+  }
+}
+export function closeAllModals(){$$('.modal-bg').forEach(function(m){m.classList.remove('open')});if(_previousFocus&&typeof _previousFocus.focus==='function'){_previousFocus.focus();_previousFocus=null}}
 export function closePanel(id){$(id).classList.remove('open')}
 export function closeAllPanels(){$$('.panel').forEach(function(p){p.classList.remove('open')});state.panelType=null}
 

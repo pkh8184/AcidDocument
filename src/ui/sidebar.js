@@ -298,14 +298,14 @@ export function movePage(id,newParentId){
 
 // 트리 렌더링 (드래그앤드롭)
 var expandedNodes=new Set();
-export function renderTree(){$('pageTree').innerHTML='';renderTreeLevel(null,$('pageTree'))}
+export function renderTree(){var pt=$('pageTree');pt.innerHTML='';pt.setAttribute('role','tree');pt.setAttribute('aria-label','페이지 목록');renderTreeLevel(null,pt)}
 export function renderTreeLevel(pid,con){
   var pgs=getPages(pid);
   for(var i=0;i<pgs.length;i++){
     (function(p){
       var hasCh=getPages(p.id).length>0,isAct=state.page&&state.page.id===p.id;
       var item=document.createElement('div');item.className='tree-item';
-      item.innerHTML='<div class="tree-row'+(isAct?' active':'')+'" data-id="'+p.id+'" draggable="true"><span class="tree-toggle'+(hasCh?'':' hide')+'">▶</span><span>'+p.icon+'</span><span class="tree-name">'+esc(p.title)+'</span><span class="tree-fav'+(p.favorite?' on':'')+'">★</span></div><div class="tree-children closed"></div>';
+      item.innerHTML='<div class="tree-row'+(isAct?' active':'')+'" role="treeitem" data-id="'+p.id+'" draggable="true"><span class="tree-toggle'+(hasCh?'':' hide')+'" role="button" tabindex="0"'+(hasCh?' aria-expanded="false"':'')+'>▶</span><span>'+p.icon+'</span><span class="tree-name">'+esc(p.title)+'</span><span class="tree-fav'+(p.favorite?' on':'')+'">★</span></div><div class="tree-children closed"></div>';
       con.appendChild(item);
       var row=item.querySelector('.tree-row'),tog=item.querySelector('.tree-toggle'),ch=item.querySelector('.tree-children');
       row.addEventListener('click',function(e){if(!e.target.classList.contains('tree-toggle'))loadPage(p.id)});
@@ -318,11 +318,12 @@ export function renderTreeLevel(pid,con){
       row.addEventListener('drop',function(e){e.preventDefault();row.classList.remove('drag-over');if(state.dragPageId&&state.dragPageId!==p.id)movePage(state.dragPageId,p.id)});
       if(hasCh){
         var isOpen=expandedNodes.has(p.id);
-        if(isOpen){tog.classList.add('open');ch.classList.remove('closed');renderTreeLevel(p.id,ch)}
+        if(isOpen){tog.classList.add('open');tog.setAttribute('aria-expanded','true');ch.classList.remove('closed');renderTreeLevel(p.id,ch)}
         tog.addEventListener('click',function(e){
           e.stopPropagation();
           if(expandedNodes.has(p.id)){expandedNodes.delete(p.id)}else{expandedNodes.add(p.id)}
           tog.classList.toggle('open');ch.classList.toggle('closed');
+          tog.setAttribute('aria-expanded',expandedNodes.has(p.id)?'true':'false');
           if(!ch.classList.contains('closed')&&ch.children.length===0)renderTreeLevel(p.id,ch)
         })
       }
