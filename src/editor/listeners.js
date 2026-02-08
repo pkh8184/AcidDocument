@@ -5,7 +5,7 @@ import {ALLOWED_IMAGE_TYPES} from '../config/firebase.js';
 import {$,$$,genId,toast} from '../utils/helpers.js';
 import {uploadToStorage} from '../data/firestore.js';
 import {renderBlocks} from './renderer.js';
-import {triggerAS,focusBlock,insertBlock,deleteBlock,updateNums,setupBlockTracking} from './blocks.js';
+import {triggerAS,focusBlock,insertBlock,deleteBlock,addBlockBelow,updateNums,setupBlockTracking,copyCode,downloadCode} from './blocks.js';
 import {addImageBlock,addPdfBlock,closeImageViewer,viewerNav,openImageViewer} from './media.js';
 import {showSlash,hideSlash,filterSlash,moveSlashSel,execSlash,showFmtBar,hideFmtBar} from '../ui/toolbar.js';
 import {openSearch,closeModal,closeAllModals,closeAllPanels,openShortcutHelp} from '../ui/modals.js';
@@ -392,6 +392,45 @@ export function setupBlockEvents(div,b,idx){
 
 export function setupListeners(){
   setupBlockTracking();
+
+  // Editor event delegation (click)
+  $('editor').addEventListener('click',function(e){
+    var target=e.target.closest('[data-action]');
+    if(!target)return;
+    var action=target.dataset.action;
+    var idx=target.dataset.idx!==undefined?parseInt(target.dataset.idx):null;
+    var blockId=target.dataset.blockId||null;
+
+    switch(action){
+      case'addBlockBelow':addBlockBelow(idx);break;
+      case'showBlockCtx':import('../ui/sidebar.js').then(function(m){m.showBlockCtx(e,idx)});break;
+      case'deleteBlock':deleteBlock(idx);break;
+      case'addTblRow':import('../editor/table.js').then(function(m){m.addTblRow(blockId)});break;
+      case'addTblCol':import('../editor/table.js').then(function(m){m.addTblCol(blockId)});break;
+      case'delTblRow':import('../editor/table.js').then(function(m){m.delTblRow(blockId)});break;
+      case'delTblCol':import('../editor/table.js').then(function(m){m.delTblCol(blockId)});break;
+      case'openColWidthModal':import('../editor/table.js').then(function(m){m.openColWidthModal(blockId)});break;
+      case'deleteTable':import('../editor/table.js').then(function(m){m.deleteTable(blockId)});break;
+      case'copyCode':copyCode(target);break;
+      case'downloadCode':downloadCode(target);break;
+      case'openCalloutIconPicker':import('./media.js').then(function(m){m.openCalloutIconPicker(blockId)});break;
+      case'openCodeSetting':import('./media.js').then(function(m){m.openCodeSetting(blockId)});break;
+      case'setImageScale':import('./media.js').then(function(m){m.setImageScale(idx,parseInt(target.dataset.scale))});break;
+      case'copyImageUrl':import('./media.js').then(function(m){m.copyImageUrl(idx)});break;
+      case'downloadImage':import('./media.js').then(function(m){m.downloadImage(idx)});break;
+      case'downloadFile':import('./media.js').then(function(m){m.downloadFile(idx)});break;
+    }
+  });
+
+  // Editor event delegation (change for select elements)
+  $('editor').addEventListener('change',function(e){
+    var target=e.target.closest('[data-action]');
+    if(!target)return;
+    if(target.dataset.action==='setTblAlign'){
+      import('../editor/table.js').then(function(m){m.setTblAlign(target.dataset.blockId,target.value)});
+    }
+  });
+
   document.addEventListener('click',function(e){
     if(!$('ctxMenu').contains(e.target))hideCtx();
     if(!$('slashMenu').contains(e.target)&&!e.target.classList.contains('block-content'))hideSlash();

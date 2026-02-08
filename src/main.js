@@ -11,18 +11,17 @@ import {
   getPages,getPage,focusBlock,insertBlock,addBlockBelow,deleteBlock,dupBlock,
   moveBlockUp,moveBlockDown,changeBlockType,scrollToBlk,getCurrentIdx,
   dupBlockCurrent,deleteBlockCurrent,addBlockBelowCurrent,
-  moveBlockUpCurrent,moveBlockDownCurrent,onTitleChange,copyCode,downloadCode
+  moveBlockUpCurrent,moveBlockDownCurrent,onTitleChange
 } from './editor/blocks.js';
 import {
-  addTblRow,addTblCol,delTblRow,delTblCol,setTblColor,setTblAlign,
-  deleteTable,openColWidthModal,applyColWidths
+  setTblColor,applyColWidths
 } from './editor/table.js';
 import {
   insertImage,submitImage,insertVideo,submitVideo,insertPdf,submitPdf,
   insertFile,submitFile,insertBookmark,submitBookmark,
-  openCalloutIconPicker,setCalloutIcon,openCodeSetting,submitCodeLang,
-  openImageViewer,closeImageViewer,viewerNav,copyImageUrl,setImageScale,
-  downloadImage,downloadFile,slideNav,slideTo,setSlideAuto,setSlideInterval,
+  setCalloutIcon,submitCodeLang,
+  openImageViewer,closeImageViewer,viewerNav,
+  slideNav,slideTo,setSlideAuto,setSlideInterval,
   addSlideImage,submitSlideImage,removeSlideImage,getSlideImages,insertSlide
 } from './editor/media.js';
 import {changeCalMonth,openCalEventAdd,selectEventColor,addCalEvent,deleteCalRangeEvent} from './editor/calendar.js';
@@ -36,7 +35,7 @@ import {
   deleteCurrentPage,deletePage,confirmDelete,restorePage,permanentDelete,emptyTrash,
   duplicatePage,toggleFavorite,movePage,
   renderTree,renderSidebar,
-  showPageCtx,showBlockCtx,hideCtx,
+  showPageCtx,hideCtx,
   renderVer,renderCmt,
   showTrash,showRecent,showFavorites,showTemplates
 } from './ui/sidebar.js';
@@ -186,12 +185,6 @@ window.quickTag=quickTag;
 window.removeTag=removeTag;
 window.onTitleChange=onTitleChange;
 window.scrollToBlk=scrollToBlk;
-window.copyCode=copyCode;
-window.downloadCode=downloadCode;
-window.copyImageUrl=copyImageUrl;
-window.setImageScale=setImageScale;
-window.downloadImage=downloadImage;
-window.downloadFile=downloadFile;
 window.dupBlockCurrent=dupBlockCurrent;
 window.deleteBlockCurrent=deleteBlockCurrent;
 window.addBlockBelowCurrent=addBlockBelowCurrent;
@@ -200,17 +193,9 @@ window.moveBlockDownCurrent=moveBlockDownCurrent;
 window.getCurrentIdx=getCurrentIdx;
 window.genId=genId;
 window.insertBlock=insertBlock;
-window.addTblRow=addTblRow;
-window.addTblCol=addTblCol;
-window.delTblRow=delTblRow;
-window.delTblCol=delTblCol;
 window.setTblColor=setTblColor;
-window.setTblAlign=setTblAlign;
-window.deleteTable=deleteTable;
-window.openColWidthModal=openColWidthModal;
 window.applyColWidths=applyColWidths;
 window.addBlockBelow=addBlockBelow;
-window.showBlockCtx=showBlockCtx;
 window.hideCtx=hideCtx;
 window.dupBlock=dupBlock;
 window.deleteBlock=deleteBlock;
@@ -264,9 +249,7 @@ window.insertFile=insertFile;
 window.submitFile=submitFile;
 window.insertBookmark=insertBookmark;
 window.submitBookmark=submitBookmark;
-window.openCalloutIconPicker=openCalloutIconPicker;
 window.setCalloutIcon=setCalloutIcon;
-window.openCodeSetting=openCodeSetting;
 window.submitCodeLang=submitCodeLang;
 window.addComment=addComment;
 window.editComment=editComment;

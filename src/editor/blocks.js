@@ -2,7 +2,7 @@
 
 import state from '../data/store.js';
 import {$,genId,toast,esc} from '../utils/helpers.js';
-import {renderBlocks} from './renderer.js';
+import {renderBlocks,insertBlockEl,removeBlockEl} from './renderer.js';
 
 export function triggerAS(){if(!state.editMode)return;clearTimeout(state.autoT);state.autoT=setTimeout(saveCurrent,1500)}
 export function onTitleChange(){triggerAS()}
@@ -70,7 +70,7 @@ export function focusBlock(idx,cursorPos){
 }
 export function insertBlock(idx,b){
   state.page.blocks.splice(idx,0,b);
-  renderBlocks();
+  insertBlockEl(b,idx);
   focusBlock(idx,0);
 }
 export function addBlockBelow(idx){
@@ -84,8 +84,9 @@ export function deleteBlock(idx){
     focusBlock(0,0);
     return;
   }
+  var blockId=state.page.blocks[idx].id;
   state.page.blocks.splice(idx,1);
-  renderBlocks();
+  removeBlockEl(blockId);
   // 삭제된 위치나 이전 블록으로 포커스
   var newIdx=Math.min(idx,state.page.blocks.length-1);
   focusBlock(newIdx,-1);
@@ -95,7 +96,7 @@ export function dupBlock(idx){
   var copy=JSON.parse(JSON.stringify(orig));
   copy.id=genId();
   state.page.blocks.splice(idx+1,0,copy);
-  renderBlocks();
+  insertBlockEl(copy,idx+1);
   focusBlock(idx+1,0);
   toast('블록 복제됨');
 }

@@ -14,7 +14,7 @@ export function openModal(id){$(id).classList.add('open')}
 export function closeModal(id){$(id).classList.remove('open')}
 export function closeAllModals(){$$('.modal-bg').forEach(function(m){m.classList.remove('open')})}
 export function closePanel(id){$(id).classList.remove('open')}
-export function closeAllPanels(){$$('.panel').forEach(function(p){p.classList.remove('open')})}
+export function closeAllPanels(){$$('.panel').forEach(function(p){p.classList.remove('open')});state.panelType=null}
 
 export function openSettings(){
   openModal('settingsModal');
