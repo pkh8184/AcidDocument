@@ -779,22 +779,38 @@ function convertRowsForLoad(obj){
     var newObj={};
     for(var key in obj){
       if(!obj.hasOwnProperty(key))continue;
+      var val=obj[key];
+      // JSON 문자열로 저장된 필드들 파싱
       if(key==='rowsJson'){
-        try{newObj.rows=JSON.parse(obj[key])}catch(e){newObj.rows=[['','',''],['','','']]}
+        try{newObj.rows=JSON.parse(val)}catch(e){newObj.rows=[['','',''],['','','']]}
       }else if(key==='columnsJson'){
-        try{newObj.columns=JSON.parse(obj[key])}catch(e){newObj.columns=['','']}
+        try{newObj.columns=JSON.parse(val)}catch(e){newObj.columns=['','']}
       }else if(key==='chartDataJson'){
-        try{newObj.chartData=JSON.parse(obj[key])}catch(e){newObj.chartData=[{label:'항목1',value:30}]}
+        try{newObj.chartData=JSON.parse(val)}catch(e){newObj.chartData=[{label:'항목1',value:30}]}
       }else if(key==='colWidthsJson'){
-        try{newObj.colWidths=JSON.parse(obj[key])}catch(e){newObj.colWidths=[]}
+        try{newObj.colWidths=JSON.parse(val)}catch(e){newObj.colWidths=[]}
       }else if(key==='imagesJson'){
-        try{newObj.images=JSON.parse(obj[key])}catch(e){newObj.images=[]}
+        try{newObj.images=JSON.parse(val)}catch(e){newObj.images=[]}
       }else if(key==='eventsJson'){
-        try{newObj.events=JSON.parse(obj[key])}catch(e){newObj.events={}}
+        try{newObj.events=JSON.parse(val)}catch(e){newObj.events={}}
       }else if(key==='ipLogsJson'){
-        try{newObj.ipLogs=JSON.parse(obj[key])}catch(e){newObj.ipLogs=[]}
+        try{newObj.ipLogs=JSON.parse(val)}catch(e){newObj.ipLogs=[]}
       }else if(key==='deleteLogsJson'){
-        try{newObj.deleteLogs=JSON.parse(obj[key])}catch(e){newObj.deleteLogs=[]}
+        try{newObj.deleteLogs=JSON.parse(val)}catch(e){newObj.deleteLogs=[]}
+      }
+      // users, pages가 문자열이면 파싱 (기존 데이터 호환)
+      else if(key==='users'&&typeof val==='string'){
+        try{newObj.users=JSON.parse(val)}catch(e){newObj.users=[]}
+      }else if(key==='pages'&&typeof val==='string'){
+        try{newObj.pages=JSON.parse(val)}catch(e){newObj.pages=[]}
+      }else if(key==='templates'&&typeof val==='string'){
+        try{newObj.templates=JSON.parse(val)}catch(e){newObj.templates=[]}
+      }else if(key==='settings'&&typeof val==='string'){
+        try{newObj.settings=JSON.parse(val)}catch(e){newObj.settings={}}
+      }else if(key==='ipLogs'&&typeof val==='string'){
+        try{newObj.ipLogs=JSON.parse(val)}catch(e){newObj.ipLogs=[]}
+      }else if(key==='deleteLogs'&&typeof val==='string'){
+        try{newObj.deleteLogs=JSON.parse(val)}catch(e){newObj.deleteLogs=[]}
       }else{
         newObj[key]=convertRowsForLoad(obj[key]);
       }
