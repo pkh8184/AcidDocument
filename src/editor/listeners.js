@@ -5,7 +5,7 @@ import {ALLOWED_IMAGE_TYPES} from '../config/firebase.js';
 import {$,$$,genId,toast} from '../utils/helpers.js';
 import {uploadToStorage} from '../data/firestore.js';
 import {renderBlocks} from './renderer.js';
-import {triggerAS,focusBlock,insertBlock,deleteBlock,addBlockBelow,updateNums,setupBlockTracking,copyCode,downloadCode} from './blocks.js';
+import {triggerAutoSave,focusBlock,insertBlock,deleteBlock,addBlockBelow,updateNums,setupBlockTracking,copyCode,downloadCode,findBlock,findBlockIndex} from './blocks.js';
 import {addImageBlock,addPdfBlock,closeImageViewer,viewerNav,openImageViewer} from './media.js';
 import {showSlash,hideSlash,filterSlash,moveSlashSel,execSlash,showFmtBar,hideFmtBar} from '../ui/toolbar.js';
 import {openSearch,closeModal,closeAllModals,closeAllPanels,openShortcutHelp} from '../ui/modals.js';
@@ -13,7 +13,7 @@ import {hideCtx} from '../ui/sidebar.js';
 import {showTagPicker,hideTagPicker} from '../ui/toolbar.js';
 
 export function handleKey(e,b,idx,el){
-  if(state.isComp)return;
+  if(state.isComposing)return;
   var menu=$('slashMenu'),menuOpen=menu.classList.contains('open');
   if(menuOpen){
     if(e.key==='ArrowDown'){e.preventDefault();moveSlashSel(1);return}
@@ -44,7 +44,7 @@ export function handleKey(e,b,idx,el){
       range.collapse(false);
       sel.removeAllRanges();
       sel.addRange(range);
-      triggerAS();
+      triggerAutoSave();
       return;
     }
 
@@ -133,7 +133,7 @@ export function handleKey(e,b,idx,el){
 
   // 규칙 10: 슬래시 메뉴
   if(e.key==='/'&&el.textContent===''){
-    state.slashSt={open:true,idx:idx};
+    state.slashMenuState={open:true,idx:idx};
     showSlash(el);
     return;
   }
@@ -142,7 +142,7 @@ export function handleKey(e,b,idx,el){
   if(e.key==='Tab'){
     e.preventDefault();
     document.execCommand('insertText',false,'    '); // 4칸 스페이스
-    triggerAS();
+    triggerAutoSave();
     return;
   }
 
@@ -170,7 +170,7 @@ export function handlePaste(e){
             var b={id:genId(),type:'image',src:result.url,caption:''};
             var idx=state.currentInsertIdx!==null?state.currentInsertIdx+1:state.page.blocks.length;
             state.page.blocks.splice(idx,0,b);
-            renderBlocks();triggerAS();
+            renderBlocks();triggerAutoSave();
             toast('이미지 삽입');
           }).catch(function(err){
             console.error('이미지 업로드 실패:',err);
@@ -182,7 +182,7 @@ export function handlePaste(e){
             var b={id:genId(),type:'image',src:ev.target.result,caption:''};
             var idx=state.currentInsertIdx!==null?state.currentInsertIdx+1:state.page.blocks.length;
             state.page.blocks.splice(idx,0,b);
-            renderBlocks();triggerAS();
+            renderBlocks();triggerAutoSave();
             toast('이미지 삽입');
           };
           reader.readAsDataURL(file);
@@ -204,14 +204,14 @@ export function handlePaste(e){
         idx++;
         state.page.blocks.splice(idx,0,{id:genId(),type:'text',content:lines[j]});
       }
-      renderBlocks();triggerAS();
+      renderBlocks();triggerAutoSave();
       return;
     }
   }
 
   // 단일 줄 텍스트
   document.execCommand('insertText',false,txt);
-  triggerAS();
+  triggerAutoSave();
 }
 
 export function setupBlockEvents(div,b,idx){
@@ -222,7 +222,7 @@ export function setupBlockEvents(div,b,idx){
       if(!state.editMode){import('../ui/sidebar.js').then(function(m){m.toggleEdit();setTimeout(function(){focusBlock(idx)},50)})}
     });
     el.addEventListener('input',function(){
-      triggerAS();
+      triggerAutoSave();
       // 슬래시 메뉴 필터링
       var menu=$('slashMenu');
       if(menu.classList.contains('open')){
@@ -234,9 +234,9 @@ export function setupBlockEvents(div,b,idx){
     });
     el.addEventListener('keydown',function(e){handleKey(e,b,idx,el)});
     el.addEventListener('paste',handlePaste);
-    el.addEventListener('compositionstart',function(){state.isComp=true});
+    el.addEventListener('compositionstart',function(){state.isComposing=true});
     el.addEventListener('compositionend',function(){
-      state.isComp=false;
+      state.isComposing=false;
       // 한글 조합 완료 후 슬래시 메뉴 필터링
       var menu=$('slashMenu');
       if(menu.classList.contains('open')){
@@ -265,7 +265,7 @@ export function setupBlockEvents(div,b,idx){
   // 테이블 셀
   var cells=div.querySelectorAll('th,td');
   for(var j=0;j<cells.length;j++){(function(cell){
-    cell.addEventListener('input',triggerAS);
+    cell.addEventListener('input',triggerAutoSave);
     cell.addEventListener('paste',handlePaste);
     cell.addEventListener('click',function(){if(state.editMode)cell.focus()});
     cell.addEventListener('dblclick',function(){if(!state.editMode){import('../ui/sidebar.js').then(function(m){m.toggleEdit();setTimeout(function(){cell.focus()},50)})}});
@@ -282,14 +282,10 @@ export function setupBlockEvents(div,b,idx){
       var blockEl=el.closest('.block');
       if(blockEl){
         var blockId=blockEl.getAttribute('data-id');
-        for(var i=0;i<state.page.blocks.length;i++){
-          if(state.page.blocks[i].id===blockId&&state.page.blocks[i].columns){
-            state.page.blocks[i].columns[colIdx]=el.innerHTML;
-            break;
-          }
-        }
+        var blk=findBlock(blockId);
+        if(blk&&blk.columns)blk.columns[colIdx]=el.innerHTML;
       }
-      triggerAS();
+      triggerAutoSave();
     });
     el.addEventListener('paste',handlePaste);
     el.addEventListener('mouseup',showFmtBar);
@@ -307,7 +303,7 @@ export function setupBlockEvents(div,b,idx){
   // 이미지 캡션
   var caption=div.querySelector('.block-image-caption');
   if(caption){
-    caption.addEventListener('input',triggerAS);
+    caption.addEventListener('input',triggerAutoSave);
     caption.addEventListener('paste',handlePaste);
     caption.addEventListener('dblclick',function(){if(!state.editMode){import('../ui/sidebar.js').then(function(m){m.toggleEdit();setTimeout(function(){caption.focus()},50)})}});
   }
@@ -333,7 +329,7 @@ export function setupBlockEvents(div,b,idx){
         if(!state.editMode)return;
         b.checked=cb.checked;
         div.classList.toggle('done',b.checked);
-        triggerAS();
+        triggerAutoSave();
       });
       cb.addEventListener('click',function(e){
         if(!state.editMode){e.preventDefault();import('../ui/sidebar.js').then(function(m){m.toggleEdit()})}
@@ -354,9 +350,8 @@ export function setupBlockEvents(div,b,idx){
         head.classList.toggle('open',b.open);
         body.classList.toggle('open',b.open);
         // 상태 저장
-        for(var i=0;i<state.page.blocks.length;i++){
-          if(state.page.blocks[i].id===b.id){state.page.blocks[i].open=b.open;break}
-        }
+        var blk=findBlock(b.id);
+        if(blk)blk.open=b.open;
       });
     }
     // 토글 바디의 block-content에 별도 이벤트
@@ -367,10 +362,9 @@ export function setupBlockEvents(div,b,idx){
       bodyContent.addEventListener('input',function(e){
         e.stopPropagation();
         // 직접 innerContent 업데이트
-        for(var i=0;i<state.page.blocks.length;i++){
-          if(state.page.blocks[i].id===b.id){state.page.blocks[i].innerContent=bodyContent.innerHTML;break}
-        }
-        triggerAS();
+        var blk=findBlock(b.id);
+        if(blk)blk.innerContent=bodyContent.innerHTML;
+        triggerAutoSave();
       });
       bodyContent.addEventListener('keydown',function(e){
         e.stopPropagation();
@@ -518,7 +512,7 @@ export function setupListeners(){
         (function(f){
           reader.onload=function(ev){
             var b={id:genId(),type:'file',url:ev.target.result,name:f.name};
-            state.page.blocks.push(b);renderBlocks();triggerAS()
+            state.page.blocks.push(b);renderBlocks();triggerAutoSave()
           }
         })(file);
         reader.readAsDataURL(file)

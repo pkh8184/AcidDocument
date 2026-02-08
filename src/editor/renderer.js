@@ -3,7 +3,7 @@
 import state from '../data/store.js';
 import {$,esc} from '../utils/helpers.js';
 import {sanitizeHTML} from '../utils/sanitize.js';
-import {updateNums,genTOC,triggerAS,focusBlock,deleteBlock,addBlockBelow,scrollToBlk} from './blocks.js';
+import {updateNums,genTOC,triggerAutoSave,focusBlock,deleteBlock,addBlockBelow,scrollToBlk,findBlock,findBlockIndex} from './blocks.js';
 import {renderCalendar} from './calendar.js';
 import {renderChart} from './chart.js';
 import {renderSlideBlock,getYTId,openImageViewer,setupSlideAutoPlay} from './media.js';
@@ -25,11 +25,9 @@ export function renderBlocks(){
 }
 
 export function updateBlock(blockId){
-  var b=null,idx=-1;
-  for(var i=0;i<state.page.blocks.length;i++){
-    if(state.page.blocks[i].id===blockId){b=state.page.blocks[i];idx=i;break}
-  }
+  var b=findBlock(blockId);
   if(!b)return;
+  var idx=findBlockIndex(blockId);
   var oldEl=blockElements.get(blockId);
   if(!oldEl)return;
   var newEl=createBlockEl(b,idx);

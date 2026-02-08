@@ -35,7 +35,7 @@ vi.mock('../blocks.js', () => ({
   getPage: vi.fn((id) => mockState.db.pages.find((p) => p.id === id) || null),
   getPath: vi.fn(() => []),
   collectBlocks: vi.fn(() => mockState._mockCollectedBlocks || []),
-  triggerAS: vi.fn(),
+  triggerAutoSave: vi.fn(),
 }));
 vi.mock('../../ui/modals.js', () => ({
   openModal: vi.fn(),

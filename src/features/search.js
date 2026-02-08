@@ -1,7 +1,7 @@
 // src/features/search.js — 검색
 
 import state from '../data/store.js';
-import {$,esc,fmtD,highlightText} from '../utils/helpers.js';
+import {$,esc,formatDate,highlightText} from '../utils/helpers.js';
 import {closeModal} from '../ui/modals.js';
 import {loadPage} from '../ui/sidebar.js';
 
@@ -41,7 +41,7 @@ export function doSearch(q){
     html+='<span style="font-size:22px">'+f.page.icon+'</span>';
     html+='<div><div style="font-weight:500">'+title+'</div>';
     if(prevHtml)html+='<div style="font-size:12px;color:var(--t3);margin-top:2px">'+prevHtml+'</div>';
-    html+='<div style="font-size:11px;color:var(--t4)">'+fmtD(f.page.updated)+'</div></div></div>';
+    html+='<div style="font-size:11px;color:var(--t4)">'+formatDate(f.page.updated)+'</div></div></div>';
   }
   res.innerHTML=html;
 }

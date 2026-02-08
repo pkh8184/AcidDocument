@@ -4,8 +4,8 @@ import state from '../data/store.js';
 import {$,genId,toast,esc} from '../utils/helpers.js';
 import {renderBlocks,insertBlockEl,removeBlockEl} from './renderer.js';
 
-export function triggerAS(){if(!state.editMode)return;clearTimeout(state.autoT);state.autoT=setTimeout(saveCurrent,1500)}
-export function onTitleChange(){triggerAS()}
+export function triggerAutoSave(){if(!state.editMode)return;clearTimeout(state.autoSaveTimer);state.autoSaveTimer=setTimeout(saveCurrent,1500)}
+export function onTitleChange(){triggerAutoSave()}
 
 export function saveCurrent(){if(!state.page)return;var p=getPage(state.page.id);if(!p)return;p.title=$('pageTitle').value||'제목 없음';p.icon=$('pageIcon').textContent;p.blocks=collectBlocks();p.updated=Date.now();import('../data/firestore.js').then(function(m){m.saveDB()})}
 
@@ -13,6 +13,10 @@ export function saveCurrent(){if(!state.page)return;var p=getPage(state.page.id)
 export function getPages(pid){var r=[];for(var i=0;i<state.db.pages.length;i++){if(state.db.pages[i].parentId===pid&&!state.db.pages[i].deleted)r.push(state.db.pages[i])}return r}
 export function getPage(id){for(var i=0;i<state.db.pages.length;i++){if(state.db.pages[i].id===id)return state.db.pages[i]}return null}
 export function getPath(id){var path=[],p=getPage(id);while(p){path.unshift(p);p=p.parentId?getPage(p.parentId):null}return path}
+
+// 블록 ID 검색 헬퍼
+export function findBlock(id){if(!state.page)return null;for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id)return state.page.blocks[i]}return null}
+export function findBlockIndex(id){if(!state.page)return -1;for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id)return i}return -1}
 
 /* ========== 블록 생성/삭제 규칙 ==========
  * 1. insertBlock: 지정 위치에 블록 삽입 후 포커스

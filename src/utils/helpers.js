@@ -7,8 +7,8 @@ export function $(id){return document.getElementById(id)}
 export function $$(s){return document.querySelectorAll(s)}
 export function genId(){return Date.now().toString(36)+Math.random().toString(36).substr(2,8)}
 export function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
-export function fmtD(t){return new Date(t).toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric'})}
-export function fmtDT(t){return new Date(t).toLocaleString('ko-KR')}
+export function formatDate(t){return new Date(t).toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric'})}
+export function formatDateTime(t){return new Date(t).toLocaleString('ko-KR')}
 export function toast(m,t){t=t||'ok';var w=$('toastWrap'),e=document.createElement('div');e.className='toast '+t;var ic={ok:'✅',err:'❌',warn:'⚠️'};e.innerHTML='<span style="font-size:18px">'+(ic[t]||'💬')+'</span><span style="font-size:14px">'+esc(m)+'</span>';w.appendChild(e);setTimeout(function(){e.style.opacity='0';setTimeout(function(){e.remove()},200)},3000)}
 export function setTheme(t){document.documentElement.setAttribute('data-theme',t);state.db.settings.theme=t;saveDB()}
 export function toggleTheme(){setTheme(state.db.settings.theme==='dark'?'light':'dark')}

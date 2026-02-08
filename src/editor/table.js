@@ -3,7 +3,7 @@
 import state from '../data/store.js';
 import {$,toast} from '../utils/helpers.js';
 import {renderBlocks} from './renderer.js';
-import {triggerAS} from './blocks.js';
+import {triggerAutoSave} from './blocks.js';
 import {openModal,closeModal} from '../ui/modals.js';
 
 export function collectTableData(id){
@@ -19,11 +19,11 @@ export function collectTableData(id){
   }
   return rows;
 }
-export function addTblRow(id){var rows=collectTableData(id);for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id){var b=state.page.blocks[i];b.rows=rows||b.rows;if(!b.rows)return;var cols=b.rows[0]?b.rows[0].length:3,nr=[];for(var j=0;j<cols;j++)nr.push('');b.rows.push(nr);renderBlocks();triggerAS();toast('행 추가');return}}}
-export function addTblCol(id){var rows=collectTableData(id);for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id){var b=state.page.blocks[i];b.rows=rows||b.rows;if(!b.rows)return;for(var j=0;j<b.rows.length;j++)b.rows[j].push('');renderBlocks();triggerAS();toast('열 추가');return}}}
-export function delTblRow(id){var rows=collectTableData(id);for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id){var b=state.page.blocks[i];b.rows=rows||b.rows;if(!b.rows||b.rows.length<=1)return;b.rows.pop();renderBlocks();triggerAS();toast('행 삭제');return}}}
-export function delTblCol(id){var rows=collectTableData(id);for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id){var b=state.page.blocks[i];b.rows=rows||b.rows;if(!b.rows||b.rows[0].length<=1)return;for(var j=0;j<b.rows.length;j++)b.rows[j].pop();renderBlocks();triggerAS();toast('열 삭제');return}}}
-export function setTblColor(id,type,color){if(!color)return;var rows=collectTableData(id);for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id){var b=state.page.blocks[i];b.rows=rows||b.rows;if(type==='header')b.headerColor=color;else b.cellColor=color;renderBlocks();triggerAS();return}}}
+export function addTblRow(id){var rows=collectTableData(id);for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id){var b=state.page.blocks[i];b.rows=rows||b.rows;if(!b.rows)return;var cols=b.rows[0]?b.rows[0].length:3,nr=[];for(var j=0;j<cols;j++)nr.push('');b.rows.push(nr);renderBlocks();triggerAutoSave();toast('행 추가');return}}}
+export function addTblCol(id){var rows=collectTableData(id);for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id){var b=state.page.blocks[i];b.rows=rows||b.rows;if(!b.rows)return;for(var j=0;j<b.rows.length;j++)b.rows[j].push('');renderBlocks();triggerAutoSave();toast('열 추가');return}}}
+export function delTblRow(id){var rows=collectTableData(id);for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id){var b=state.page.blocks[i];b.rows=rows||b.rows;if(!b.rows||b.rows.length<=1)return;b.rows.pop();renderBlocks();triggerAutoSave();toast('행 삭제');return}}}
+export function delTblCol(id){var rows=collectTableData(id);for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id){var b=state.page.blocks[i];b.rows=rows||b.rows;if(!b.rows||b.rows[0].length<=1)return;for(var j=0;j<b.rows.length;j++)b.rows[j].pop();renderBlocks();triggerAutoSave();toast('열 삭제');return}}}
+export function setTblColor(id,type,color){if(!color)return;var rows=collectTableData(id);for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id){var b=state.page.blocks[i];b.rows=rows||b.rows;if(type==='header')b.headerColor=color;else b.cellColor=color;renderBlocks();triggerAutoSave();return}}}
 export function setTblAlign(id,align){
   if(!align)return;
   // 먼저 현재 테이블 데이터 수집
@@ -45,9 +45,9 @@ export function setTblAlign(id,align){
       }
     }
   }
-  renderBlocks();triggerAS();toast(align==='left'?'왼쪽 정렬':align==='center'?'가운데 정렬':'오른쪽 정렬')
+  renderBlocks();triggerAutoSave();toast(align==='left'?'왼쪽 정렬':align==='center'?'가운데 정렬':'오른쪽 정렬')
 }
-export function deleteTable(id){if(!confirm('표를 삭제하시겠습니까?'))return;for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id){state.page.blocks.splice(i,1);break}}renderBlocks();triggerAS();toast('표 삭제됨')}
+export function deleteTable(id){if(!confirm('표를 삭제하시겠습니까?'))return;for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id){state.page.blocks.splice(i,1);break}}renderBlocks();triggerAutoSave();toast('표 삭제됨')}
 export function openTableSetting(id){state.currentEditBlockId=id;openModal('tableAlignModal')}
 export function openColWidthModal(id){
   state.colWidthTableId=id;
@@ -79,7 +79,7 @@ export function applyColWidths(){
     widths.push(parseInt($('colW'+c).value)||Math.floor(100/numCols));
   }
   b.colWidths=widths;
-  renderBlocks();triggerAS();
+  renderBlocks();triggerAutoSave();
   closeModal('colWidthModal');
   toast('열 너비 적용');
   state.colWidthTableId=null;
@@ -112,7 +112,7 @@ export function setupTableResize(div,b){
       if(th){
         if(!b.colWidths)b.colWidths=[];
         b.colWidths[colIdx]=th.offsetWidth;
-        triggerAS();
+        triggerAutoSave();
       }
     }
   });
@@ -144,7 +144,7 @@ export function setupColResize(div,b){
       if(col){
         if(!b.colWidths)b.colWidths=[];
         b.colWidths[colIdx]=col.offsetWidth;
-        triggerAS();
+        triggerAutoSave();
       }
     }
   });

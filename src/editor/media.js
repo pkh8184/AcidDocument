@@ -6,8 +6,14 @@ import {$,genId,esc,toast} from '../utils/helpers.js';
 import {sanitizeURL} from '../utils/sanitize.js';
 import {saveDB,uploadToStorage} from '../data/firestore.js';
 import {renderBlocks} from './renderer.js';
-import {triggerAS,deleteBlock} from './blocks.js';
+import {triggerAutoSave,deleteBlock,findBlock} from './blocks.js';
 import {openModal,closeModal} from '../ui/modals.js';
+
+function insertMediaBlock(b){
+  if(state.slashMenuState.idx!==null){state.page.blocks[state.slashMenuState.idx]=b;state.slashMenuState.idx=null}
+  else if(state.currentInsertIdx!==null){state.page.blocks.splice(state.currentInsertIdx+1,0,b);state.currentInsertIdx=null}
+  else state.page.blocks.push(b);
+}
 
 export function getYTId(url){if(!url)return null;var m=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);return m?m[1]:null}
 
@@ -33,10 +39,8 @@ export function submitImage(){
 }
 export function addImageBlock(src){
   var b={id:genId(),type:'image',src:src,caption:''};
-  if(state.slashSt.idx!==null){state.page.blocks[state.slashSt.idx]=b;state.slashSt.idx=null}
-  else if(state.currentInsertIdx!==null){state.page.blocks.splice(state.currentInsertIdx+1,0,b);state.currentInsertIdx=null}
-  else state.page.blocks.push(b);
-  renderBlocks();triggerAS();closeModal('imageUploadModal');toast('이미지 삽입')
+  insertMediaBlock(b);
+  renderBlocks();triggerAutoSave();closeModal('imageUploadModal');toast('이미지 삽입')
 }
 
 // 이미지 뷰어
@@ -95,7 +99,7 @@ export function copyImageUrl(idx){
     img.src=b.src;
   }
 }
-export function setImageScale(idx,scale){state.page.blocks[idx].scale=scale;renderBlocks();triggerAS();toast(scale+'% 크기')}
+export function setImageScale(idx,scale){state.page.blocks[idx].scale=scale;renderBlocks();triggerAutoSave();toast(scale+'% 크기')}
 export function downloadImage(idx){
   var b=state.page.blocks[idx];
   if(b&&b.src){
@@ -184,20 +188,18 @@ export function slideTo(idx,i){
 }
 export function setSlideAuto(idx,auto){
   state.page.blocks[idx].autoPlay=auto;
-  triggerAS();
+  triggerAutoSave();
   renderBlocks();
 }
 export function setSlideInterval(idx,val){
   state.page.blocks[idx].interval=parseInt(val);
-  triggerAS();
+  triggerAutoSave();
 }
 export function insertSlide(){
   var b={id:genId(),type:'slide',images:[],currentSlide:0,autoPlay:false,interval:3000};
-  if(state.slashSt.idx!==null){state.page.blocks[state.slashSt.idx]=b;state.slashSt.idx=null}
-  else if(state.currentInsertIdx!==null){state.page.blocks.splice(state.currentInsertIdx+1,0,b);state.currentInsertIdx=null}
-  else state.page.blocks.push(b);
+  insertMediaBlock(b);
   state.page.blocks.splice(state.page.blocks.indexOf(b)+1,0,{id:genId(),type:'text',content:''});
-  renderBlocks();triggerAS();toast('슬라이드 추가');
+  renderBlocks();triggerAutoSave();toast('슬라이드 추가');
 }
 export function addSlideImage(idx){
   state.currentSlideIdx=idx;
@@ -231,7 +233,7 @@ export function addSlideImageSrc(src){
   if(state.currentSlideIdx===null)return;
   if(!state.page.blocks[state.currentSlideIdx].images)state.page.blocks[state.currentSlideIdx].images=[];
   state.page.blocks[state.currentSlideIdx].images.push(src);
-  renderBlocks();triggerAS();
+  renderBlocks();triggerAutoSave();
   closeModal('slideImageModal');
   toast('이미지 추가');
   state.currentSlideIdx=null;
@@ -241,7 +243,7 @@ export function removeSlideImage(idx,imgIdx){
   if(state.page.blocks[idx].currentSlide>=state.page.blocks[idx].images.length){
     state.page.blocks[idx].currentSlide=Math.max(0,state.page.blocks[idx].images.length-1);
   }
-  renderBlocks();triggerAS();
+  renderBlocks();triggerAutoSave();
 }
 
 // 슬라이드 자동 재생
@@ -280,10 +282,8 @@ export function submitVideo(){
 }
 export function addVideoBlock(src,fname){
   var b={id:genId(),type:'video',url:src,isFile:!!fname,fileName:fname||''};
-  if(state.slashSt.idx!==null){state.page.blocks[state.slashSt.idx]=b;state.slashSt.idx=null}
-  else if(state.currentInsertIdx!==null){state.page.blocks.splice(state.currentInsertIdx+1,0,b);state.currentInsertIdx=null}
-  else state.page.blocks.push(b);
-  renderBlocks();triggerAS();closeModal('videoUploadModal');toast('동영상 삽입')
+  insertMediaBlock(b);
+  renderBlocks();triggerAutoSave();closeModal('videoUploadModal');toast('동영상 삽입')
 }
 export function insertPdf(){openModal('pdfUploadModal');$('pdfUrlInput').value='';$('pdfFileInput').value=''}
 export function submitPdf(){
@@ -297,10 +297,8 @@ export function submitPdf(){
 }
 export function addPdfBlock(src){
   var b={id:genId(),type:'pdf',src:src};
-  if(state.slashSt.idx!==null){state.page.blocks[state.slashSt.idx]=b;state.slashSt.idx=null}
-  else if(state.currentInsertIdx!==null){state.page.blocks.splice(state.currentInsertIdx+1,0,b);state.currentInsertIdx=null}
-  else state.page.blocks.push(b);
-  renderBlocks();triggerAS();closeModal('pdfUploadModal');toast('PDF 삽입')
+  insertMediaBlock(b);
+  renderBlocks();triggerAutoSave();closeModal('pdfUploadModal');toast('PDF 삽입')
 }
 export function insertFile(){openModal('fileUploadModal');$('fileFileInput').value=''}
 export function insertBookmark(){
@@ -317,12 +315,10 @@ export function submitBookmark(){
   var title=$('bookmarkTitleInput').value.trim()||'';
   var desc=$('bookmarkDescInput').value.trim()||'';
   var b={id:genId(),type:'bookmark',url:url,title:title,description:desc,image:''};
-  if(state.slashSt.idx!==null){state.page.blocks[state.slashSt.idx]=b;state.slashSt.idx=null}
-  else if(state.currentInsertIdx!==null){state.page.blocks.splice(state.currentInsertIdx+1,0,b);state.currentInsertIdx=null}
-  else state.page.blocks.push(b);
+  insertMediaBlock(b);
   // 아래에 빈 블록 추가
   state.page.blocks.splice(state.page.blocks.indexOf(b)+1,0,{id:genId(),type:'text',content:''});
-  renderBlocks();triggerAS();closeModal('bookmarkModal');toast('북마크 삽입')
+  renderBlocks();triggerAutoSave();closeModal('bookmarkModal');toast('북마크 삽입')
 }
 export function submitFile(){
   var file=$('fileFileInput').files[0];
@@ -330,16 +326,14 @@ export function submitFile(){
   var reader=new FileReader();
   reader.onload=function(e){
     var b={id:genId(),type:'file',url:e.target.result,name:file.name};
-    if(state.slashSt.idx!==null){state.page.blocks[state.slashSt.idx]=b;state.slashSt.idx=null}
-    else if(state.currentInsertIdx!==null){state.page.blocks.splice(state.currentInsertIdx+1,0,b);state.currentInsertIdx=null}
-    else state.page.blocks.push(b);
-    renderBlocks();triggerAS();closeModal('fileUploadModal');toast('파일 삽입')
+    insertMediaBlock(b);
+    renderBlocks();triggerAutoSave();closeModal('fileUploadModal');toast('파일 삽입')
   };
   reader.readAsDataURL(file)
 }
 
 // 콜아웃/코드 설정
 export function openCalloutIconPicker(id){state.currentEditBlockId=id;var icons=['💡','✅','⚠️','❌','📌','🔔','💬','📝','🎯','⭐','🚀','💪','🔥','❤️','👍','📢'];var html='';for(var i=0;i<icons.length;i++)html+='<div class="icon-item" onclick="setCalloutIcon(\''+icons[i]+'\')">'+icons[i]+'</div>';$('calloutIconGrid').innerHTML=html;openModal('calloutIconModal')}
-export function setCalloutIcon(icon){if(!state.currentEditBlockId)return;for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===state.currentEditBlockId){state.page.blocks[i].icon=icon;break}}renderBlocks();triggerAS();closeModal('calloutIconModal');state.currentEditBlockId=null}
-export function openCodeSetting(id){state.currentEditBlockId=id;for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id){$('codeLangInput').value=state.page.blocks[i].lang||'';break}}openModal('codeSettingModal')}
-export function submitCodeLang(){if(!state.currentEditBlockId)return;var lang=$('codeLangInput').value.trim();for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===state.currentEditBlockId){state.page.blocks[i].lang=lang;break}}renderBlocks();triggerAS();closeModal('codeSettingModal');state.currentEditBlockId=null;toast('저장됨')}
+export function setCalloutIcon(icon){if(!state.currentEditBlockId)return;var b=findBlock(state.currentEditBlockId);if(b)b.icon=icon;renderBlocks();triggerAutoSave();closeModal('calloutIconModal');state.currentEditBlockId=null}
+export function openCodeSetting(id){state.currentEditBlockId=id;var b=findBlock(id);if(b)$('codeLangInput').value=b.lang||'';openModal('codeSettingModal')}
+export function submitCodeLang(){if(!state.currentEditBlockId)return;var lang=$('codeLangInput').value.trim();var b=findBlock(state.currentEditBlockId);if(b)b.lang=lang;renderBlocks();triggerAutoSave();closeModal('codeSettingModal');state.currentEditBlockId=null;toast('저장됨')}

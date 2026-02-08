@@ -4,7 +4,7 @@ import state from '../data/store.js';
 import {esc} from '../utils/helpers.js';
 import {CHART_COLORS} from '../config/firebase.js';
 import {renderBlocks} from './renderer.js';
-import {triggerAS} from './blocks.js';
+import {triggerAutoSave} from './blocks.js';
 
 export function renderChart(b,idx){
   var data=b.chartData||[{label:'항목1',value:30},{label:'항목2',value:50},{label:'항목3',value:20}];
@@ -106,7 +106,7 @@ export function renderChart(b,idx){
   html+='</div>';
   return html;
 }
-export function updateChartTitle(idx,title){state.page.blocks[idx].chartTitle=title;triggerAS()}
-export function updateChartData(idx,row,field,value){state.page.blocks[idx].chartData[row][field]=value;renderBlocks();triggerAS()}
-export function addChartData(idx){state.page.blocks[idx].chartData.push({label:'새 항목',value:10});renderBlocks();triggerAS()}
-export function removeChartData(idx,row){if(state.page.blocks[idx].chartData.length>1){state.page.blocks[idx].chartData.splice(row,1);renderBlocks();triggerAS()}}
+export function updateChartTitle(idx,title){state.page.blocks[idx].chartTitle=title;triggerAutoSave()}
+export function updateChartData(idx,row,field,value){state.page.blocks[idx].chartData[row][field]=value;renderBlocks();triggerAutoSave()}
+export function addChartData(idx){state.page.blocks[idx].chartData.push({label:'새 항목',value:10});renderBlocks();triggerAutoSave()}
+export function removeChartData(idx,row){if(state.page.blocks[idx].chartData.length>1){state.page.blocks[idx].chartData.splice(row,1);renderBlocks();triggerAutoSave()}}

@@ -2,7 +2,7 @@
 
 import state from '../data/store.js';
 import {SUPER,ICONS,STORAGE_LIMIT,auth} from '../config/firebase.js';
-import {$,$$,esc,toast,fmtD,formatBytes} from '../utils/helpers.js';
+import {$,$$,esc,toast,formatDate,formatBytes} from '../utils/helpers.js';
 import {saveDB,uploadToStorage,updateStorageUsage} from '../data/firestore.js';
 import {isSuper} from '../auth/auth.js';
 import {renderTree} from './sidebar.js';
@@ -250,7 +250,7 @@ export function changePassword(){
   }
   $('setPwCur').value=$('setPwNew').value='';toast('변경됨');
 }
-export function saveWorkspace(){state.db.settings.wsName=$('setWsName').value||'DocSpace';saveDB();$('wsName').textContent=state.db.settings.wsName;import('./sidebar.js').then(function(m){m.renderBC()});toast('저장됨')}
+export function saveWorkspace(){state.db.settings.wsName=$('setWsName').value||'DocSpace';saveDB();$('wsName').textContent=state.db.settings.wsName;import('./sidebar.js').then(function(m){m.renderBreadcrumb()});toast('저장됨')}
 // 공지사항
 export function saveNotice(){if(!isSuper()){toast('권한 없음','err');return}state.db.settings.notice=$('noticeContent').value;saveDB();updateNoticeBar();toast('공지 저장')}
 export function clearNotice(){if(!isSuper()){toast('권한 없음','err');return}state.db.settings.notice='';$('noticeContent').value='';saveDB();updateNoticeBar();toast('공지 삭제')}

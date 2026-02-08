@@ -4,14 +4,14 @@ import state from '../data/store.js';
 import {$,$$,genId,esc,toast} from '../utils/helpers.js';
 import {COLORS,SLASH,EMOJIS} from '../config/firebase.js';
 import {renderBlocks} from '../editor/renderer.js';
-import {triggerAS,focusBlock,insertBlock} from '../editor/blocks.js';
+import {triggerAutoSave,focusBlock,insertBlock} from '../editor/blocks.js';
 import {openModal,closeModal} from './modals.js';
 import {insertImage,insertSlide,insertVideo,insertPdf,insertFile,insertBookmark} from '../editor/media.js';
 
 // 서식바
 export function showFmtBar(){var sel=window.getSelection();if(!sel.rangeCount||sel.isCollapsed){hideFmtBar();return}var rng=sel.getRangeAt(0),rect=rng.getBoundingClientRect();if(rect.width<5){hideFmtBar();return}var bar=$('fmtBar');bar.style.left=Math.max(10,rect.left+rect.width/2-110)+'px';bar.style.top=Math.max(10,rect.top-50)+'px';bar.classList.add('open')}
 export function hideFmtBar(){$('fmtBar').classList.remove('open')}
-export function fmtCmd(cmd){document.execCommand(cmd,false,null);triggerAS()}
+export function fmtCmd(cmd){document.execCommand(cmd,false,null);triggerAutoSave()}
 export function saveSelection(){
   var sel=window.getSelection();
   if(sel.rangeCount>0)state.savedSelection=sel.getRangeAt(0).cloneRange();
@@ -24,11 +24,11 @@ export function restoreSelection(){
   }
 }
 export function openColorPicker(){saveSelection();var html='';for(var i=0;i<COLORS.length;i++)html+='<div class="color-item" style="background:'+COLORS[i]+'" onclick="applyColor(\''+COLORS[i]+'\')"></div>';$('colorGrid').innerHTML=html;openModal('colorModal')}
-export function applyColor(c){closeModal('colorModal');restoreSelection();document.execCommand('foreColor',false,c);triggerAS()}
+export function applyColor(c){closeModal('colorModal');restoreSelection();document.execCommand('foreColor',false,c);triggerAutoSave()}
 
 // 슬래시 메뉴
 export function showSlash(el){var menu=$('slashMenu');menu.style.left='320px';menu.style.top='auto';menu.style.bottom='200px';renderSlashMenu('');menu.classList.add('open')}
-export function hideSlash(){$('slashMenu').classList.remove('open');state.slashSt={open:false,idx:null}}
+export function hideSlash(){$('slashMenu').classList.remove('open');state.slashMenuState={open:false,idx:null}}
 export function renderSlashMenu(filter){
   var menu=$('slashMenu'),q=filter.toLowerCase().trim(),html='',hasItems=false,first=true;
   for(var s=0;s<SLASH.length;s++){
@@ -46,15 +46,15 @@ export function renderSlashMenu(filter){
 export function filterSlash(q){renderSlashMenu(q)}
 export function moveSlashSel(dir){var menu=$('slashMenu'),items=menu.querySelectorAll('.slash-item');if(!items.length)return;var cur=-1;for(var i=0;i<items.length;i++){if(items[i].classList.contains('sel')){cur=i;break}}var n=cur+dir;if(n<0)n=items.length-1;if(n>=items.length)n=0;for(var j=0;j<items.length;j++)items[j].classList.remove('sel');items[n].classList.add('sel');items[n].scrollIntoView({block:'nearest'})}
 export function execSlash(type){
-  var idx=state.slashSt.idx;hideSlash();if(idx===null)return;
-  if(type==='image'){state.slashSt.idx=idx;insertImage();return}
-  if(type==='slide'){state.slashSt.idx=idx;insertSlide();return}
-  if(type==='video'){state.slashSt.idx=idx;insertVideo();return}
-  if(type==='pdf'){state.slashSt.idx=idx;insertPdf();return}
-  if(type==='file'){state.slashSt.idx=idx;insertFile();return}
-  if(type==='bookmark'){state.slashSt.idx=idx;insertBookmark();return}
-  if(type==='emoji'){state.slashSt.idx=idx;openEmojiPicker();return}
-  if(type==='mention'){state.slashSt.idx=idx;openMentionPicker();return}
+  var idx=state.slashMenuState.idx;hideSlash();if(idx===null)return;
+  if(type==='image'){state.slashMenuState.idx=idx;insertImage();return}
+  if(type==='slide'){state.slashMenuState.idx=idx;insertSlide();return}
+  if(type==='video'){state.slashMenuState.idx=idx;insertVideo();return}
+  if(type==='pdf'){state.slashMenuState.idx=idx;insertPdf();return}
+  if(type==='file'){state.slashMenuState.idx=idx;insertFile();return}
+  if(type==='bookmark'){state.slashMenuState.idx=idx;insertBookmark();return}
+  if(type==='emoji'){state.slashMenuState.idx=idx;openEmojiPicker();return}
+  if(type==='mention'){state.slashMenuState.idx=idx;openMentionPicker();return}
   var b=state.page.blocks[idx];b.type=type;b.content='';
   switch(type){
     case'table':b.rows=[['','',''],['','','']];break;
@@ -101,13 +101,13 @@ export function filterEmoji(q){
 }
 export function insertEmoji(emoji){
   closeModal('emojiModal');
-  var idx=state.slashSt.idx;
+  var idx=state.slashMenuState.idx;
   if(idx!==null&&state.page.blocks[idx]){
     state.page.blocks[idx].content=(state.page.blocks[idx].content||'')+emoji;
     state.page.blocks[idx].type=state.page.blocks[idx].type||'text';
-    renderBlocks();focusBlock(idx,'end');triggerAS();
+    renderBlocks();focusBlock(idx,'end');triggerAutoSave();
   }
-  state.slashSt.idx=null;
+  state.slashMenuState.idx=null;
 }
 
 // 멘션 (사용자 태그)
@@ -128,14 +128,14 @@ export function openMentionPicker(){
 }
 export function insertMention(userId,userName){
   closeModal('mentionModal');
-  var idx=state.slashSt.idx;
+  var idx=state.slashMenuState.idx;
   if(idx!==null&&state.page.blocks[idx]){
     var tag='<span class="mention-tag" contenteditable="false" data-user="'+esc(userId)+'">@'+esc(userName)+'</span>&nbsp;';
     state.page.blocks[idx].content=(state.page.blocks[idx].content||'')+tag;
     state.page.blocks[idx].type=state.page.blocks[idx].type||'text';
-    renderBlocks();focusBlock(idx,'end');triggerAS();
+    renderBlocks();focusBlock(idx,'end');triggerAutoSave();
   }
-  state.slashSt.idx=null;
+  state.slashMenuState.idx=null;
 }
 
 // 인라인 태그
@@ -162,7 +162,7 @@ export function changeTagColor(color){
   var classes=state.currentTagElement.className.split(' ').filter(function(c){return!c.startsWith('tag-')});
   classes.push('tag-'+color);
   state.currentTagElement.className=classes.join(' ');
-  triggerAS();
+  triggerAutoSave();
   hideTagPicker();
 }
 export function removeInlineTag(){
@@ -170,6 +170,6 @@ export function removeInlineTag(){
   var text=state.currentTagElement.textContent.replace('@','');
   var textNode=document.createTextNode(text+' ');
   state.currentTagElement.parentNode.replaceChild(textNode,state.currentTagElement);
-  triggerAS();
+  triggerAutoSave();
   hideTagPicker();
 }

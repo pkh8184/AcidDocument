@@ -15,8 +15,8 @@ vi.mock('../../data/firestore.js', () => ({
 import {
   genId,
   esc,
-  fmtD,
-  fmtDT,
+  formatDate,
+  formatDateTime,
   formatBytes,
   highlightText,
   getLoginState,
@@ -65,48 +65,48 @@ describe('esc', () => {
   });
 });
 
-// ─── fmtD ─────────────────────────────────────────────────
-describe('fmtD', () => {
+// ─── formatDate ─────────────────────────────────────────────────
+describe('formatDate', () => {
   // 고정 타임스탬프: 2025-01-15T00:00:00.000Z
   const ts = new Date(2025, 0, 15).getTime();
 
   it('문자열을 반환한다', () => {
-    const result = fmtD(ts);
+    const result = formatDate(ts);
     expect(typeof result).toBe('string');
     expect(result.length).toBeGreaterThan(0);
   });
 
   it('연도를 포함한다', () => {
-    expect(fmtD(ts)).toContain('2025');
+    expect(formatDate(ts)).toContain('2025');
   });
 
   it('월·일 정보를 포함한다', () => {
-    const result = fmtD(ts);
+    const result = formatDate(ts);
     // "1월" 또는 "Jan" 등 로케일에 따른 월, "15" 일
     expect(result).toContain('15');
   });
 });
 
-// ─── fmtDT ────────────────────────────────────────────────
-describe('fmtDT', () => {
+// ─── formatDateTime ────────────────────────────────────────────────
+describe('formatDateTime', () => {
   // 고정 타임스탬프: 2025-06-20T14:30:00 (로컬)
   const ts = new Date(2025, 5, 20, 14, 30, 0).getTime();
 
   it('문자열을 반환한다', () => {
-    const result = fmtDT(ts);
+    const result = formatDateTime(ts);
     expect(typeof result).toBe('string');
     expect(result.length).toBeGreaterThan(0);
   });
 
   it('연도를 포함한다', () => {
-    expect(fmtDT(ts)).toContain('2025');
+    expect(formatDateTime(ts)).toContain('2025');
   });
 
   it('날짜와 시간 정보를 모두 포함한다', () => {
-    const result = fmtDT(ts);
+    const result = formatDateTime(ts);
     expect(result).toContain('20');
     // 시간 부분 — "14" 또는 "2" (12h) 또는 "오후" 등
-    expect(result.length).toBeGreaterThan(fmtD(ts).length);
+    expect(result.length).toBeGreaterThan(formatDate(ts).length);
   });
 });
 

@@ -2,10 +2,10 @@
 
 import state from '../data/store.js';
 import {MAX_VER} from '../config/firebase.js';
-import {$,$$,genId,esc,fmtD,fmtDT,toast} from '../utils/helpers.js';
+import {$,$$,genId,esc,formatDate,formatDateTime,toast} from '../utils/helpers.js';
 import {saveDB,logDeleteAction,USE_NEW_STRUCTURE,batchDeletePages} from '../data/firestore.js';
 import {isSuper} from '../auth/auth.js';
-import {getPages,getPage,getPath,collectBlocks,triggerAS} from '../editor/blocks.js';
+import {getPages,getPage,getPath,collectBlocks,triggerAutoSave} from '../editor/blocks.js';
 import {renderBlocks} from '../editor/renderer.js';
 import {openModal,closeModal,closeAllPanels} from './modals.js';
 
@@ -21,7 +21,7 @@ export function loadRecent(){
   }catch(e){state.db.recent=state.db.recent||[]}
 }
 
-export function renderBC(){var path=getPath(state.page.id),html='<span>'+esc(state.db.settings.wsName)+'</span>';for(var i=0;i<path.length;i++)html+=' / <span>'+path[i].icon+' '+esc(path[i].title)+'</span>';$('breadcrumb').innerHTML=html}
+export function renderBreadcrumb(){var path=getPath(state.page.id),html='<span>'+esc(state.db.settings.wsName)+'</span>';for(var i=0;i<path.length;i++)html+=' / <span>'+path[i].icon+' '+esc(path[i].title)+'</span>';$('breadcrumb').innerHTML=html}
 export function renderMeta(){
   var authorId=state.page.author||'';
   var authorName=authorId||'알 수 없음';
@@ -34,7 +34,7 @@ export function renderMeta(){
       }
     }
   }
-  $('pageMeta').innerHTML='<span>✍️ '+esc(authorName)+'</span><span>📅 '+fmtD(state.page.updated)+'</span><span>v'+(state.page.versions.length+1)+'</span>';
+  $('pageMeta').innerHTML='<span>✍️ '+esc(authorName)+'</span><span>📅 '+formatDate(state.page.updated)+'</span><span>v'+(state.page.versions.length+1)+'</span>';
 }
 export function renderTags(){
   var html='';
@@ -54,8 +54,9 @@ export function renderTags(){
   $('pageTags').innerHTML=html;
 }
 export function openTagModal(){$('tagInput').value='';openModal('tagModal');setTimeout(function(){$('tagInput').focus()},100)}
-export function submitTag(){var t=$('tagInput').value.trim();if(!t){toast('태그를 입력하세요','err');return}if(state.page.tags.indexOf(t)!==-1){toast('이미 존재하는 태그','err');return}state.page.tags.push(t);saveDB();renderTags();closeModal('tagModal');toast('태그 추가')}
-export function quickTag(t){if(state.page.tags.indexOf(t)!==-1){toast('이미 존재하는 태그','err');return}state.page.tags.push(t);saveDB();renderTags();closeModal('tagModal');toast('태그 추가')}
+function addTag(t){if(state.page.tags.indexOf(t)!==-1){toast('이미 존재하는 태그','err');return false}state.page.tags.push(t);saveDB();renderTags();closeModal('tagModal');toast('태그 추가');return true}
+export function submitTag(){var t=$('tagInput').value.trim();if(!t){toast('태그를 입력하세요','err');return}addTag(t)}
+export function quickTag(t){addTag(t)}
 export function removeTag(t){state.page.tags=state.page.tags.filter(function(x){return x!==t});saveDB();renderTags()}
 
 // 사용자(작업자) 태그
@@ -84,7 +85,7 @@ export function addUserTag(userId,userName){
   }
   state.page.userTags.push({id:userId,name:userName});
   renderTags();
-  triggerAS();
+  triggerAutoSave();
   closeModal('userTagModal');
   toast(userName+' 추가됨');
 }
@@ -92,7 +93,7 @@ export function removeUserTag(userId){
   if(!state.page.userTags)return;
   state.page.userTags=state.page.userTags.filter(function(u){return u.id!==userId});
   renderTags();
-  triggerAS();
+  triggerAutoSave();
 }
 
 // 페이지 이름 변경
@@ -149,9 +150,9 @@ export function loadPage(id){
   $('pageIcon').textContent=p.icon;$('pageTitle').value=p.title;$('pageTitle').setAttribute('readonly','readonly');
   $('editBtn').style.display='inline-flex';$('deletePageBtn').style.display='inline-flex';
   $('saveBtn').style.display='none';$('cancelBtn').style.display='none';
-  renderMeta();renderTags();renderBlocks();renderBC();renderTree();
-  if(state.panelType==='versions')renderVer();
-  if(state.panelType==='comments')renderCmt();
+  renderMeta();renderTags();renderBlocks();renderBreadcrumb();renderTree();
+  if(state.panelType==='versions')renderVersions();
+  if(state.panelType==='comments')renderComments();
   state.db.recent=state.db.recent.filter(function(x){return x!==id});state.db.recent.unshift(id);if(state.db.recent.length>30)state.db.recent.pop();
   saveRecent();saveDB();closeMobile();$('editorWrap').scrollTop=0
 }
@@ -162,9 +163,9 @@ export function loadPageWithoutPush(id){
   $('pageIcon').textContent=p.icon;$('pageTitle').value=p.title;$('pageTitle').setAttribute('readonly','readonly');
   $('editBtn').style.display='inline-flex';$('deletePageBtn').style.display='inline-flex';
   $('saveBtn').style.display='none';$('cancelBtn').style.display='none';
-  renderMeta();renderTags();renderBlocks();renderBC();renderTree();
-  if(state.panelType==='versions')renderVer();
-  if(state.panelType==='comments')renderCmt();
+  renderMeta();renderTags();renderBlocks();renderBreadcrumb();renderTree();
+  if(state.panelType==='versions')renderVersions();
+  if(state.panelType==='comments')renderComments();
   state.db.recent=state.db.recent.filter(function(x){return x!==id});state.db.recent.unshift(id);if(state.db.recent.length>30)state.db.recent.pop();
   saveRecent();saveDB();closeMobile();$('editorWrap').scrollTop=0
 }
@@ -173,7 +174,7 @@ export function saveDoc(){
   p.title=$('pageTitle').value||'제목 없음';p.icon=$('pageIcon').textContent;p.blocks=collectBlocks();p.updated=Date.now();
   p.versions.push({id:genId(),date:Date.now(),author:state.user.id,blocks:JSON.parse(JSON.stringify(p.blocks))});
   if(p.versions.length>MAX_VER)p.versions.shift();
-  saveDB();state.page=p;renderMeta();renderTree();renderVer();toast('저장됨')
+  saveDB();state.page=p;renderMeta();renderTree();renderVersions();toast('저장됨')
 }
 export function toggleEdit(){
   if(!state.editMode){
@@ -220,7 +221,7 @@ export function exitEditMode(){
   renderBlocks()
 }
 export function deleteCurrentPage(){if(state.page)deletePage(state.page.id)}
-export function onTitleChange(){triggerAS()}
+export function onTitleChange(){triggerAutoSave()}
 export function deletePage(id){state.deleteTargetId=id;var p=getPage(id);$('deleteConfirmText').textContent='"'+p.title+'" 페이지를 삭제하시겠습니까?';openModal('deleteConfirmModal')}
 export function confirmDelete(){
   var id=state.deleteTargetId;closeModal('deleteConfirmModal');
@@ -297,8 +298,8 @@ export function movePage(id,newParentId){
 
 // 트리 렌더링 (드래그앤드롭)
 var expandedNodes=new Set();
-export function renderTree(){$('pageTree').innerHTML='';renderTreeLv(null,$('pageTree'))}
-export function renderTreeLv(pid,con){
+export function renderTree(){$('pageTree').innerHTML='';renderTreeLevel(null,$('pageTree'))}
+export function renderTreeLevel(pid,con){
   var pgs=getPages(pid);
   for(var i=0;i<pgs.length;i++){
     (function(p){
@@ -317,12 +318,12 @@ export function renderTreeLv(pid,con){
       row.addEventListener('drop',function(e){e.preventDefault();row.classList.remove('drag-over');if(state.dragPageId&&state.dragPageId!==p.id)movePage(state.dragPageId,p.id)});
       if(hasCh){
         var isOpen=expandedNodes.has(p.id);
-        if(isOpen){tog.classList.add('open');ch.classList.remove('closed');renderTreeLv(p.id,ch)}
+        if(isOpen){tog.classList.add('open');ch.classList.remove('closed');renderTreeLevel(p.id,ch)}
         tog.addEventListener('click',function(e){
           e.stopPropagation();
           if(expandedNodes.has(p.id)){expandedNodes.delete(p.id)}else{expandedNodes.add(p.id)}
           tog.classList.toggle('open');ch.classList.toggle('closed');
-          if(!ch.classList.contains('closed')&&ch.children.length===0)renderTreeLv(p.id,ch)
+          if(!ch.classList.contains('closed')&&ch.children.length===0)renderTreeLevel(p.id,ch)
         })
       }
     })(pgs[i])
@@ -371,10 +372,11 @@ export function showCtxAt(x,y){var m=$('ctxMenu');m.style.left=Math.min(x,window
 export function hideCtx(){$('ctxMenu').classList.remove('open')}
 
 // 버전 렌더링
-export function renderVer(){var list=state.page.versions.slice().reverse(),html='';if(list.length===0){$('versionList').innerHTML='<div style="text-align:center;color:var(--t4);padding:30px">버전 기록 없음</div>';return}for(var i=0;i<list.length;i++){var v=list[i],isCur=i===0;html+='<div class="ver-item'+(isCur?' current':'')+'" onclick="'+(isCur?'':'restoreVer(\''+v.id+'\')')+'"><div><div style="font-weight:500">'+fmtDT(v.date)+(isCur?' <span class="badge badge-p">현재</span>':'')+'</div><div style="font-size:13px;color:var(--t4)">'+esc(v.author)+'</div></div>'+(isCur?'':'<button class="btn btn-sm btn-s" onclick="event.stopPropagation();deleteVer(\''+v.id+'\')">삭제</button>')+'</div>'}$('versionList').innerHTML=html}
-export function renderCmt(){var list=state.page.comments,html='';if(list.length===0){$('commentList').innerHTML='<div style="text-align:center;color:var(--t4);padding:30px">댓글 없음</div>';return}for(var i=0;i<list.length;i++){var c=list[i],isOwner=(c.author===(state.user.nickname||state.user.id))||isSuper();html+='<div class="cmt-item"><div class="cmt-head"><div class="cmt-avatar">'+c.author.slice(-2).toUpperCase()+'</div><div style="flex:1"><div style="font-weight:500;font-size:14px">'+esc(c.author)+'</div><div style="font-size:12px;color:var(--t4)">'+fmtDT(c.date)+'</div></div>'+(isOwner?'<div style="display:flex;gap:4px"><button class="btn btn-sm btn-g" onclick="editComment(\''+c.id+'\')">✏️</button><button class="btn btn-sm btn-g" style="color:var(--err)" onclick="deleteComment(\''+c.id+'\')">🗑️</button></div>':'')+'</div><div style="font-size:14px;color:var(--t2);margin-top:8px">'+esc(c.text)+'</div></div>'}$('commentList').innerHTML=html}
+export function renderVersions(){var list=state.page.versions.slice().reverse(),html='';if(list.length===0){$('versionList').innerHTML='<div style="text-align:center;color:var(--t4);padding:30px">버전 기록 없음</div>';return}for(var i=0;i<list.length;i++){var v=list[i],isCur=i===0;html+='<div class="ver-item'+(isCur?' current':'')+'" onclick="'+(isCur?'':'restoreVer(\''+v.id+'\')')+'"><div><div style="font-weight:500">'+formatDateTime(v.date)+(isCur?' <span class="badge badge-p">현재</span>':'')+'</div><div style="font-size:13px;color:var(--t4)">'+esc(v.author)+'</div></div>'+(isCur?'':'<button class="btn btn-sm btn-s" onclick="event.stopPropagation();deleteVer(\''+v.id+'\')">삭제</button>')+'</div>'}$('versionList').innerHTML=html}
+export function renderComments(){var list=state.page.comments,html='';if(list.length===0){$('commentList').innerHTML='<div style="text-align:center;color:var(--t4);padding:30px">댓글 없음</div>';return}for(var i=0;i<list.length;i++){var c=list[i],isOwner=(c.author===(state.user.nickname||state.user.id))||isSuper();html+='<div class="cmt-item"><div class="cmt-head"><div class="cmt-avatar">'+c.author.slice(-2).toUpperCase()+'</div><div style="flex:1"><div style="font-weight:500;font-size:14px">'+esc(c.author)+'</div><div style="font-size:12px;color:var(--t4)">'+formatDateTime(c.date)+'</div></div>'+(isOwner?'<div style="display:flex;gap:4px"><button class="btn btn-sm btn-g" onclick="editComment(\''+c.id+'\')">✏️</button><button class="btn btn-sm btn-g" style="color:var(--err)" onclick="deleteComment(\''+c.id+'\')">🗑️</button></div>':'')+'</div><div style="font-size:14px;color:var(--t2);margin-top:8px">'+esc(c.text)+'</div></div>'}$('commentList').innerHTML=html}
 
-// 기타 모달
+// 기타 모달 — showTrash/showRecent/showFavorites/showTemplates 공통 추상화 검토 후
+// 각 함수의 데이터 소스, DOM 대상, 액션이 충분히 달라 추상화 비용 > 이득으로 판단하여 개별 유지
 export function showTrash(){
   var del=state.db.pages.filter(function(p){return p.deleted});
   var html='';

@@ -27,7 +27,7 @@ import {
 import {changeCalMonth,openCalEventAdd,selectEventColor,addCalEvent,deleteCalRangeEvent} from './editor/calendar.js';
 import {updateChartTitle,updateChartData,addChartData,removeChartData} from './editor/chart.js';
 import {
-  renderBC,renderMeta,renderTags,openTagModal,submitTag,quickTag,removeTag,
+  renderBreadcrumb,renderMeta,renderTags,openTagModal,submitTag,quickTag,removeTag,
   openUserTagModal,addUserTag,removeUserTag,
   openRenamePage,submitRenamePage,
   toggleMobile,closeMobile,
@@ -36,7 +36,7 @@ import {
   duplicatePage,toggleFavorite,movePage,
   renderTree,renderSidebar,
   showPageCtx,hideCtx,
-  renderVer,renderCmt,
+  renderVersions,renderComments,
   showTrash,showRecent,showFavorites,showTemplates
 } from './ui/sidebar.js';
 import {

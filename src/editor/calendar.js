@@ -4,7 +4,7 @@ import state from '../data/store.js';
 import {$,esc,toast} from '../utils/helpers.js';
 import {CAL_COLORS} from '../config/firebase.js';
 import {renderBlocks} from './renderer.js';
-import {triggerAS} from './blocks.js';
+import {triggerAutoSave} from './blocks.js';
 import {openModal,closeModal} from '../ui/modals.js';
 
 export function renderCalendar(b,idx){
@@ -112,7 +112,7 @@ export function changeCalMonth(idx,dir){
   b.month=(b.month||1)+dir;
   if(b.month<1){b.month=12;b.year--;}
   if(b.month>12){b.month=1;b.year++;}
-  renderBlocks();triggerAS();
+  renderBlocks();triggerAutoSave();
 }
 export function openCalEventAdd(idx,dateKey){
   state.currentCalIdx=idx;
@@ -177,7 +177,7 @@ export function addCalEvent(){
   var b=state.page.blocks[state.currentCalIdx];
   if(!b.rangeEvents)b.rangeEvents=[];
   b.rangeEvents.push(ev);
-  renderBlocks();triggerAS();
+  renderBlocks();triggerAutoSave();
   closeModal('calEventModal');
   toast('일정 추가됨');
 }
@@ -185,7 +185,7 @@ export function deleteCalRangeEvent(idx,eventIdx){
   var b=state.page.blocks[idx];
   if(b.rangeEvents){
     b.rangeEvents.splice(eventIdx,1);
-    renderBlocks();triggerAS();
+    renderBlocks();triggerAutoSave();
     toast('일정 삭제됨');
   }
 }
