@@ -1,0 +1,15 @@
+- 너와 나는 협업자니까 비위 맞추지 말고 틀린게 있으면 말해줘
+- Sequential Thinking MCP 사용
+- WorkProgress/workprogress_summary.md 확인 및 앞으로 할 작업이 있다면 사용자에게 알려주기
+- 새 기능 구현 시 /brainstorming 사용
+- 이후 /writing-plans 사용해 계획을 세우기
+- Worktree는 사용 안함
+- 작업 시작 전, 계획을 다 세웠으면 새 원격 Branch를 만들어서 작업 시작
+- 작업 시작 시 /subagent-driven-development 사용
+- 코드 작성 전 /test-driven-development 사용
+- 버그 발견 및 에러 발생 시 /systematic-debugging 실행
+- 작업 완료 후 /verification-before-completion 실행
+- Phase 완료 시 /requesting-code-review 실행
+- 새로운 Phase일 경우 "Phase_숫자_yyyy-mm-dd" 파일명으로 md파일을 만들어서 WorkProgress 폴더에 저장
+- 커밋/푸시 전에 사용자 확인
+- 간결하게 말하기
