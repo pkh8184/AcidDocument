@@ -1,9 +1,9 @@
 // src/main.js — Entry point
 
 import state from './data/store.js';
-import {$,genId,toast,setTheme,toggleTheme,getLoginState,highlightText} from './utils/helpers.js';
+import {$,genId,toast,setTheme,toggleTheme,highlightText} from './utils/helpers.js';
 import {initDB,saveDB} from './data/firestore.js';
-import {handleLogin,showLockTimer,resetLoginState,skipPwChange,submitPwChange,logout,isSuper,checkFirestoreRole} from './auth/auth.js';
+import {handleLogin,showLockTimer,resetLoginState,checkServerLockOnInit,skipPwChange,submitPwChange,logout,isSuper,checkFirestoreRole} from './auth/auth.js';
 import {auth} from './config/firebase.js';
 import {setupListeners} from './editor/listeners.js';
 import {renderBlocks} from './editor/renderer.js';
@@ -87,9 +87,8 @@ export function initApp(){
 function init(){
   initDB().then(function(){
     setupListeners();
-    var st=getLoginState();
-    if(st.blocked){$('loginBlocked').style.display='block';$('loginForm').style.display='none';return}
-    if(st.lockUntil>Date.now()){showLockTimer(st.lockUntil);return}
+    // localStorage 캐시 기반 빠른 잠금 체크 (서버 체크는 handleLogin에서 수행)
+    if(checkServerLockOnInit())return;
 
     var sessionHandled=false;
 

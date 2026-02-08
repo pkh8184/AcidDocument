@@ -237,6 +237,47 @@ function fetchIPLocal(){
     .catch(function(){return '(알 수 없음)'});
 }
 
+// --- 로그인 잠금 상태 (Firestore 서버사이드) ---
+// Firestore 경로: app/loginLocks/{loginId}
+// 구조: { attempts, lockUntil, blocked, lastAttempt }
+export function getLoginLockState(loginId){
+  return firestore.collection('app').doc('loginLocks').collection('locks').doc(loginId).get().then(function(doc){
+    if(doc.exists){
+      var data=doc.data();
+      // 자동 잠금 해제: lockUntil이 지났으면 잠금 해제 처리
+      if(data.lockUntil&&data.lockUntil<=Date.now()&&!data.blocked){
+        data.lockUntil=0;
+      }
+      // blocked 상태도 30분 후 자동 해제
+      if(data.blocked&&data.blockedAt&&(Date.now()-data.blockedAt>30*60*1000)){
+        data.blocked=false;
+        data.attempts=0;
+        data.lockUntil=0;
+      }
+      return data;
+    }
+    return{attempts:0,lockUntil:0,blocked:false,lastAttempt:0,blockedAt:0};
+  }).catch(function(e){
+    console.warn('잠금 상태 조회 실패:',e);
+    return{attempts:0,lockUntil:0,blocked:false,lastAttempt:0,blockedAt:0};
+  });
+}
+
+export function updateLoginLockState(loginId,lockData){
+  lockData.lastAttempt=Date.now();
+  return firestore.collection('app').doc('loginLocks').collection('locks').doc(loginId).set(lockData,{merge:true}).catch(function(e){
+    console.warn('잠금 상태 업데이트 실패:',e);
+  });
+}
+
+export function clearLoginLockState(loginId){
+  return firestore.collection('app').doc('loginLocks').collection('locks').doc(loginId).set({
+    attempts:0,lockUntil:0,blocked:false,lastAttempt:Date.now(),blockedAt:0
+  }).catch(function(e){
+    console.warn('잠금 상태 초기화 실패:',e);
+  });
+}
+
 // 삭제 로그
 export function logDeleteAction(pageId,pageTitle,action){
   fetchIPLocal().then(function(ip){

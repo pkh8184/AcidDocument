@@ -3,7 +3,7 @@
 import state from '../data/store.js';
 import {SUPER,auth,firestore} from '../config/firebase.js';
 import {$,toast,getLoginState,saveLoginState} from '../utils/helpers.js';
-import {saveDB,logLoginAttempt} from '../data/firestore.js';
+import {saveDB,logLoginAttempt,getLoginLockState,updateLoginLockState,clearLoginLockState} from '../data/firestore.js';
 import {initApp} from '../main.js';
 import {openModal,closeModal,closeAllModals,closeAllPanels} from '../ui/modals.js';
 
@@ -78,7 +78,7 @@ function progressiveMigrate(id,pw,legacyUser){
   });
 }
 
-// === handleLogin: Firebase Auth 우선, 레거시 폴백 ===
+// === handleLogin: Firebase Auth 우선, 레거시 폴백 + Firestore 잠금 ===
 export function handleLogin(e){
   e.preventDefault();
   // db 로드 전이면 대기
@@ -86,103 +86,137 @@ export function handleLogin(e){
     toast('데이터 로딩 중...','warn');
     return;
   }
-  var st=getLoginState();
-  console.log('로그인 시도 - 현재 상태:', st);
-
-  if(st.blocked){$('loginBlocked').style.display='block';$('loginForm').style.display='none';return}
-  if(st.lockUntil>Date.now()){showLockTimer(st.lockUntil);return}
 
   var id=$('loginId').value.trim(),pw=$('loginPw').value;
-  var email=id+AUTH_DOMAIN;
+  if(!id){toast('아이디를 입력하세요','warn');return}
 
-  // 1. Firebase Auth 시도
-  auth.signInWithEmailAndPassword(email,pw).then(function(cred){
-    // Firebase Auth 로그인 성공
-    console.log('Firebase Auth 로그인 성공:',id);
-    logLoginAttempt(id,true);
-    st.attempts=0;st.lockUntil=0;st.blocked=false;
-    saveLoginState(st);
+  // localStorage 빠른 체크 (캐시)
+  var localSt=getLoginState();
+  if(localSt.blocked||localSt.lockUntil>Date.now()){
+    // localStorage에 잠금 있으면 Firestore도 확인
+  }
 
-    // 레거시 users 배열에서 사용자 정보 가져오기
-    var legacyUser=findLegacyUserById(id);
-    if(legacyUser){
-      setStateUser(legacyUser);
-    }else{
-      // 레거시 배열에 없으면 Firebase Auth 정보로 임시 state.user 생성
-      state.user={
-        id:id,
-        pw:pw,
-        role:'admin',
-        active:true,
-        nickname:cred.user.displayName||id
-      };
+  // Firestore 잠금 상태 확인 후 로그인 진행
+  getLoginLockState(id).then(function(serverSt){
+    console.log('로그인 시도 - 서버 잠금 상태:', serverSt);
+
+    // 서버 잠금 상태가 권위 (Firestore가 source of truth)
+    if(serverSt.blocked){
+      // 30분 자동해제 체크는 getLoginLockState 내부에서 처리됨
+      // 여기 도달하면 아직 차단 중
+      $('loginBlocked').style.display='block';
+      $('loginForm').style.display='none';
+      $('loginError').style.display='none';
+      // localStorage도 동기화
+      saveLoginState({attempts:serverSt.attempts,lockUntil:0,blocked:true});
+      return;
     }
-
-    localStorage.setItem('ad_session',id);
-    $('loginError').style.display='none';
-
-    if(state.user.needPw){
-      $('loginScreen').classList.add('hidden');
-      openModal('pwChangeModal');
-    }else{
-      initApp();
-    }
-  }).catch(function(authErr){
-    console.log('Firebase Auth 실패:',authErr.code,'- 레거시 폴백 시도');
-
-    // 2. Firebase Auth 실패 -> 레거시 폴백
-    var u=findLegacyUser(id,pw);
-
-    if(!u){
-      // 둘 다 실패
-      logLoginAttempt(id,false);
-      st.attempts=(st.attempts||0)+1;
-      console.log('로그인 실패 - 시도 횟수:', st.attempts);
-
-      var idExists=false;
-      for(var j=0;j<state.db.users.length;j++){if(state.db.users[j].id===id){idExists=true;break}}
-      var errMsg=idExists?'비밀번호가 일치하지 않습니다.':'존재하지 않는 아이디입니다.';
-
-      if(st.attempts>=15){
-        st.blocked=true;
-        saveLoginState(st);
-        $('loginBlocked').style.display='block';
-        $('loginForm').style.display='none';
-        $('loginError').style.display='none';
-        return;
-      }
-      if(st.attempts>=5){
-        st.lockUntil=Date.now()+5*60*1000;
-        saveLoginState(st);
-        showLockTimer(st.lockUntil);
-        return;
-      }
-      errMsg+=' ('+st.attempts+'/5)';
-      $('loginError').textContent=errMsg;
-      $('loginError').style.display='block';
-      $('loginPw').value='';
-      saveLoginState(st);
+    if(serverSt.lockUntil>Date.now()){
+      showLockTimer(serverSt.lockUntil);
+      // localStorage도 동기화
+      saveLoginState({attempts:serverSt.attempts,lockUntil:serverSt.lockUntil,blocked:false});
       return;
     }
 
-    // 레거시 로그인 성공
-    console.log('레거시 로그인 성공:',id);
-    logLoginAttempt(id,true);
-    st.attempts=0;st.lockUntil=0;st.blocked=false;
-    saveLoginState(st);
-    localStorage.setItem('ad_session',u.id);
-    setStateUser(u);
-    $('loginError').style.display='none';
+    var email=id+AUTH_DOMAIN;
 
-    // 3. Progressive migration: Firebase Auth에 자동 등록
-    progressiveMigrate(id,pw,u);
+    // 1. Firebase Auth 시도
+    auth.signInWithEmailAndPassword(email,pw).then(function(cred){
+      // Firebase Auth 로그인 성공
+      console.log('Firebase Auth 로그인 성공:',id);
+      logLoginAttempt(id,true);
+      // 서버 + 로컬 잠금 모두 초기화
+      clearLoginLockState(id);
+      saveLoginState({attempts:0,lockUntil:0,blocked:false});
 
-    if(u.needPw){
-      $('loginScreen').classList.add('hidden');
-      openModal('pwChangeModal');
-    }else{
-      initApp();
-    }
+      // 레거시 users 배열에서 사용자 정보 가져오기
+      var legacyUser=findLegacyUserById(id);
+      if(legacyUser){
+        setStateUser(legacyUser);
+      }else{
+        state.user={
+          id:id,
+          pw:pw,
+          role:'admin',
+          active:true,
+          nickname:cred.user.displayName||id
+        };
+      }
+
+      localStorage.setItem('ad_session',id);
+      $('loginError').style.display='none';
+
+      if(state.user.needPw){
+        $('loginScreen').classList.add('hidden');
+        openModal('pwChangeModal');
+      }else{
+        initApp();
+      }
+    }).catch(function(authErr){
+      console.log('Firebase Auth 실패:',authErr.code,'- 레거시 폴백 시도');
+
+      // 2. Firebase Auth 실패 -> 레거시 폴백
+      var u=findLegacyUser(id,pw);
+
+      if(!u){
+        // 둘 다 실패 — 잠금 카운터 증가
+        logLoginAttempt(id,false);
+        serverSt.attempts=(serverSt.attempts||0)+1;
+        console.log('로그인 실패 - 시도 횟수:', serverSt.attempts);
+
+        var idExists=false;
+        for(var j=0;j<state.db.users.length;j++){if(state.db.users[j].id===id){idExists=true;break}}
+        var errMsg=idExists?'비밀번호가 일치하지 않습니다.':'존재하지 않는 아이디입니다.';
+
+        if(serverSt.attempts>=15){
+          // 15회 이상: 30분 차단
+          serverSt.blocked=true;
+          serverSt.blockedAt=Date.now();
+          updateLoginLockState(id,serverSt);
+          saveLoginState({attempts:serverSt.attempts,lockUntil:0,blocked:true});
+          $('loginBlocked').style.display='block';
+          $('loginForm').style.display='none';
+          $('loginError').style.display='none';
+          return;
+        }
+        if(serverSt.attempts>=5){
+          // 5회 이상: 5분 잠금
+          serverSt.lockUntil=Date.now()+5*60*1000;
+          updateLoginLockState(id,serverSt);
+          saveLoginState({attempts:serverSt.attempts,lockUntil:serverSt.lockUntil,blocked:false});
+          showLockTimer(serverSt.lockUntil);
+          return;
+        }
+        // 5회 미만: 경고 메시지
+        errMsg+=' ('+serverSt.attempts+'/5)';
+        $('loginError').textContent=errMsg;
+        $('loginError').style.display='block';
+        $('loginPw').value='';
+        updateLoginLockState(id,serverSt);
+        saveLoginState({attempts:serverSt.attempts,lockUntil:0,blocked:false});
+        return;
+      }
+
+      // 레거시 로그인 성공
+      console.log('레거시 로그인 성공:',id);
+      logLoginAttempt(id,true);
+      // 서버 + 로컬 잠금 모두 초기화
+      clearLoginLockState(id);
+      saveLoginState({attempts:0,lockUntil:0,blocked:false});
+      localStorage.setItem('ad_session',u.id);
+      setStateUser(u);
+      $('loginError').style.display='none';
+
+      // 3. Progressive migration: Firebase Auth에 자동 등록
+      progressiveMigrate(id,pw,u);
+
+      if(u.needPw){
+        $('loginScreen').classList.add('hidden');
+        openModal('pwChangeModal');
+      }else{
+        initApp();
+      }
+    });
   });
 }
 
@@ -197,12 +231,29 @@ export function showLockTimer(until){
 }
 
 export function resetLoginState(){
+  // localStorage 캐시만 초기화 (서버 잠금 상태는 유지됨)
+  // 서버 잠금은 시간이 지나면 자동 해제됨
   localStorage.removeItem('ad_login_state');
   $('loginBlocked').style.display='none';
   $('loginLocked').style.display='none';
   $('loginForm').style.display='block';
   $('loginError').style.display='none';
-  toast('잠금 해제됨');
+}
+
+// 서버 잠금 상태 확인 (init에서 사용 — 특정 ID 없이 localStorage 캐시 기반 빠른 체크)
+// 실제 서버 체크는 handleLogin에서 ID 기반으로 수행
+export function checkServerLockOnInit(){
+  var localSt=getLoginState();
+  if(localSt.blocked){
+    $('loginBlocked').style.display='block';
+    $('loginForm').style.display='none';
+    return true;
+  }
+  if(localSt.lockUntil>Date.now()){
+    showLockTimer(localSt.lockUntil);
+    return true;
+  }
+  return false;
 }
 
 export function skipPwChange(){closeModal('pwChangeModal');initApp()}
