@@ -2,12 +2,13 @@
 
 import state from '../data/store.js';
 import {$,esc,toast} from '../utils/helpers.js';
+import {sanitizeHTML} from '../utils/sanitize.js';
 import {openModal,closeModal} from '../ui/modals.js';
 
 export function openExport(){openModal('exportModal')}
 export function exportDoc(fmt){
   var title=state.page.title,content='';
-  for(var i=0;i<state.page.blocks.length;i++){var b=state.page.blocks[i],txt=(b.content||'').replace(/<[^>]*>/g,'');if(txt)content+=txt+'\n\n'}
+  for(var i=0;i<state.page.blocks.length;i++){var b=state.page.blocks[i],txt=sanitizeHTML(b.content||'').replace(/<[^>]*>/g,'');if(txt)content+=txt+'\n\n'}
   var blob,fn;
   if(fmt==='md'){blob=new Blob(['# '+title+'\n\n'+content],{type:'text/markdown'});fn=title+'.md'}
   else if(fmt==='html'){var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(title)+'</title><style>body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6}</style></head><body><h1>'+esc(title)+'</h1><div>'+$('editor').innerHTML+'</div></body></html>';blob=new Blob([html],{type:'text/html'});fn=title+'.html'}

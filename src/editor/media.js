@@ -3,6 +3,7 @@
 import state from '../data/store.js';
 import {ALLOWED_IMAGE_TYPES} from '../config/firebase.js';
 import {$,genId,esc,toast} from '../utils/helpers.js';
+import {sanitizeURL} from '../utils/sanitize.js';
 import {saveDB,uploadToStorage} from '../data/firestore.js';
 import {renderBlocks} from './renderer.js';
 import {triggerAS,deleteBlock} from './blocks.js';
@@ -27,7 +28,7 @@ export function submitImage(){
       reader.onload=function(e){addImageBlock(e.target.result)};
       reader.readAsDataURL(file);
     }
-  }else if(url){addImageBlock(url)}
+  }else if(url){var safe=sanitizeURL(url);if(!safe){toast('유효하지 않은 URL입니다','err');return}addImageBlock(safe)}
   else{toast('URL 또는 파일을 선택하세요','err');return}
 }
 export function addImageBlock(src){
@@ -220,7 +221,8 @@ export function submitSlideImage(){
       reader.readAsDataURL(file);
     }
   }else if(url){
-    addSlideImageSrc(url);
+    var safe=sanitizeURL(url);if(!safe){toast('유효하지 않은 URL입니다','err');return}
+    addSlideImageSrc(safe);
   }else{
     toast('URL 또는 파일을 선택하세요','err');
   }
@@ -269,9 +271,11 @@ export function submitVideo(){
     reader.onload=function(e){addVideoBlock(e.target.result,file.name)};
     reader.readAsDataURL(file)
   }else if(url){
-    var vid=getYTId(url);
+    var safe=sanitizeURL(url);
+    if(!safe){toast('유효하지 않은 URL입니다','err');return}
+    var vid=getYTId(safe);
     if(!vid){toast('유효한 YouTube URL을 입력하세요','err');return}
-    addVideoBlock(url,null)
+    addVideoBlock(safe,null)
   }else{toast('URL 또는 파일을 선택하세요','err');return}
 }
 export function addVideoBlock(src,fname){
@@ -288,7 +292,7 @@ export function submitPdf(){
     var reader=new FileReader();
     reader.onload=function(e){addPdfBlock(e.target.result)};
     reader.readAsDataURL(file)
-  }else if(url){addPdfBlock(url)}
+  }else if(url){var safe=sanitizeURL(url);if(!safe){toast('유효하지 않은 URL입니다','err');return}addPdfBlock(safe)}
   else{toast('URL 또는 파일을 선택하세요','err');return}
 }
 export function addPdfBlock(src){
@@ -309,6 +313,7 @@ export function submitBookmark(){
   var url=$('bookmarkUrlInput').value.trim();
   if(!url){toast('URL을 입력하세요','err');return}
   if(!url.startsWith('http'))url='https://'+url;
+  url=sanitizeURL(url);if(!url){toast('유효하지 않은 URL입니다','err');return}
   var title=$('bookmarkTitleInput').value.trim()||'';
   var desc=$('bookmarkDescInput').value.trim()||'';
   var b={id:genId(),type:'bookmark',url:url,title:title,description:desc,image:''};

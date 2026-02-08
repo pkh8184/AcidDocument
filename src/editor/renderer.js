@@ -2,6 +2,7 @@
 
 import state from '../data/store.js';
 import {$,esc} from '../utils/helpers.js';
+import {sanitizeHTML} from '../utils/sanitize.js';
 import {updateNums,genTOC,triggerAS,focusBlock,deleteBlock,addBlockBelow,scrollToBlk} from './blocks.js';
 import {renderCalendar} from './calendar.js';
 import {renderChart} from './chart.js';
@@ -24,16 +25,16 @@ export function createBlockEl(b,idx){
       break;
     case'todo':
       if(b.checked)div.classList.add('done');
-      inner='<label class="todo-wrap"><input type="checkbox"'+(b.checked?' checked':'')+(state.editMode?'':' onclick="return false"')+'><div class="block-content"'+ce+'>'+(b.content||'')+'</div></label>';
+      inner='<label class="todo-wrap"><input type="checkbox"'+(b.checked?' checked':'')+(state.editMode?'':' onclick="return false"')+'><div class="block-content"'+ce+'>'+sanitizeHTML(b.content||'')+'</div></label>';
       break;
     case'toggle':
       inner='<div class="block-toggle-wrap">';
       inner+='<div class="block-toggle-head'+(b.open?' open':'')+'">';
       inner+='<span class="block-toggle-arrow" data-id="'+b.id+'">▶</span>';
-      inner+='<div class="block-content"'+ce+'>'+(b.content||'')+'</div>';
+      inner+='<div class="block-content"'+ce+'>'+sanitizeHTML(b.content||'')+'</div>';
       inner+='</div>';
       inner+='<div class="block-toggle-body'+(b.open?' open':'')+'">';
-      inner+='<div class="block-content"'+ce+' data-placeholder="토글 내용을 입력하세요">'+(b.innerContent||'')+'</div>';
+      inner+='<div class="block-content"'+ce+' data-placeholder="토글 내용을 입력하세요">'+sanitizeHTML(b.innerContent||'')+'</div>';
       inner+='</div>';
       inner+='</div>';
       break;
@@ -41,20 +42,20 @@ export function createBlockEl(b,idx){
       var ct=b.calloutType||'info',cIcon=b.icon||{info:'💡',success:'✅',warning:'⚠️',danger:'❌'}[ct];
       inner='<div class="block-callout-wrap '+ct+'">';
       inner+='<div class="block-callout-icon"'+(state.editMode?' onclick="openCalloutIconPicker(\''+b.id+'\')" style="cursor:pointer"':'')+'>'+cIcon+'</div>';
-      inner+='<div style="flex:1"><div class="block-content"'+ce+'>'+(b.content||'')+'</div></div></div>';
+      inner+='<div style="flex:1"><div class="block-content"'+ce+'>'+sanitizeHTML(b.content||'')+'</div></div></div>';
       break;
     case'code':
       inner='<div class="block-code-wrap"><div class="block-code-head">';
       inner+='<span class="block-code-lang"'+(state.editMode?' onclick="openCodeSetting(\''+b.id+'\')" style="cursor:pointer"':'')+'>'+esc(b.lang||'code')+'</span>';
       inner+='<div style="display:flex;gap:4px"><button class="btn btn-sm btn-s" onclick="copyCode(this)">복사</button><button class="btn btn-sm btn-s" onclick="downloadCode(this)">다운로드</button></div></div>';
-      inner+='<div class="block-content"'+ce+' style="font-family:monospace;white-space:pre-wrap">'+(b.content||'')+'</div></div>';
+      inner+='<div class="block-content"'+ce+' style="font-family:monospace;white-space:pre-wrap">'+sanitizeHTML(b.content||'')+'</div></div>';
       break;
     case'image':
       var imgScale=b.scale||100;
       inner='<div class="block-image-wrap" tabindex="0" data-block-idx="'+idx+'">';
       if(state.editMode)inner+='<div class="block-media-toolbar"><div class="media-toolbar-group"><button class="media-btn" onclick="copyImageUrl('+idx+')" title="복사">📋</button><button class="media-btn" onclick="downloadImage('+idx+')" title="다운로드">💾</button><button class="media-btn danger" onclick="deleteBlock('+idx+')" title="삭제">🗑️</button></div><div class="media-toolbar-group"><button class="media-btn'+(imgScale===25?' active':'')+'" onclick="setImageScale('+idx+',25)">25%</button><button class="media-btn'+(imgScale===50?' active':'')+'" onclick="setImageScale('+idx+',50)">50%</button><button class="media-btn'+(imgScale===75?' active':'')+'" onclick="setImageScale('+idx+',75)">75%</button><button class="media-btn'+(imgScale===100?' active':'')+'" onclick="setImageScale('+idx+',100)">100%</button></div></div>';
       inner+='<img src="'+esc(b.src||'')+'" style="max-width:'+imgScale+'%;border-radius:var(--rad);display:block;margin:0 auto;cursor:'+(state.editMode?'default':'zoom-in')+'" onerror="this.style.display=\'none\'"'+(state.editMode?'':' onclick="openImageViewer([\''+esc(b.src||'')+'\'],0)"')+'>';
-      inner+='<div class="block-image-caption"'+ce+' style="text-align:center;color:var(--t4);font-size:13px;margin-top:8px">'+(b.caption||'')+'</div>';
+      inner+='<div class="block-image-caption"'+ce+' style="text-align:center;color:var(--t4);font-size:13px;margin-top:8px">'+sanitizeHTML(b.caption||'')+'</div>';
       inner+='</div>';
       if(state.editMode)inner+='<div class="block-add-below" onclick="addBlockBelow('+idx+')">+ 블록 추가</div>';
       break;
@@ -112,7 +113,7 @@ export function createBlockEl(b,idx){
         inner+='<tr>';
         for(var c=0;c<rows[r].length;c++){
           var cs=(r===0&&thc?'background:'+thc+';':'')+(r>0&&tdc?'background:'+tdc+';':'')+'padding:10px;border:1px solid var(--bdr);text-align:'+tAlign+';';
-          inner+=(r===0?'<th':'<td')+ce+' style="'+cs+'">'+(rows[r][c]||'')+(r===0?'</th>':'</td>');
+          inner+=(r===0?'<th':'<td')+ce+' style="'+cs+'">'+sanitizeHTML(rows[r][c]||'')+(r===0?'</th>':'</td>');
         }
         inner+='</tr>';
       }
@@ -138,20 +139,20 @@ export function createBlockEl(b,idx){
       var cols=b.columns||['',''];
       inner='<div class="block-columns-wrap" style="display:flex;gap:16px">';
       for(var ci=0;ci<cols.length;ci++){
-        inner+='<div class="block-col" data-col-idx="'+ci+'" style="flex:1;min-width:0"><div class="block-col-content" data-col-idx="'+ci+'"'+ce+' style="min-height:60px;padding:12px;border:1px dashed var(--bdr);border-radius:var(--rad)">'+(cols[ci]||'')+'</div></div>';
+        inner+='<div class="block-col" data-col-idx="'+ci+'" style="flex:1;min-width:0"><div class="block-col-content" data-col-idx="'+ci+'"'+ce+' style="min-height:60px;padding:12px;border:1px dashed var(--bdr);border-radius:var(--rad)">'+sanitizeHTML(cols[ci]||'')+'</div></div>';
       }
       inner+='</div>';
       if(state.editMode)inner+='<div class="block-add-below" onclick="addBlockBelow('+idx+')">+ 블록 추가</div>';
       break;
     case'quote':
-      inner='<div class="block-content"'+ce+'>'+(b.content||'')+'</div>';
+      inner='<div class="block-content"'+ce+'>'+sanitizeHTML(b.content||'')+'</div>';
       break;
     case'bullet':
-      inner='<div class="block-content"'+ce+'>'+(b.content||'')+'</div>';
+      inner='<div class="block-content"'+ce+'>'+sanitizeHTML(b.content||'')+'</div>';
       break;
     case'number':
       div.setAttribute('data-num',b.num||1);
-      inner='<div class="block-content"'+ce+'>'+(b.content||'')+'</div>';
+      inner='<div class="block-content"'+ce+'>'+sanitizeHTML(b.content||'')+'</div>';
       break;
     case'calendar':
       inner=renderCalendar(b,idx);
@@ -164,7 +165,7 @@ export function createBlockEl(b,idx){
       if(state.editMode)inner+='<div class="block-add-below" onclick="addBlockBelow('+idx+')">+ 블록 추가</div>';
       break;
     default:
-      inner='<div class="block-content"'+ce+'>'+(b.content||'')+'</div>';
+      inner='<div class="block-content"'+ce+'>'+sanitizeHTML(b.content||'')+'</div>';
   }
   div.innerHTML='<div class="block-handle"><button class="btn btn-i" onclick="showBlockCtx(event,'+idx+')">⋮</button></div>'+inner;
   setupBlockEvents(div,b,idx);
