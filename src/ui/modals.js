@@ -1,7 +1,7 @@
 // src/ui/modals.js — 모달, 설정
 
 import state from '../data/store.js';
-import {SUPER,ICONS,STORAGE_LIMIT} from '../config/firebase.js';
+import {SUPER,ICONS,STORAGE_LIMIT,auth} from '../config/firebase.js';
 import {$,$$,esc,toast,fmtD,formatBytes} from '../utils/helpers.js';
 import {saveDB,uploadToStorage,updateStorageUsage} from '../data/firestore.js';
 import {isSuper} from '../auth/auth.js';
@@ -232,7 +232,24 @@ export function createUser(){if(!isSuper()){toast('권한 없음','err');return}
 export function resetPw(id){if(!isSuper())return;var chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789',pw='';for(var i=0;i<12;i++)pw+=chars[Math.floor(Math.random()*chars.length)];for(var j=0;j<state.db.users.length;j++){if(state.db.users[j].id===id){state.db.users[j].pw=pw;state.db.users[j].needPw=true;break}}saveDB();alert('새 비밀번호: '+pw);renderUsers()}
 export function toggleActive(id){if(!isSuper())return;for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===id){state.db.users[i].active=!state.db.users[i].active;break}}saveDB();renderUsers();toast('상태 변경')}
 export function delUser(id){if(!isSuper()||!confirm('삭제?'))return;state.db.users=state.db.users.filter(function(u){return u.id!==id});saveDB();renderUsers();toast('삭제됨')}
-export function changePassword(){var c=$('setPwCur').value,n=$('setPwNew').value;if(!c||!n){toast('비밀번호 입력','err');return}if(state.user.pw!==c){toast('현재 비밀번호 틀림','err');return}for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===state.user.id){state.db.users[i].pw=n;break}}saveDB();state.user.pw=n;$('setPwCur').value=$('setPwNew').value='';toast('변경됨')}
+export function changePassword(){
+  var c=$('setPwCur').value,n=$('setPwNew').value;
+  if(!c||!n){toast('비밀번호 입력','err');return}
+  if(state.user.pw!==c){toast('현재 비밀번호 틀림','err');return}
+  // 레거시 users 배열 업데이트 (항상)
+  for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===state.user.id){state.db.users[i].pw=n;break}}
+  saveDB();state.user.pw=n;
+  // Firebase Auth 비밀번호도 업데이트 (로그인된 경우)
+  var currentUser=auth.currentUser;
+  if(currentUser){
+    currentUser.updatePassword(n).then(function(){
+      console.log('Firebase Auth 비밀번호 업데이트 완료');
+    }).catch(function(e){
+      console.warn('Firebase Auth 비밀번호 업데이트 실패:',e);
+    });
+  }
+  $('setPwCur').value=$('setPwNew').value='';toast('변경됨');
+}
 export function saveWorkspace(){state.db.settings.wsName=$('setWsName').value||'DocSpace';saveDB();$('wsName').textContent=state.db.settings.wsName;import('./sidebar.js').then(function(m){m.renderBC()});toast('저장됨')}
 // 공지사항
 export function saveNotice(){if(!isSuper()){toast('권한 없음','err');return}state.db.settings.notice=$('noticeContent').value;saveDB();updateNoticeBar();toast('공지 저장')}

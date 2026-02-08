@@ -4,6 +4,7 @@ var firebaseConfig={apiKey:"AIzaSyBqHTIoLGKnCnR8n8jFGS3a4LGhIJe5xQI",authDomain:
 firebase.initializeApp(firebaseConfig);
 export var firestore=firebase.firestore();
 export var storage=firebase.storage();
+export var auth=firebase.auth();
 
 export var SUPER='admin8184',MAX_VER=10;
 // Storage 용량 제한 (bytes)

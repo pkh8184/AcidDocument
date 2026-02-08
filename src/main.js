@@ -3,7 +3,8 @@
 import state from './data/store.js';
 import {$,genId,toast,setTheme,toggleTheme,getLoginState,highlightText} from './utils/helpers.js';
 import {initDB,saveDB} from './data/firestore.js';
-import {handleLogin,showLockTimer,resetLoginState,skipPwChange,submitPwChange,logout,isSuper} from './auth/auth.js';
+import {handleLogin,showLockTimer,resetLoginState,skipPwChange,submitPwChange,logout,isSuper,checkFirestoreRole} from './auth/auth.js';
+import {auth} from './config/firebase.js';
 import {setupListeners} from './editor/listeners.js';
 import {renderBlocks} from './editor/renderer.js';
 import {
@@ -82,31 +83,78 @@ export function initApp(){
   });
 }
 
-// init — 앱 시작점
+// init — 앱 시작점 (Firebase Auth onAuthStateChanged + localStorage 폴백)
 function init(){
   initDB().then(function(){
     setupListeners();
     var st=getLoginState();
     if(st.blocked){$('loginBlocked').style.display='block';$('loginForm').style.display='none';return}
     if(st.lockUntil>Date.now()){showLockTimer(st.lockUntil);return}
-    // 세션은 localStorage에서 확인 (기기별 독립)
-    var localSession=localStorage.getItem('ad_session');
-    if(localSession){
-      var u=null;
-      for(var i=0;i<state.db.users.length;i++){
-        if(state.db.users[i].id===localSession&&state.db.users[i].active){u=state.db.users[i];break}
-      }
-      if(u){
-        state.user=u;
-        // 비밀번호 변경 필요 여부 확인
-        if(u.needPw){
-          $('loginScreen').classList.add('hidden');
-          openModal('pwChangeModal');
-        }else{
-          initApp();
+
+    var sessionHandled=false;
+
+    // 1. Firebase Auth onAuthStateChanged (우선)
+    auth.onAuthStateChanged(function(firebaseUser){
+      if(sessionHandled)return;
+
+      if(firebaseUser){
+        // Firebase Auth로 로그인된 사용자
+        sessionHandled=true;
+        console.log('Firebase Auth 세션 복원:',firebaseUser.email);
+        var legacyId=firebaseUser.email.replace(/@aciddocument\.local$/,'');
+
+        // 레거시 users 배열에서 사용자 찾기
+        var u=null;
+        for(var i=0;i<state.db.users.length;i++){
+          if(state.db.users[i].id===legacyId&&state.db.users[i].active){u=state.db.users[i];break}
         }
+
+        if(u){
+          state.user=u;
+        }else{
+          // 레거시 배열에 없으면 Firebase Auth 정보로 임시 state.user
+          state.user={
+            id:legacyId,
+            pw:'',
+            role:'admin',
+            active:true,
+            nickname:firebaseUser.displayName||legacyId
+          };
+        }
+
+        localStorage.setItem('ad_session',legacyId);
+
+        // Firestore에서 역할 확인 (비동기)
+        checkFirestoreRole(firebaseUser.uid).then(function(){
+          if(state.user.needPw){
+            $('loginScreen').classList.add('hidden');
+            openModal('pwChangeModal');
+          }else{
+            initApp();
+          }
+        });
+      }else{
+        // Firebase Auth 세션 없음 -> localStorage 폴백
+        sessionHandled=true;
+        var localSession=localStorage.getItem('ad_session');
+        if(localSession){
+          var u=null;
+          for(var i=0;i<state.db.users.length;i++){
+            if(state.db.users[i].id===localSession&&state.db.users[i].active){u=state.db.users[i];break}
+          }
+          if(u){
+            state.user=u;
+            if(u.needPw){
+              $('loginScreen').classList.add('hidden');
+              openModal('pwChangeModal');
+            }else{
+              initApp();
+            }
+          }
+        }
+        // 둘 다 없으면 로그인 화면 유지 (기본 상태)
       }
-    }
+    });
   });
 }
 
