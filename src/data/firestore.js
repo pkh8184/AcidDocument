@@ -10,6 +10,37 @@ import {$,genId,toast,formatBytes} from '../utils/helpers.js';
 // 검증 완료 후 true로 변경
 export var USE_NEW_STRUCTURE=false;
 
+// ── 에러 처리 래퍼 ──────────────────────────────────
+// 모든 Firestore 호출에 일관된 에러 처리를 적용
+export async function firestoreCall(operation,errorMessage){
+  try{
+    return await operation();
+  }catch(err){
+    console.error(errorMessage,err);
+    toast(errorMessage,'err');
+    throw err;
+  }
+}
+
+// ── Batch 삭제 헬퍼 (새 구조 전용) ──────────────────
+// Firestore batch는 최대 500개 연산 제한이 있으므로 분할 처리
+export async function batchDeletePages(pageIds){
+  if(!pageIds||pageIds.length===0)return;
+  var BATCH_LIMIT=500;
+  for(var i=0;i<pageIds.length;i+=BATCH_LIMIT){
+    var chunk=pageIds.slice(i,i+BATCH_LIMIT);
+    var batch=firestore.batch();
+    for(var j=0;j<chunk.length;j++){
+      var ref=firestore.collection('pages').doc(chunk[j]);
+      batch.delete(ref);
+    }
+    await firestoreCall(
+      function(){return batch.commit()},
+      'batch 삭제 실패'
+    );
+  }
+}
+
 // rows/columns 배열을 JSON 문자열로 변환 (저장용)
 // Firebase는 배열 안에 배열(2D 배열)을 지원하지 않음
 export function isNestedArray(arr){
@@ -110,101 +141,105 @@ export function initDB(){
 }
 // 기존 구조: app/data 단일 문서에서 로드
 function initDBLegacy(){
-  return firestore.collection('app').doc('data').get().then(function(doc){
-    if(doc.exists){state.db=convertRowsForLoad(doc.data())}
-    else{
-      state.db={
-        users:[
-          {id:'admin8184',pw:'Kx7mR2pL9nQw',role:'super',needPw:true,active:true,nickname:''},
-          {id:'admin3926',pw:'Ht5vB8cN1jYf',role:'admin',needPw:true,active:true,nickname:''}
-        ],
-        pages:[{
-          id:'welcome',title:'시작하기',icon:'👋',parentId:null,
-          blocks:[
-            {id:genId(),type:'h1',content:'AcidDocument에 오신 것을 환영합니다!'},
-            {id:genId(),type:'text',content:'팀을 위한 문서 관리 시스템입니다.'},
-            {id:genId(),type:'callout',content:'<b>💡 사용법:</b> 빈 줄에서 <code>/</code>를 입력하여 다양한 블록을 추가하세요.',calloutType:'info'}
+  return firestoreCall(function(){
+    return firestore.collection('app').doc('data').get().then(function(doc){
+      if(doc.exists){state.db=convertRowsForLoad(doc.data())}
+      else{
+        state.db={
+          users:[
+            {id:'admin8184',pw:'Kx7mR2pL9nQw',role:'super',needPw:true,active:true,nickname:''},
+            {id:'admin3926',pw:'Ht5vB8cN1jYf',role:'admin',needPw:true,active:true,nickname:''}
           ],
-          tags:['가이드'],author:'admin8184',created:Date.now(),updated:Date.now(),versions:[],comments:[],favorite:true,deleted:false
-        }],
-        templates:[
-          {id:'meeting',name:'회의록',icon:'📋',blocks:[
-            {id:genId(),type:'h1',content:'📋 회의록'},
-            {id:genId(),type:'table',rowsJson:'[["항목","내용"],["📅 회의 일시",""],["📍 회의 장소",""],["👥 참여 대상",""],["📌 회의 주제",""],["🎤 발언자",""]]'},
-            {id:genId(),type:'h2',content:'📝 회의 내용'},{id:genId(),type:'text',content:''},
-            {id:genId(),type:'h2',content:'✅ 회의 결론'},{id:genId(),type:'bullet',content:''},
-            {id:genId(),type:'h2',content:'📌 Action Items'},{id:genId(),type:'todo',content:'',checked:false},
-            {id:genId(),type:'h2',content:'📎 비고'},{id:genId(),type:'text',content:''}
-          ]},
-          {id:'note',name:'노트',icon:'📝',blocks:[{id:genId(),type:'h1',content:''},{id:genId(),type:'text',content:''}]},
-          {id:'project',name:'프로젝트',icon:'🚀',blocks:[
-            {id:genId(),type:'h1',content:'프로젝트명'},
-            {id:genId(),type:'callout',content:'프로젝트 개요',calloutType:'info'},
-            {id:genId(),type:'h2',content:'목표'},{id:genId(),type:'bullet',content:''},
-            {id:genId(),type:'h2',content:'일정'},
-            {id:genId(),type:'table',rowsJson:'[["단계","시작일","종료일","담당자"],["기획","","",""],["개발","","",""],["테스트","","",""]]'}
-          ]}
-        ],
-        settings:{wsName:'AcidDocument',theme:'dark',notice:''},
-        session:null,recent:[]
-      };
-      return saveDB();
-    }
-  }).catch(function(e){console.error('DB 로드 실패:',e);toast('데이터 로드 실패','err')});
+          pages:[{
+            id:'welcome',title:'시작하기',icon:'👋',parentId:null,
+            blocks:[
+              {id:genId(),type:'h1',content:'AcidDocument에 오신 것을 환영합니다!'},
+              {id:genId(),type:'text',content:'팀을 위한 문서 관리 시스템입니다.'},
+              {id:genId(),type:'callout',content:'<b>💡 사용법:</b> 빈 줄에서 <code>/</code>를 입력하여 다양한 블록을 추가하세요.',calloutType:'info'}
+            ],
+            tags:['가이드'],author:'admin8184',created:Date.now(),updated:Date.now(),versions:[],comments:[],favorite:true,deleted:false
+          }],
+          templates:[
+            {id:'meeting',name:'회의록',icon:'📋',blocks:[
+              {id:genId(),type:'h1',content:'📋 회의록'},
+              {id:genId(),type:'table',rowsJson:'[["항목","내용"],["📅 회의 일시",""],["📍 회의 장소",""],["👥 참여 대상",""],["📌 회의 주제",""],["🎤 발언자",""]]'},
+              {id:genId(),type:'h2',content:'📝 회의 내용'},{id:genId(),type:'text',content:''},
+              {id:genId(),type:'h2',content:'✅ 회의 결론'},{id:genId(),type:'bullet',content:''},
+              {id:genId(),type:'h2',content:'📌 Action Items'},{id:genId(),type:'todo',content:'',checked:false},
+              {id:genId(),type:'h2',content:'📎 비고'},{id:genId(),type:'text',content:''}
+            ]},
+            {id:'note',name:'노트',icon:'📝',blocks:[{id:genId(),type:'h1',content:''},{id:genId(),type:'text',content:''}]},
+            {id:'project',name:'프로젝트',icon:'🚀',blocks:[
+              {id:genId(),type:'h1',content:'프로젝트명'},
+              {id:genId(),type:'callout',content:'프로젝트 개요',calloutType:'info'},
+              {id:genId(),type:'h2',content:'목표'},{id:genId(),type:'bullet',content:''},
+              {id:genId(),type:'h2',content:'일정'},
+              {id:genId(),type:'table',rowsJson:'[["단계","시작일","종료일","담당자"],["기획","","",""],["개발","","",""],["테스트","","",""]]'}
+            ]}
+          ],
+          settings:{wsName:'AcidDocument',theme:'dark',notice:''},
+          session:null,recent:[]
+        };
+        return saveDB();
+      }
+    });
+  },'DB 로드 실패');
 }
 // 새 구조: pages 컬렉션 + app/settings + app/templates에서 로드
 function initDBNewStructure(){
-  return Promise.all([
-    firestore.collection('pages').get(),
-    firestore.collection('app').doc('settings').get(),
-    firestore.collection('app').doc('templates').get(),
-    firestore.collection('app').doc('data').get()
-  ]).then(function(results){
-    var pagesSnap=results[0];
-    var settingsDoc=results[1];
-    var templatesDoc=results[2];
-    var dataDoc=results[3];
+  return firestoreCall(function(){
+    return Promise.all([
+      firestore.collection('pages').get(),
+      firestore.collection('app').doc('settings').get(),
+      firestore.collection('app').doc('templates').get(),
+      firestore.collection('app').doc('data').get()
+    ]).then(function(results){
+      var pagesSnap=results[0];
+      var settingsDoc=results[1];
+      var templatesDoc=results[2];
+      var dataDoc=results[3];
 
-    // pages 컬렉션에서 로드 (versions/comments는 빈 배열로 초기화, 필요 시 loadPageFull로 로드)
-    var pages=[];
-    pagesSnap.forEach(function(doc){
-      var pageData=convertRowsForLoad(doc.data());
-      pageData.id=doc.id;
-      // 서브컬렉션 데이터는 loadPageFull()에서 로드하므로 빈 배열로 초기화
-      if(!pageData.versions)pageData.versions=[];
-      if(!pageData.comments)pageData.comments=[];
-      pages.push(pageData);
+      // pages 컬렉션에서 로드 (versions/comments는 빈 배열로 초기화, 필요 시 loadPageFull로 로드)
+      var pages=[];
+      pagesSnap.forEach(function(doc){
+        var pageData=convertRowsForLoad(doc.data());
+        pageData.id=doc.id;
+        // 서브컬렉션 데이터는 loadPageFull()에서 로드하므로 빈 배열로 초기화
+        if(!pageData.versions)pageData.versions=[];
+        if(!pageData.comments)pageData.comments=[];
+        pages.push(pageData);
+      });
+
+      // settings
+      var settings=settingsDoc.exists?settingsDoc.data():{wsName:'AcidDocument',theme:'dark',notice:''};
+      var storageUsage=settings.storageUsage||0;
+      delete settings.storageUsage; // state.db.storageUsage로 분리 관리
+
+      // templates
+      var templates=[];
+      if(templatesDoc.exists){
+        var tData=templatesDoc.data();
+        templates=tData.items||[];
+      }
+
+      // users는 여전히 app/data에서 로드 (Firebase Auth 전환 완료 전까지 필요)
+      var users=[];
+      if(dataDoc.exists){
+        var legacyData=convertRowsForLoad(dataDoc.data());
+        users=legacyData.users||[];
+      }
+
+      state.db={
+        users:users,
+        pages:pages,
+        templates:templates,
+        settings:settings,
+        storageUsage:storageUsage,
+        session:null,
+        recent:[]
+      };
     });
-
-    // settings
-    var settings=settingsDoc.exists?settingsDoc.data():{wsName:'AcidDocument',theme:'dark',notice:''};
-    var storageUsage=settings.storageUsage||0;
-    delete settings.storageUsage; // state.db.storageUsage로 분리 관리
-
-    // templates
-    var templates=[];
-    if(templatesDoc.exists){
-      var tData=templatesDoc.data();
-      templates=tData.items||[];
-    }
-
-    // users는 여전히 app/data에서 로드 (Firebase Auth 전환 완료 전까지 필요)
-    var users=[];
-    if(dataDoc.exists){
-      var legacyData=convertRowsForLoad(dataDoc.data());
-      users=legacyData.users||[];
-    }
-
-    state.db={
-      users:users,
-      pages:pages,
-      templates:templates,
-      settings:settings,
-      storageUsage:storageUsage,
-      session:null,
-      recent:[]
-    };
-  }).catch(function(e){console.error('DB 로드 실패 (새 구조):',e);toast('데이터 로드 실패','err')});
+  },'데이터 로드 실패');
 }
 export function saveDB(){
   if(USE_NEW_STRUCTURE){
@@ -215,18 +250,14 @@ export function saveDB(){
 // 기존 구조: app/data 단일 문서에 저장
 function saveDBLegacy(){
   var dataToSave=convertRowsForSave(state.db);
-  return firestore.collection('app').doc('data').set(dataToSave).catch(function(e){
-    console.error('저장 실패:',e);
-    console.log('저장 시도 데이터:',JSON.stringify(dataToSave).substring(0,500));
-    toast('저장 오류: '+e.message,'err');
-  });
+  return firestoreCall(function(){
+    return firestore.collection('app').doc('data').set(dataToSave);
+  },'저장 실패');
 }
 // 새 구조: 변경된 부분만 저장
 // 주의: 전체 pages를 한번에 저장하는 것은 비효율. 개별 페이지 저장은 savePageToCollection() 사용.
 // saveDB()는 settings, ipLogs, deleteLogs 등 전역 데이터 저장에 사용.
 function saveDBNewStructure(){
-  var promises=[];
-  // settings 저장 (storageUsage 포함)
   var settingsData={};
   if(state.db.settings){
     for(var k in state.db.settings){
@@ -234,26 +265,18 @@ function saveDBNewStructure(){
     }
   }
   settingsData.storageUsage=state.db.storageUsage||0;
-  promises.push(
-    firestore.collection('app').doc('settings').set(settingsData).catch(function(e){
-      console.error('settings 저장 실패:',e);
-    })
-  );
-  // users는 아직 app/data에 저장 (Firebase Auth 완전 전환 전까지)
-  // ipLogs, deleteLogs도 app/data에 유지
+
   var legacyData={users:state.db.users||[]};
   if(state.db.ipLogs)legacyData.ipLogs=state.db.ipLogs;
   if(state.db.deleteLogs)legacyData.deleteLogs=state.db.deleteLogs;
   var legacyToSave=convertRowsForSave(legacyData);
-  promises.push(
-    firestore.collection('app').doc('data').set(legacyToSave,{merge:true}).catch(function(e){
-      console.error('legacy data 저장 실패:',e);
-    })
-  );
-  return Promise.all(promises).catch(function(e){
-    console.error('저장 실패:',e);
-    toast('저장 오류: '+e.message,'err');
-  });
+
+  return firestoreCall(function(){
+    return Promise.all([
+      firestore.collection('app').doc('settings').set(settingsData),
+      firestore.collection('app').doc('data').set(legacyToSave,{merge:true})
+    ]);
+  },'저장 실패');
 }
 
 // 새 구조 전용: 개별 페이지를 pages/{pageId}에 저장
@@ -267,58 +290,55 @@ export function savePageToCollection(page){
     pageData[key]=page[key];
   }
   var dataToSave=convertRowsForSave(pageData);
-  return firestore.collection('pages').doc(page.id).set(dataToSave).catch(function(e){
-    console.error('페이지 저장 실패 ('+page.id+'):',e);
-    toast('저장 오류: '+e.message,'err');
-  });
+  return firestoreCall(function(){
+    return firestore.collection('pages').doc(page.id).set(dataToSave);
+  },'페이지 저장 실패 ('+page.id+')');
 }
 
 // 새 구조 전용: 페이지 + 버전/댓글 서브컬렉션 로드
 export function loadPageFull(pageId){
-  return Promise.all([
-    firestore.collection('pages').doc(pageId).get(),
-    firestore.collection('pages').doc(pageId).collection('versions').get(),
-    firestore.collection('pages').doc(pageId).collection('comments').get()
-  ]).then(function(results){
-    var pageDoc=results[0];
-    var versionsSnap=results[1];
-    var commentsSnap=results[2];
+  return firestoreCall(function(){
+    return Promise.all([
+      firestore.collection('pages').doc(pageId).get(),
+      firestore.collection('pages').doc(pageId).collection('versions').get(),
+      firestore.collection('pages').doc(pageId).collection('comments').get()
+    ]).then(function(results){
+      var pageDoc=results[0];
+      var versionsSnap=results[1];
+      var commentsSnap=results[2];
 
-    if(!pageDoc.exists)return null;
+      if(!pageDoc.exists)return null;
 
-    var page=convertRowsForLoad(pageDoc.data());
-    page.id=pageDoc.id;
+      var page=convertRowsForLoad(pageDoc.data());
+      page.id=pageDoc.id;
 
-    // 버전 로드
-    page.versions=[];
-    versionsSnap.forEach(function(doc){
-      var ver=convertRowsForLoad(doc.data());
-      ver.id=doc.id;
-      page.versions.push(ver);
+      // 버전 로드
+      page.versions=[];
+      versionsSnap.forEach(function(doc){
+        var ver=convertRowsForLoad(doc.data());
+        ver.id=doc.id;
+        page.versions.push(ver);
+      });
+      // 버전을 id 기준으로 정렬 (최신순)
+      page.versions.sort(function(a,b){
+        var aId=Number(a.id)||0;
+        var bId=Number(b.id)||0;
+        return bId-aId;
+      });
+
+      // 댓글 로드
+      page.comments=[];
+      commentsSnap.forEach(function(doc){
+        var cmt=doc.data();
+        cmt.id=doc.id;
+        page.comments.push(cmt);
+      });
+      // 댓글을 시간순 정렬
+      page.comments.sort(function(a,b){return(a.date||0)-(b.date||0)});
+
+      return page;
     });
-    // 버전을 id 기준으로 정렬 (최신순)
-    page.versions.sort(function(a,b){
-      var aId=Number(a.id)||0;
-      var bId=Number(b.id)||0;
-      return bId-aId;
-    });
-
-    // 댓글 로드
-    page.comments=[];
-    commentsSnap.forEach(function(doc){
-      var cmt=doc.data();
-      cmt.id=doc.id;
-      page.comments.push(cmt);
-    });
-    // 댓글을 시간순 정렬
-    page.comments.sort(function(a,b){return(a.date||0)-(b.date||0)});
-
-    return page;
-  }).catch(function(e){
-    console.error('페이지 로드 실패 ('+pageId+'):',e);
-    toast('페이지 로드 실패','err');
-    return null;
-  });
+  },'페이지 로드 실패').catch(function(){return null});
 }
 
 // Storage 용량 체크 및 업로드
@@ -331,7 +351,7 @@ export function getStorageUsage(){
 export function updateStorageUsage(addBytes){
   if(!state.db.storageUsage)state.db.storageUsage=0;
   state.db.storageUsage+=addBytes;
-  saveDB();
+  return saveDB();
 }
 export function uploadToStorage(file,folder,allowedTypes){
   return new Promise(function(resolve,reject){
@@ -387,21 +407,23 @@ export function uploadToStorage(file,folder,allowedTypes){
   });
 }
 
-// IP 로깅
+// IP 로깅 (비핵심 작업: 실패해도 사용자에게 알리지 않음)
 export function logLoginAttempt(userId,success){
-  fetchIPLocal().then(function(ip){
-    if(!state.db.ipLogs)state.db.ipLogs=[];
-    state.db.ipLogs.unshift({
-      ip:ip,
-      userId:userId||'(알 수 없음)',
-      success:success,
-      time:Date.now(),
-      ua:navigator.userAgent.substring(0,100)
-    });
-    // 최대 100개 유지
-    if(state.db.ipLogs.length>100)state.db.ipLogs=state.db.ipLogs.slice(0,100);
-    saveDB();
-  });
+  try{
+    fetchIPLocal().then(function(ip){
+      if(!state.db.ipLogs)state.db.ipLogs=[];
+      state.db.ipLogs.unshift({
+        ip:ip,
+        userId:userId||'(알 수 없음)',
+        success:success,
+        time:Date.now(),
+        ua:navigator.userAgent.substring(0,100)
+      });
+      // 최대 100개 유지
+      if(state.db.ipLogs.length>100)state.db.ipLogs=state.db.ipLogs.slice(0,100);
+      return saveDB();
+    }).catch(function(e){console.warn('로그인 로그 저장 실패:',e)});
+  }catch(e){console.warn('로그인 로그 기록 실패:',e)}
 }
 function fetchIPLocal(){
   return fetch('https://api.ipify.org?format=json')
@@ -431,6 +453,7 @@ export function getLoginLockState(loginId){
     }
     return{attempts:0,lockUntil:0,blocked:false,lastAttempt:0,blockedAt:0};
   }).catch(function(e){
+    // 비핵심 작업: 잠금 상태 조회 실패 시 기본값 반환 (사용자에게 toast 없음)
     console.warn('잠금 상태 조회 실패:',e);
     return{attempts:0,lockUntil:0,blocked:false,lastAttempt:0,blockedAt:0};
   });
@@ -451,21 +474,23 @@ export function clearLoginLockState(loginId){
   });
 }
 
-// 삭제 로그
+// 삭제 로그 (비핵심 작업: 실패해도 사용자에게 알리지 않음)
 export function logDeleteAction(pageId,pageTitle,action){
-  fetchIPLocal().then(function(ip){
-    if(!state.db.deleteLogs)state.db.deleteLogs=[];
-    state.db.deleteLogs.unshift({
-      pageId:pageId,
-      pageTitle:pageTitle,
-      action:action, // 'trash' or 'permanent'
-      userId:state.user.id,
-      userNickname:state.user.nickname||state.user.id,
-      ip:ip,
-      time:Date.now()
-    });
-    // 최대 200개 유지
-    if(state.db.deleteLogs.length>200)state.db.deleteLogs=state.db.deleteLogs.slice(0,200);
-    saveDB();
-  });
+  try{
+    fetchIPLocal().then(function(ip){
+      if(!state.db.deleteLogs)state.db.deleteLogs=[];
+      state.db.deleteLogs.unshift({
+        pageId:pageId,
+        pageTitle:pageTitle,
+        action:action, // 'trash' or 'permanent'
+        userId:state.user.id,
+        userNickname:state.user.nickname||state.user.id,
+        ip:ip,
+        time:Date.now()
+      });
+      // 최대 200개 유지
+      if(state.db.deleteLogs.length>200)state.db.deleteLogs=state.db.deleteLogs.slice(0,200);
+      return saveDB();
+    }).catch(function(e){console.warn('삭제 로그 저장 실패:',e)});
+  }catch(e){console.warn('삭제 로그 기록 실패:',e)}
 }

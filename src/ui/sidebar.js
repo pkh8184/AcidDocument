@@ -3,7 +3,7 @@
 import state from '../data/store.js';
 import {MAX_VER} from '../config/firebase.js';
 import {$,$$,genId,esc,fmtD,fmtDT,toast} from '../utils/helpers.js';
-import {saveDB,logDeleteAction} from '../data/firestore.js';
+import {saveDB,logDeleteAction,USE_NEW_STRUCTURE,batchDeletePages} from '../data/firestore.js';
 import {isSuper} from '../auth/auth.js';
 import {getPages,getPage,getPath,collectBlocks,triggerAS} from '../editor/blocks.js';
 import {renderBlocks} from '../editor/renderer.js';
@@ -233,9 +233,40 @@ export function permanentDelete(id){
     logDeleteAction(p.id,p.title,'permanent');
   }
   state.db.pages=state.db.pages.filter(function(pg){return pg.id!==id});
-  saveDB();showTrash();toast('삭제됨')
+  if(USE_NEW_STRUCTURE){
+    batchDeletePages([id]).then(function(){
+      saveDB();showTrash();toast('삭제됨');
+    }).catch(function(e){
+      console.error('영구 삭제 실패:',e);
+      toast('삭제 실패','err');
+    });
+  }else{
+    saveDB();showTrash();toast('삭제됨');
+  }
 }
-export function emptyTrash(){if(!isSuper()){toast('권한 없음','err');return}if(!confirm('휴지통을 비우시겠습니까? 모든 항목이 영구 삭제됩니다.'))return;var trashed=state.db.pages.filter(function(p){return p.deleted});for(var i=0;i<trashed.length;i++){logDeleteAction(trashed[i].id,trashed[i].title,'permanent')}state.db.pages=state.db.pages.filter(function(p){return!p.deleted});saveDB();showTrash();toast('휴지통 비움')}
+export function emptyTrash(){
+  if(!isSuper()){toast('권한 없음','err');return}
+  if(!confirm('휴지통을 비우시겠습니까? 모든 항목이 영구 삭제됩니다.'))return;
+  var trashed=state.db.pages.filter(function(p){return p.deleted});
+  if(trashed.length===0){showTrash();return}
+  // 삭제 로그 기록
+  for(var i=0;i<trashed.length;i++){logDeleteAction(trashed[i].id,trashed[i].title,'permanent')}
+  // 메모리에서 삭제
+  state.db.pages=state.db.pages.filter(function(p){return!p.deleted});
+  if(USE_NEW_STRUCTURE){
+    // 새 구조: Firestore batch write로 일괄 삭제
+    var ids=trashed.map(function(p){return p.id});
+    batchDeletePages(ids).then(function(){
+      saveDB();showTrash();toast('휴지통 비움');
+    }).catch(function(e){
+      console.error('휴지통 비우기 실패:',e);
+      toast('휴지통 비우기 실패','err');
+    });
+  }else{
+    // 기존 구조: app/data에서 삭제 (이미 메모리에서 제거 후 saveDB)
+    saveDB();showTrash();toast('휴지통 비움');
+  }
+}
 export function duplicatePage(id){var o=getPage(id);if(!o)return;var c=JSON.parse(JSON.stringify(o));c.id=genId();c.title+=' (복사)';c.created=c.updated=Date.now();c.author=state.user.id;c.versions=[];c.comments=[];for(var i=0;i<c.blocks.length;i++)c.blocks[i].id=genId();state.db.pages.push(c);saveDB();renderTree();loadPage(c.id);toast('복제됨')}
 export function toggleFavorite(id){var p=getPage(id);if(p){p.favorite=!p.favorite;saveDB();renderTree();toast(p.favorite?'즐겨찾기 추가':'즐겨찾기 해제')}}
 export function movePage(id,newParentId){
