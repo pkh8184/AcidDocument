@@ -457,9 +457,19 @@ export function setupListeners(){
     for(var i=0;i<files.length;i++){
       var file=files[i];
       if(file.type.startsWith('image/')){
-        var reader=new FileReader();
-        reader.onload=function(ev){addImageBlock(ev.target.result)};
-        reader.readAsDataURL(file)
+        var mode=state.db.settings.imageStorage||'storage';
+        if(mode==='storage'){
+          uploadToStorage(file,'images',ALLOWED_IMAGE_TYPES).then(function(result){
+            addImageBlock(result.url);
+          }).catch(function(err){
+            console.error('이미지 업로드 실패:',err);
+            toast(err.message||'이미지 업로드 실패','err');
+          });
+        }else{
+          var reader=new FileReader();
+          reader.onload=function(ev){addImageBlock(ev.target.result)};
+          reader.readAsDataURL(file);
+        }
       }else if(file.type==='application/pdf'){
         var reader=new FileReader();
         reader.onload=function(ev){addPdfBlock(ev.target.result)};

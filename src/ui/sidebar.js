@@ -9,6 +9,18 @@ import {getPages,getPage,getPath,collectBlocks,triggerAS} from '../editor/blocks
 import {renderBlocks} from '../editor/renderer.js';
 import {openModal,closeModal,closeAllPanels} from './modals.js';
 
+function saveRecent(){
+  try{localStorage.setItem('ad_recent',JSON.stringify(state.db.recent))}catch(e){}
+}
+export function loadRecent(){
+  try{
+    var saved=JSON.parse(localStorage.getItem('ad_recent')||'[]');
+    if(Array.isArray(saved)&&saved.length>0&&(!state.db.recent||state.db.recent.length===0)){
+      state.db.recent=saved;
+    }
+  }catch(e){state.db.recent=state.db.recent||[]}
+}
+
 export function renderBC(){var path=getPath(state.page.id),html='<span>'+esc(state.db.settings.wsName)+'</span>';for(var i=0;i<path.length;i++)html+=' / <span>'+path[i].icon+' '+esc(path[i].title)+'</span>';$('breadcrumb').innerHTML=html}
 export function renderMeta(){
   var authorId=state.page.author||'';
@@ -124,6 +136,7 @@ export function createPage(pid,tplId){
   setTimeout(function(){toggleEdit();$('pageTitle').focus();$('pageTitle').select()},100)
 }
 export function loadPage(id){
+  loadRecent();
   var p=getPage(id);if(!p)return;
   // 편집 중 페이지 이탈 확인
   if(state.editMode&&hasChanges()){
@@ -138,7 +151,7 @@ export function loadPage(id){
   $('saveBtn').style.display='none';$('cancelBtn').style.display='none';
   renderMeta();renderTags();renderBlocks();renderBC();renderTree();renderVer();renderCmt();
   state.db.recent=state.db.recent.filter(function(x){return x!==id});state.db.recent.unshift(id);if(state.db.recent.length>30)state.db.recent.pop();
-  saveDB();closeMobile();$('editorWrap').scrollTop=0
+  saveRecent();saveDB();closeMobile();$('editorWrap').scrollTop=0
 }
 export function loadPageWithoutPush(id){
   var p=getPage(id);if(!p)return;
@@ -149,12 +162,12 @@ export function loadPageWithoutPush(id){
   $('saveBtn').style.display='none';$('cancelBtn').style.display='none';
   renderMeta();renderTags();renderBlocks();renderBC();renderTree();renderVer();renderCmt();
   state.db.recent=state.db.recent.filter(function(x){return x!==id});state.db.recent.unshift(id);if(state.db.recent.length>30)state.db.recent.pop();
-  saveDB();closeMobile();$('editorWrap').scrollTop=0
+  saveRecent();saveDB();closeMobile();$('editorWrap').scrollTop=0
 }
 export function saveDoc(){
   if(!state.page)return;var p=getPage(state.page.id);if(!p)return;
   p.title=$('pageTitle').value||'제목 없음';p.icon=$('pageIcon').textContent;p.blocks=collectBlocks();p.updated=Date.now();
-  p.versions.push({id:p.versions.length+1,date:Date.now(),author:state.user.id,blocks:JSON.parse(JSON.stringify(p.blocks))});
+  p.versions.push({id:genId(),date:Date.now(),author:state.user.id,blocks:JSON.parse(JSON.stringify(p.blocks))});
   if(p.versions.length>MAX_VER)p.versions.shift();
   saveDB();state.page=p;renderMeta();renderTree();renderVer();toast('저장됨')
 }
@@ -189,7 +202,7 @@ export function hasChanges(){
   var current=collectBlocks();
   if(current.length!==state.editBackup.blocks.length)return true;
   for(var i=0;i<current.length;i++){
-    if(current[i].content!==state.editBackup.blocks[i].content)return true;
+    if(JSON.stringify(current[i])!==JSON.stringify(state.editBackup.blocks[i]))return true;
   }
   return false
 }
@@ -344,7 +357,7 @@ export function showCtxAt(x,y){var m=$('ctxMenu');m.style.left=Math.min(x,window
 export function hideCtx(){$('ctxMenu').classList.remove('open')}
 
 // 버전 렌더링
-export function renderVer(){var list=state.page.versions.slice().reverse(),html='';if(list.length===0){$('versionList').innerHTML='<div style="text-align:center;color:var(--t4);padding:30px">버전 기록 없음</div>';return}for(var i=0;i<list.length;i++){var v=list[i],isCur=i===0;html+='<div class="ver-item'+(isCur?' current':'')+'" onclick="'+(isCur?'':'restoreVer('+v.id+')')+'"><div><div style="font-weight:500">'+fmtDT(v.date)+(isCur?' <span class="badge badge-p">현재</span>':'')+'</div><div style="font-size:13px;color:var(--t4)">'+esc(v.author)+'</div></div>'+(isCur?'':'<button class="btn btn-sm btn-s" onclick="event.stopPropagation();deleteVer('+v.id+')">삭제</button>')+'</div>'}$('versionList').innerHTML=html}
+export function renderVer(){var list=state.page.versions.slice().reverse(),html='';if(list.length===0){$('versionList').innerHTML='<div style="text-align:center;color:var(--t4);padding:30px">버전 기록 없음</div>';return}for(var i=0;i<list.length;i++){var v=list[i],isCur=i===0;html+='<div class="ver-item'+(isCur?' current':'')+'" onclick="'+(isCur?'':'restoreVer(\''+v.id+'\')')+'"><div><div style="font-weight:500">'+fmtDT(v.date)+(isCur?' <span class="badge badge-p">현재</span>':'')+'</div><div style="font-size:13px;color:var(--t4)">'+esc(v.author)+'</div></div>'+(isCur?'':'<button class="btn btn-sm btn-s" onclick="event.stopPropagation();deleteVer(\''+v.id+'\')">삭제</button>')+'</div>'}$('versionList').innerHTML=html}
 export function renderCmt(){var list=state.page.comments,html='';if(list.length===0){$('commentList').innerHTML='<div style="text-align:center;color:var(--t4);padding:30px">댓글 없음</div>';return}for(var i=0;i<list.length;i++){var c=list[i],isOwner=(c.author===(state.user.nickname||state.user.id))||isSuper();html+='<div class="cmt-item"><div class="cmt-head"><div class="cmt-avatar">'+c.author.slice(-2).toUpperCase()+'</div><div style="flex:1"><div style="font-weight:500;font-size:14px">'+esc(c.author)+'</div><div style="font-size:12px;color:var(--t4)">'+fmtDT(c.date)+'</div></div>'+(isOwner?'<div style="display:flex;gap:4px"><button class="btn btn-sm btn-g" onclick="editComment(\''+c.id+'\')">✏️</button><button class="btn btn-sm btn-g" style="color:var(--err)" onclick="deleteComment(\''+c.id+'\')">🗑️</button></div>':'')+'</div><div style="font-size:14px;color:var(--t2);margin-top:8px">'+esc(c.text)+'</div></div>'}$('commentList').innerHTML=html}
 
 // 기타 모달
