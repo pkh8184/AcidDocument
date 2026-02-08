@@ -1091,7 +1091,17 @@ function movePage(id,newParentId){
   p.parentId=newParentId;saveDB();renderTree();toast('이동됨')
 }
 function renderBC(){var path=getPath(page.id),html='<span>'+esc(db.settings.wsName)+'</span>';for(var i=0;i<path.length;i++)html+=' / <span>'+path[i].icon+' '+esc(path[i].title)+'</span>';$('breadcrumb').innerHTML=html}
-function renderMeta(){var authorName=user.nickname||page.author;$('pageMeta').innerHTML='<span>✍️ '+esc(authorName)+'</span><span>📅 '+fmtD(page.updated)+'</span><span>v'+(page.versions.length+1)+'</span>'}
+function renderMeta(){
+  var authorName=page.author;
+  // 작성자 ID로 닉네임 찾기
+  for(var i=0;i<db.users.length;i++){
+    if(db.users[i].id===page.author){
+      authorName=db.users[i].nickname||db.users[i].id;
+      break;
+    }
+  }
+  $('pageMeta').innerHTML='<span>✍️ '+esc(authorName)+'</span><span>📅 '+fmtD(page.updated)+'</span><span>v'+(page.versions.length+1)+'</span>';
+}
 function renderTags(){var html='';for(var i=0;i<page.tags.length;i++)html+='<span class="tag" onclick="removeTag(\''+esc(page.tags[i])+'\')">'+esc(page.tags[i])+' ×</span>';html+='<span class="tag tag-add" onclick="openTagModal()">+ 태그</span>';$('pageTags').innerHTML=html}
 function openTagModal(){$('tagInput').value='';openModal('tagModal');setTimeout(function(){$('tagInput').focus()},100)}
 function submitTag(){var t=$('tagInput').value.trim();if(!t){toast('태그를 입력하세요','err');return}if(page.tags.indexOf(t)!==-1){toast('이미 존재하는 태그','err');return}page.tags.push(t);saveDB();renderTags();closeModal('tagModal');toast('태그 추가')}
