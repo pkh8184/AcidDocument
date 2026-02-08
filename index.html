@@ -366,9 +366,9 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 <div class="login-blocked" id="loginBlocked">🚫 접근이 차단되었습니다.<br>관리자에게 문의하세요.</div>
 <div class="login-locked" id="loginLocked">🔒 로그인 시도 초과<br><span id="lockTimer">5:00</span> 후 다시 시도하세요.</div>
 <div class="login-error" id="loginError"></div>
-<form id="loginForm">
-<div class="fg"><label>아이디</label><input type="text" id="loginId" required></div>
-<div class="fg"><label>비밀번호</label><input type="password" id="loginPw" required></div>
+<form id="loginForm" onsubmit="handleLogin(event)">
+<div class="fg"><label>아이디</label><input type="text" id="loginId" required autocomplete="username"></div>
+<div class="fg"><label>비밀번호</label><input type="password" id="loginPw" required autocomplete="current-password"></div>
 <button type="submit" class="btn btn-p">로그인</button>
 </form>
 </div>
@@ -919,6 +919,11 @@ function logDeleteAction(pageId,pageTitle,action){
 // 로그인
 function handleLogin(e){
   e.preventDefault();
+  // db 로드 전이면 대기
+  if(!db||!db.users){
+    toast('데이터 로딩 중...','warn');
+    return;
+  }
   var st=getLoginState();
   if(st.blocked){$('loginBlocked').style.display='block';$('loginForm').style.display='none';return}
   if(st.lockUntil>Date.now()){showLockTimer(st.lockUntil);return}
@@ -1092,12 +1097,15 @@ function movePage(id,newParentId){
 }
 function renderBC(){var path=getPath(page.id),html='<span>'+esc(db.settings.wsName)+'</span>';for(var i=0;i<path.length;i++)html+=' / <span>'+path[i].icon+' '+esc(path[i].title)+'</span>';$('breadcrumb').innerHTML=html}
 function renderMeta(){
-  var authorName=page.author;
+  var authorId=page.author||'';
+  var authorName=authorId||'알 수 없음';
   // 작성자 ID로 닉네임 찾기
-  for(var i=0;i<db.users.length;i++){
-    if(db.users[i].id===page.author){
-      authorName=db.users[i].nickname||db.users[i].id;
-      break;
+  if(authorId){
+    for(var i=0;i<db.users.length;i++){
+      if(db.users[i].id===authorId){
+        authorName=db.users[i].nickname||db.users[i].id;
+        break;
+      }
     }
   }
   $('pageMeta').innerHTML='<span>✍️ '+esc(authorName)+'</span><span>📅 '+fmtD(page.updated)+'</span><span>v'+(page.versions.length+1)+'</span>';
