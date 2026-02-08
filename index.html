@@ -363,8 +363,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 <button class="btn btn-i btn-g theme-float" onclick="toggleTheme()">🌓</button>
 <div class="login-box">
 <div class="login-logo"><h1>Acid<span>Document</span></h1></div>
-<div class="login-blocked" id="loginBlocked">🚫 접근이 차단되었습니다.<br>관리자에게 문의하세요.</div>
-<div class="login-locked" id="loginLocked">🔒 로그인 시도 초과<br><span id="lockTimer">5:00</span> 후 다시 시도하세요.</div>
+<div class="login-blocked" id="loginBlocked">🚫 접근이 차단되었습니다.<br>관리자에게 문의하세요.<br><a href="#" onclick="resetLoginState()" style="color:var(--acc);font-size:12px;margin-top:10px;display:inline-block">잠금 해제</a></div>
+<div class="login-locked" id="loginLocked">🔒 로그인 시도 초과<br><span id="lockTimer">5:00</span> 후 다시 시도하세요.<br><a href="#" onclick="resetLoginState()" style="color:var(--acc);font-size:12px;margin-top:10px;display:inline-block">잠금 해제</a></div>
 <div class="login-error" id="loginError"></div>
 <form id="loginForm" onsubmit="handleLogin(event)">
 <div class="fg"><label>아이디</label><input type="text" id="loginId" required autocomplete="username"></div>
@@ -679,6 +679,14 @@ function fmtD(t){return new Date(t).toLocaleDateString('ko-KR',{year:'numeric',m
 function fmtDT(t){return new Date(t).toLocaleString('ko-KR')}
 function getLoginState(){var s=localStorage.getItem('ad_login_state');if(s){try{return JSON.parse(s)}catch(e){}}return{attempts:0,lockUntil:0,blocked:false}}
 function saveLoginState(st){localStorage.setItem('ad_login_state',JSON.stringify(st))}
+function resetLoginState(){
+  localStorage.removeItem('ad_login_state');
+  $('loginBlocked').style.display='none';
+  $('loginLocked').style.display='none';
+  $('loginForm').style.display='block';
+  $('loginError').style.display='none';
+  toast('잠금 해제됨');
+}
 
 function initDB(){
   return firestore.collection('app').doc('data').get().then(function(doc){
@@ -929,24 +937,54 @@ function handleLogin(e){
     return;
   }
   var st=getLoginState();
+  console.log('로그인 시도 - 현재 상태:', st);
+  
   if(st.blocked){$('loginBlocked').style.display='block';$('loginForm').style.display='none';return}
   if(st.lockUntil>Date.now()){showLockTimer(st.lockUntil);return}
+  
   var id=$('loginId').value.trim(),pw=$('loginPw').value,u=null;
-  for(var i=0;i<db.users.length;i++){if(db.users[i].id===id&&db.users[i].pw===pw&&db.users[i].active){u=db.users[i];break}}
+  for(var i=0;i<db.users.length;i++){
+    if(db.users[i].id===id&&db.users[i].pw===pw&&db.users[i].active){u=db.users[i];break}
+  }
+  
   if(!u){
     logLoginAttempt(id,false);
-    st.attempts++;
+    st.attempts=(st.attempts||0)+1;
+    console.log('로그인 실패 - 시도 횟수:', st.attempts);
+    
     var idExists=false;
     for(var j=0;j<db.users.length;j++){if(db.users[j].id===id){idExists=true;break}}
     var errMsg=idExists?'❌ 비밀번호가 일치하지 않습니다.':'❌ 존재하지 않는 아이디입니다.';
-    if(st.attempts>=15){st.blocked=true;saveLoginState(st);$('loginBlocked').style.display='block';$('loginForm').style.display='none';$('loginError').style.display='none';return}
-    if(st.attempts>=5){st.lockUntil=Date.now()+5*60*1000;saveLoginState(st);showLockTimer(st.lockUntil);return}
+    
+    if(st.attempts>=15){
+      st.blocked=true;
+      saveLoginState(st);
+      $('loginBlocked').style.display='block';
+      $('loginForm').style.display='none';
+      $('loginError').style.display='none';
+      return;
+    }
+    if(st.attempts>=5){
+      st.lockUntil=Date.now()+5*60*1000;
+      saveLoginState(st);
+      showLockTimer(st.lockUntil);
+      return;
+    }
     errMsg+=' ('+st.attempts+'/5)';
-    $('loginError').textContent=errMsg;$('loginError').style.display='block';$('loginPw').value='';saveLoginState(st);return
+    $('loginError').textContent=errMsg;
+    $('loginError').style.display='block';
+    $('loginPw').value='';
+    saveLoginState(st);
+    return;
   }
+  
+  // 성공
   logLoginAttempt(id,true);
-  st.attempts=0;st.lockUntil=0;saveLoginState(st);
-  localStorage.setItem('ad_session',u.id);user=u;$('loginError').style.display='none';
+  st.attempts=0;st.lockUntil=0;st.blocked=false;
+  saveLoginState(st);
+  localStorage.setItem('ad_session',u.id);
+  user=u;
+  $('loginError').style.display='none';
   if(u.needPw){$('loginScreen').classList.add('hidden');openModal('pwChangeModal')}else initApp()
 }
 function showLockTimer(until){
@@ -3127,7 +3165,7 @@ function init(){
   });
 }
 // 전역
-window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.downloadCode=downloadCode;window.copyImageUrl=copyImageUrl;window.setImageScale=setImageScale;window.downloadImage=downloadImage;window.downloadFile=downloadFile;window.dupBlockCurrent=dupBlockCurrent;window.deleteBlockCurrent=deleteBlockCurrent;window.addBlockBelowCurrent=addBlockBelowCurrent;window.moveBlockUpCurrent=moveBlockUpCurrent;window.moveBlockDownCurrent=moveBlockDownCurrent;window.getCurrentIdx=getCurrentIdx;window.genId=genId;window.insertBlock=insertBlock;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.openColWidthModal=openColWidthModal;window.applyColWidths=applyColWidths;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.togglePwView=togglePwView;window.exportUsers=exportUsers;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.clearIpLog=clearIpLog;window.clearDeleteLog=clearDeleteLog;window.restoreFromLog=restoreFromLog;window.migrateImages=migrateImages;window.setImageStorageMode=setImageStorageMode;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;window.changeCalMonth=changeCalMonth;window.openCalEvent=openCalEvent;window.selectEventColor=selectEventColor;window.addCalEvent=addCalEvent;window.deleteCalEvent=deleteCalEvent;window.updateChartTitle=updateChartTitle;window.updateChartData=updateChartData;window.addChartData=addChartData;window.removeChartData=removeChartData;window.changeTagColor=changeTagColor;window.removeInlineTag=removeInlineTag;window.openImageViewer=openImageViewer;window.closeImageViewer=closeImageViewer;window.viewerNav=viewerNav;window.slideNav=slideNav;window.slideTo=slideTo;window.setSlideAuto=setSlideAuto;window.setSlideInterval=setSlideInterval;window.addSlideImage=addSlideImage;window.submitSlideImage=submitSlideImage;window.removeSlideImage=removeSlideImage;window.getSlideImages=getSlideImages;
+window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.resetLoginState=resetLoginState;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.downloadCode=downloadCode;window.copyImageUrl=copyImageUrl;window.setImageScale=setImageScale;window.downloadImage=downloadImage;window.downloadFile=downloadFile;window.dupBlockCurrent=dupBlockCurrent;window.deleteBlockCurrent=deleteBlockCurrent;window.addBlockBelowCurrent=addBlockBelowCurrent;window.moveBlockUpCurrent=moveBlockUpCurrent;window.moveBlockDownCurrent=moveBlockDownCurrent;window.getCurrentIdx=getCurrentIdx;window.genId=genId;window.insertBlock=insertBlock;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.openColWidthModal=openColWidthModal;window.applyColWidths=applyColWidths;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.togglePwView=togglePwView;window.exportUsers=exportUsers;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.clearIpLog=clearIpLog;window.clearDeleteLog=clearDeleteLog;window.restoreFromLog=restoreFromLog;window.migrateImages=migrateImages;window.setImageStorageMode=setImageStorageMode;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;window.changeCalMonth=changeCalMonth;window.openCalEvent=openCalEvent;window.selectEventColor=selectEventColor;window.addCalEvent=addCalEvent;window.deleteCalEvent=deleteCalEvent;window.updateChartTitle=updateChartTitle;window.updateChartData=updateChartData;window.addChartData=addChartData;window.removeChartData=removeChartData;window.changeTagColor=changeTagColor;window.removeInlineTag=removeInlineTag;window.openImageViewer=openImageViewer;window.closeImageViewer=closeImageViewer;window.viewerNav=viewerNav;window.slideNav=slideNav;window.slideTo=slideTo;window.setSlideAuto=setSlideAuto;window.setSlideInterval=setSlideInterval;window.addSlideImage=addSlideImage;window.submitSlideImage=submitSlideImage;window.removeSlideImage=removeSlideImage;window.getSlideImages=getSlideImages;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 } // startApp 함수 끝
 </script>
