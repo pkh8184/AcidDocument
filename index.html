@@ -598,6 +598,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 <div class="modal-bg" id="codeSettingModal" onclick="if(event.target===this)closeModal('codeSettingModal')"><div class="modal" style="max-width:360px"><div class="modal-head"><h2>💻 코드 설정</h2><button class="btn btn-i btn-g" onclick="closeModal('codeSettingModal')">✕</button></div><div class="modal-body"><div class="fg"><label>언어/제목</label><input type="text" id="codeLangInput" placeholder="javascript, python, etc."></div></div><div class="modal-foot"><button class="btn btn-s" onclick="closeModal('codeSettingModal')">취소</button><button class="btn btn-p" onclick="submitCodeLang()">저장</button></div></div></div>
 <div class="modal-bg" id="calEventModal" onclick="if(event.target===this)closeModal('calEventModal')"><div class="modal" style="max-width:420px"><div class="modal-head"><h2 id="calEventModalTitle">📅 일정</h2><button class="btn btn-i btn-g" onclick="closeModal('calEventModal')">✕</button></div><div class="modal-body"><div id="calEventList" class="event-list" style="margin-bottom:16px"></div><div style="border-top:1px solid var(--bdr);padding-top:16px"><p style="font-weight:600;margin-bottom:12px">새 일정 추가</p><div class="fg"><label>제목</label><input type="text" id="calEventTitle" placeholder="일정 제목"></div><div style="display:flex;gap:12px"><div class="fg" style="flex:1"><label>시작 시간</label><input type="time" id="calEventStart"></div><div class="fg" style="flex:1"><label>종료 시간</label><input type="time" id="calEventEnd"></div></div><div class="fg"><label>색상</label><div style="display:flex;gap:6px;flex-wrap:wrap" id="calEventColors"></div></div></div></div><div class="modal-foot"><button class="btn btn-s" onclick="closeModal('calEventModal')">닫기</button><button class="btn btn-p" onclick="addCalEvent()">일정 추가</button></div></div></div>
 <div class="modal-bg" id="tableAlignModal" onclick="if(event.target===this)closeModal('tableAlignModal')"><div class="modal" style="max-width:320px"><div class="modal-head"><h2>📊 표 설정</h2><button class="btn btn-i btn-g" onclick="closeModal('tableAlignModal')">✕</button></div><div class="modal-body"><div class="fg"><label>텍스트 정렬</label><div style="display:flex;gap:8px"><button class="btn btn-s" onclick="setTblAlign('left')">왼쪽</button><button class="btn btn-s" onclick="setTblAlign('center')">가운데</button><button class="btn btn-s" onclick="setTblAlign('right')">오른쪽</button></div></div><div class="fg" style="margin-top:16px"><button class="btn btn-s" style="width:100%;color:var(--err)" onclick="deleteTable()">🗑️ 표 삭제</button></div></div></div></div>
+<div class="modal-bg" id="colWidthModal" onclick="if(event.target===this)closeModal('colWidthModal')"><div class="modal" style="max-width:400px"><div class="modal-head"><h2>📏 열 너비 조정</h2><button class="btn btn-i btn-g" onclick="closeModal('colWidthModal')">✕</button></div><div class="modal-body"><p style="font-size:13px;color:var(--t4);margin-bottom:16px">각 열의 너비를 % 단위로 입력하세요. 합계가 100%가 되도록 조정하세요.</p><div id="colWidthInputs"></div></div><div class="modal-foot"><button class="btn btn-s" onclick="closeModal('colWidthModal')">취소</button><button class="btn btn-p" onclick="applyColWidths()">적용</button></div></div></div>
 <div class="modal-bg" id="deleteConfirmModal"><div class="modal" style="max-width:360px"><div class="modal-head"><h2>🗑️ 삭제 확인</h2></div><div class="modal-body"><p id="deleteConfirmText">이 페이지를 삭제하시겠습니까?</p></div><div class="modal-foot"><button class="btn btn-s" onclick="closeModal('deleteConfirmModal')">취소</button><button class="btn btn-d" onclick="confirmDelete()">삭제</button></div></div></div>
 <div class="ctx-menu" id="ctxMenu"></div>
 <div class="slash-menu" id="slashMenu"></div>
@@ -1225,7 +1226,16 @@ function createBlockEl(b,idx){
       break;
     case'table':
       var rows=b.rows||[['','',''],['','','']],thc=b.headerColor||'',tdc=b.cellColor||'',tAlign=b.align||'left';
-      inner='<div class="block-table-wrap"><table style="width:100%;border-collapse:collapse">';
+      var colWidths=b.colWidths||[];
+      var numCols=rows[0]?rows[0].length:3;
+      inner='<div class="block-table-wrap"><table style="width:100%;border-collapse:collapse;table-layout:fixed">';
+      // colgroup으로 열 너비 설정
+      inner+='<colgroup>';
+      for(var cw=0;cw<numCols;cw++){
+        var w=colWidths[cw]||Math.floor(100/numCols);
+        inner+='<col style="width:'+w+'%">';
+      }
+      inner+='</colgroup>';
       for(var r=0;r<rows.length;r++){
         inner+='<tr>';
         for(var c=0;c<rows[r].length;c++){
@@ -1236,12 +1246,13 @@ function createBlockEl(b,idx){
       }
       inner+='</table></div>';
       if(editMode){
-        inner+='<div class="block-table-tools" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">';
+        inner+='<div class="block-table-tools" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">';
         inner+='<button class="btn btn-sm btn-s" onclick="addTblRow(\''+b.id+'\')">+행</button>';
         inner+='<button class="btn btn-sm btn-s" onclick="addTblCol(\''+b.id+'\')">+열</button>';
         inner+='<button class="btn btn-sm btn-s" onclick="delTblRow(\''+b.id+'\')">-행</button>';
         inner+='<button class="btn btn-sm btn-s" onclick="delTblCol(\''+b.id+'\')">-열</button>';
         inner+='<select class="btn btn-sm btn-s" onchange="setTblAlign(\''+b.id+'\',this.value)"><option value="">정렬</option><option value="left"'+(tAlign==='left'?' selected':'')+'>왼쪽</option><option value="center"'+(tAlign==='center'?' selected':'')+'>가운데</option><option value="right"'+(tAlign==='right'?' selected':'')+'>오른쪽</option></select>';
+        inner+='<button class="btn btn-sm btn-s" onclick="openColWidthModal(\''+b.id+'\')">열 너비</button>';
         inner+='<button class="btn btn-sm" style="color:var(--err)" onclick="deleteTable(\''+b.id+'\')">삭제</button>';
         inner+='</div>';
         inner+='<div class="block-add-below" onclick="addBlockBelow('+idx+')">+ 블록 추가</div>';
@@ -2561,6 +2572,42 @@ function setTblAlign(id,align){
   renderBlocks();triggerAS();toast(align==='left'?'왼쪽 정렬':align==='center'?'가운데 정렬':'오른쪽 정렬')
 }
 function deleteTable(id){if(!confirm('표를 삭제하시겠습니까?'))return;for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){page.blocks.splice(i,1);break}}renderBlocks();triggerAS();toast('표 삭제됨')}
+var colWidthTableId=null;
+function openColWidthModal(id){
+  colWidthTableId=id;
+  var b=null;
+  for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===id){b=page.blocks[i];break}}
+  if(!b||!b.rows||!b.rows[0])return;
+  var numCols=b.rows[0].length;
+  var widths=b.colWidths||[];
+  var html='';
+  for(var c=0;c<numCols;c++){
+    var w=widths[c]||Math.floor(100/numCols);
+    html+='<div class="fg" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+    html+='<span style="width:60px">열 '+(c+1)+'</span>';
+    html+='<input type="range" min="10" max="80" value="'+w+'" id="colW'+c+'" oninput="$(\'colWVal'+c+'\').textContent=this.value+\'%\'" style="flex:1">';
+    html+='<span id="colWVal'+c+'" style="width:40px;text-align:right">'+w+'%</span>';
+    html+='</div>';
+  }
+  $('colWidthInputs').innerHTML=html;
+  openModal('colWidthModal');
+}
+function applyColWidths(){
+  if(!colWidthTableId)return;
+  var b=null;
+  for(var i=0;i<page.blocks.length;i++){if(page.blocks[i].id===colWidthTableId){b=page.blocks[i];break}}
+  if(!b||!b.rows||!b.rows[0])return;
+  var numCols=b.rows[0].length;
+  var widths=[];
+  for(var c=0;c<numCols;c++){
+    widths.push(parseInt($('colW'+c).value)||Math.floor(100/numCols));
+  }
+  b.colWidths=widths;
+  renderBlocks();triggerAS();
+  closeModal('colWidthModal');
+  toast('열 너비 적용');
+  colWidthTableId=null;
+}
 // 컨텍스트/버전/댓글
 function showPageCtx(e,id){var m=$('ctxMenu');m.innerHTML='<div class="ctx-item" onclick="loadPage(\''+id+'\');hideCtx()"><span class="ctx-icon">📄</span>열기</div><div class="ctx-item" onclick="createPage(\''+id+'\');hideCtx()"><span class="ctx-icon">➕</span>하위 페이지</div><div class="ctx-divider"></div><div class="ctx-item" onclick="toggleFavorite(\''+id+'\');hideCtx()"><span class="ctx-icon">⭐</span>즐겨찾기</div><div class="ctx-item" onclick="duplicatePage(\''+id+'\');hideCtx()"><span class="ctx-icon">📋</span>복제</div><div class="ctx-divider"></div><div class="ctx-item danger" onclick="deletePage(\''+id+'\');hideCtx()"><span class="ctx-icon">🗑️</span>삭제</div>';showCtxAt(e.pageX,e.pageY)}
 /* ========== 호버/UI 규칙 ==========
@@ -2820,7 +2867,15 @@ function clearDeleteLog(){
   toast('로그 삭제됨');
 }
 function saveNickname(){var nick=$('setNickname').value.trim();for(var i=0;i<db.users.length;i++){if(db.users[i].id===user.id){db.users[i].nickname=nick;break}}user.nickname=nick;saveDB();$('userName').textContent=nick||user.id;renderMeta();toast('닉네임 저장')}
-function renderUsers(){if(!isSuper()){$('usersTable').innerHTML='<tr><td style="text-align:center;padding:20px;color:var(--t4)">권한 없음</td></tr>';return}var html='<tr><th>아이디</th><th>닉네임</th><th>상태</th><th></th></tr>';for(var i=0;i<db.users.length;i++){var u=db.users[i];html+='<tr><td>'+esc(u.id)+'</td><td>'+esc(u.nickname||'-')+'</td><td><span class="badge '+(u.active?'badge-p':'badge-w')+'">'+(u.active?'활성':'비활성')+'</span></td><td>'+(u.id!==SUPER?'<button class="btn btn-sm btn-s" onclick="resetPw(\''+u.id+'\')">초기화</button> <button class="btn btn-sm btn-s" onclick="toggleActive(\''+u.id+'\')">'+(u.active?'비활성':'활성')+'</button> <button class="btn btn-sm btn-d" onclick="delUser(\''+u.id+'\')">삭제</button>':'<span class="badge badge-w">최고관리자</span>')+'</td></tr>'}$('usersTable').innerHTML=html}
+function renderUsers(){if(!isSuper()){$('usersTable').innerHTML='<tr><td style="text-align:center;padding:20px;color:var(--t4)">권한 없음</td></tr>';return}var html='<tr><th>아이디</th><th>닉네임</th><th>비밀번호</th><th>상태</th><th></th></tr>';for(var i=0;i<db.users.length;i++){var u=db.users[i];html+='<tr><td>'+esc(u.id)+'</td><td>'+esc(u.nickname||'-')+'</td><td><code id="pw_'+u.id+'" style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px">••••••</code> <button class="btn btn-sm btn-s" onclick="togglePwView(\''+u.id+'\')">👁</button></td><td><span class="badge '+(u.active?'badge-p':'badge-w')+'">'+(u.active?'활성':'비활성')+'</span></td><td>'+(u.id!==SUPER?'<button class="btn btn-sm btn-s" onclick="resetPw(\''+u.id+'\')">초기화</button> <button class="btn btn-sm btn-s" onclick="toggleActive(\''+u.id+'\')">'+(u.active?'비활성':'활성')+'</button> <button class="btn btn-sm btn-d" onclick="delUser(\''+u.id+'\')">삭제</button>':'<span class="badge badge-w">최고관리자</span>')+'</td></tr>'}$('usersTable').innerHTML=html}
+function togglePwView(userId){
+  var el=$('pw_'+userId);
+  if(!el)return;
+  var u=null;
+  for(var i=0;i<db.users.length;i++){if(db.users[i].id===userId){u=db.users[i];break}}
+  if(!u)return;
+  if(el.textContent==='••••••'){el.textContent=u.pw}else{el.textContent='••••••'}
+}
 function genNewUser(){var id='admin'+Math.floor(1000+Math.random()*9000),chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789',pw='';for(var i=0;i<12;i++)pw+=chars[Math.floor(Math.random()*chars.length)];$('newUserId').value=id;$('newUserPw').value=pw}
 function createUser(){if(!isSuper()){toast('권한 없음','err');return}var id=$('newUserId').value,pw=$('newUserPw').value;for(var i=0;i<db.users.length;i++){if(db.users[i].id===id){toast('중복 아이디','err');return}}db.users.push({id:id,pw:pw,role:'admin',needPw:true,active:true,nickname:''});saveDB();renderUsers();genNewUser();toast('사용자 생성')}
 function resetPw(id){if(!isSuper())return;var chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789',pw='';for(var i=0;i<12;i++)pw+=chars[Math.floor(Math.random()*chars.length)];for(var j=0;j<db.users.length;j++){if(db.users[j].id===id){db.users[j].pw=pw;db.users[j].needPw=true;break}}saveDB();alert('새 비밀번호: '+pw);renderUsers()}
@@ -3053,7 +3108,7 @@ function init(){
   });
 }
 // 전역
-window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.downloadCode=downloadCode;window.copyImageUrl=copyImageUrl;window.setImageScale=setImageScale;window.downloadImage=downloadImage;window.downloadFile=downloadFile;window.dupBlockCurrent=dupBlockCurrent;window.deleteBlockCurrent=deleteBlockCurrent;window.addBlockBelowCurrent=addBlockBelowCurrent;window.moveBlockUpCurrent=moveBlockUpCurrent;window.moveBlockDownCurrent=moveBlockDownCurrent;window.getCurrentIdx=getCurrentIdx;window.genId=genId;window.insertBlock=insertBlock;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.clearIpLog=clearIpLog;window.clearDeleteLog=clearDeleteLog;window.restoreFromLog=restoreFromLog;window.migrateImages=migrateImages;window.setImageStorageMode=setImageStorageMode;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;window.changeCalMonth=changeCalMonth;window.openCalEvent=openCalEvent;window.selectEventColor=selectEventColor;window.addCalEvent=addCalEvent;window.deleteCalEvent=deleteCalEvent;window.updateChartTitle=updateChartTitle;window.updateChartData=updateChartData;window.addChartData=addChartData;window.removeChartData=removeChartData;window.changeTagColor=changeTagColor;window.removeInlineTag=removeInlineTag;window.openImageViewer=openImageViewer;window.closeImageViewer=closeImageViewer;window.viewerNav=viewerNav;window.slideNav=slideNav;window.slideTo=slideTo;window.setSlideAuto=setSlideAuto;window.setSlideInterval=setSlideInterval;window.addSlideImage=addSlideImage;window.submitSlideImage=submitSlideImage;window.removeSlideImage=removeSlideImage;window.getSlideImages=getSlideImages;
+window.toggleTheme=toggleTheme;window.handleLogin=handleLogin;window.skipPwChange=skipPwChange;window.submitPwChange=submitPwChange;window.logout=logout;window.toggleMobile=toggleMobile;window.closeMobile=closeMobile;window.createPage=createPage;window.loadPage=loadPage;window.saveDoc=saveDoc;window.toggleEdit=toggleEdit;window.saveAndExit=saveAndExit;window.cancelEdit=cancelEdit;window.deleteCurrentPage=deleteCurrentPage;window.deletePage=deletePage;window.confirmDelete=confirmDelete;window.restorePage=restorePage;window.permanentDelete=permanentDelete;window.emptyTrash=emptyTrash;window.duplicatePage=duplicatePage;window.toggleFavorite=toggleFavorite;window.openTagModal=openTagModal;window.submitTag=submitTag;window.quickTag=quickTag;window.removeTag=removeTag;window.onTitleChange=onTitleChange;window.scrollToBlk=scrollToBlk;window.copyCode=copyCode;window.downloadCode=downloadCode;window.copyImageUrl=copyImageUrl;window.setImageScale=setImageScale;window.downloadImage=downloadImage;window.downloadFile=downloadFile;window.dupBlockCurrent=dupBlockCurrent;window.deleteBlockCurrent=deleteBlockCurrent;window.addBlockBelowCurrent=addBlockBelowCurrent;window.moveBlockUpCurrent=moveBlockUpCurrent;window.moveBlockDownCurrent=moveBlockDownCurrent;window.getCurrentIdx=getCurrentIdx;window.genId=genId;window.insertBlock=insertBlock;window.addTblRow=addTblRow;window.addTblCol=addTblCol;window.delTblRow=delTblRow;window.delTblCol=delTblCol;window.setTblColor=setTblColor;window.setTblAlign=setTblAlign;window.deleteTable=deleteTable;window.openColWidthModal=openColWidthModal;window.applyColWidths=applyColWidths;window.addBlockBelow=addBlockBelow;window.showBlockCtx=showBlockCtx;window.hideCtx=hideCtx;window.dupBlock=dupBlock;window.deleteBlock=deleteBlock;window.moveBlockUp=moveBlockUp;window.moveBlockDown=moveBlockDown;window.changeBlockType=changeBlockType;window.focusBlock=focusBlock;window.openVersions=openVersions;window.openComments=openComments;window.closePanel=closePanel;window.openModal=openModal;window.closeModal=closeModal;window.openSearch=openSearch;window.doSearch=doSearch;window.openSettings=openSettings;window.showSettingsTab=showSettingsTab;window.saveNickname=saveNickname;window.createUser=createUser;window.resetPw=resetPw;window.togglePwView=togglePwView;window.toggleActive=toggleActive;window.delUser=delUser;window.changePassword=changePassword;window.saveWorkspace=saveWorkspace;window.saveNotice=saveNotice;window.clearNotice=clearNotice;window.clearIpLog=clearIpLog;window.clearDeleteLog=clearDeleteLog;window.restoreFromLog=restoreFromLog;window.migrateImages=migrateImages;window.setImageStorageMode=setImageStorageMode;window.showNotice=showNotice;window.closeNoticeBar=closeNoticeBar;window.showTrash=showTrash;window.showRecent=showRecent;window.showFavorites=showFavorites;window.showTemplates=showTemplates;window.openIconPicker=openIconPicker;window.selectIcon=selectIcon;window.openExport=openExport;window.exportDoc=exportDoc;window.exportPdf=exportPdf;window.insertImage=insertImage;window.submitImage=submitImage;window.insertVideo=insertVideo;window.submitVideo=submitVideo;window.insertPdf=insertPdf;window.submitPdf=submitPdf;window.insertFile=insertFile;window.submitFile=submitFile;window.openCalloutIconPicker=openCalloutIconPicker;window.setCalloutIcon=setCalloutIcon;window.openCodeSetting=openCodeSetting;window.submitCodeLang=submitCodeLang;window.addComment=addComment;window.editComment=editComment;window.submitEditComment=submitEditComment;window.deleteComment=deleteComment;window.restoreVer=restoreVer;window.deleteVer=deleteVer;window.fmtCmd=fmtCmd;window.openColorPicker=openColorPicker;window.applyColor=applyColor;window.changeCalMonth=changeCalMonth;window.openCalEvent=openCalEvent;window.selectEventColor=selectEventColor;window.addCalEvent=addCalEvent;window.deleteCalEvent=deleteCalEvent;window.updateChartTitle=updateChartTitle;window.updateChartData=updateChartData;window.addChartData=addChartData;window.removeChartData=removeChartData;window.changeTagColor=changeTagColor;window.removeInlineTag=removeInlineTag;window.openImageViewer=openImageViewer;window.closeImageViewer=closeImageViewer;window.viewerNav=viewerNav;window.slideNav=slideNav;window.slideTo=slideTo;window.setSlideAuto=setSlideAuto;window.setSlideInterval=setSlideInterval;window.addSlideImage=addSlideImage;window.submitSlideImage=submitSlideImage;window.removeSlideImage=removeSlideImage;window.getSlideImages=getSlideImages;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 } // startApp 함수 끝
 </script>
