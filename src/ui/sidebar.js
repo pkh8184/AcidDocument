@@ -371,10 +371,12 @@ export function showBlockCtx(e,idx){
   html+='<div class="ctx-divider"></div>';
   html+='<div class="ctx-item danger" onclick="deleteBlock('+idx+');hideCtx()"><span class="ctx-icon">🗑️</span>삭제</div>';
   m.innerHTML=html;
-  // 우측 고정 위치에 표시
-  m.style.right='32px';
-  m.style.left='auto';
-  m.style.top='160px';
+  // ⋮ 버튼의 X좌표에 맞춰 왼쪽 고정, Y는 고정 위치
+  var btn=e.target.closest('.btn-i')||e.target;
+  var rect=btn.getBoundingClientRect();
+  m.style.right='auto';
+  m.style.left=rect.left+'px';
+  m.style.top='120px';
   m.classList.add('open');
 }
 export function showCtxAt(x,y){var m=$('ctxMenu');m.style.right='auto';m.style.left=Math.min(x,window.innerWidth-180)+'px';m.style.top=Math.min(y,window.innerHeight-200)+'px';m.classList.add('open')}
