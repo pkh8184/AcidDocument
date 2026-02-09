@@ -228,7 +228,10 @@ export function deleteCurrentPage(){if(state.page)deletePage(state.page.id)}
 export function onTitleChange(){triggerAutoSave()}
 export function deletePage(id){state.deleteTargetId=id;var p=getPage(id);$('deleteConfirmText').textContent='"'+p.title+'" 페이지를 삭제하시겠습니까?';openModal('deleteConfirmModal')}
 export function confirmDelete(){
-  var id=state.deleteTargetId;closeModal('deleteConfirmModal');
+  closeModal('deleteConfirmModal');
+  // 표 삭제 콜백이 있으면 실행
+  if(state._deleteTableConfirm){state._deleteTableConfirm();return}
+  var id=state.deleteTargetId;
   var p=getPage(id);if(!p)return;
   p.deleted=true;
   p.deletedAt=Date.now();
