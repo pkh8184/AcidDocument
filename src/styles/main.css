@@ -40,6 +40,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .user-avatar.admin{background:linear-gradient(135deg,var(--ok),#059669)}.user-avatar.super{background:linear-gradient(135deg,var(--warn),#ea580c)}
 .user-name{font-size:14px;font-weight:500}.user-role{font-size:12px;color:var(--t4)}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg1)}
+.main>article{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .toolbar{height:54px;padding:0 20px;display:flex;align-items:center;gap:12px;background:var(--bg2);border-bottom:1px solid var(--bdr)}
 .toolbar-left{flex:1;display:flex;align-items:center;gap:12px;overflow:hidden}.toolbar-right{display:flex;align-items:center;gap:6px}
 .breadcrumb{font-size:14px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
