@@ -13,7 +13,7 @@ export function collectTableData(id){
   for(var ri=0;ri<trs.length;ri++){
     var cls=[],tds=trs[ri].querySelectorAll('th,td');
     for(var ci=0;ci<tds.length;ci++){
-      cls.push(tds[ci].innerHTML.replace(/<div class="col-resizer"[^>]*><\/div>/g,''));
+      cls.push(tds[ci].innerHTML.replace(/<div class="col-resizer"[^>]*><\/div>/g,'').replace(/<span class="sort-btn"[^>]*>[^<]*<\/span>/g,''));
     }
     rows.push(cls);
   }
@@ -33,7 +33,7 @@ export function setTblAlign(id,align){
     for(var ri=0;ri<trs.length;ri++){
       var cls=[],tds=trs[ri].querySelectorAll('th,td');
       for(var ci=0;ci<tds.length;ci++){
-        cls.push(tds[ci].innerHTML.replace(/<div class="col-resizer"[^>]*><\/div>/g,''));
+        cls.push(tds[ci].innerHTML.replace(/<div class="col-resizer"[^>]*><\/div>/g,'').replace(/<span class="sort-btn"[^>]*>[^<]*<\/span>/g,''));
       }
       rows.push(cls);
     }
@@ -111,7 +111,8 @@ export function setupTableResize(div,b){
       document.removeEventListener('mouseup',onMouseUp);
       if(th){
         if(!b.colWidths)b.colWidths=[];
-        b.colWidths[colIdx]=th.offsetWidth;
+        var tbl=div.querySelector('table');
+        b.colWidths[colIdx]=tbl?Math.round(th.offsetWidth/tbl.offsetWidth*100):Math.floor(100/(b.rows&&b.rows[0]?b.rows[0].length:3));
         triggerAutoSave();
       }
     }

@@ -7,6 +7,7 @@ import {saveDB,logDeleteAction,USE_NEW_STRUCTURE,batchDeletePages} from '../data
 import {isSuper} from '../auth/auth.js';
 import {getPages,getPage,getPath,collectBlocks,triggerAutoSave} from '../editor/blocks.js';
 import {renderBlocks} from '../editor/renderer.js';
+import {clearHistory} from '../editor/history.js';
 import {openModal,closeModal,closeAllPanels} from './modals.js';
 
 function saveRecent(){
@@ -144,6 +145,7 @@ export function loadPage(id){
     if(confirm('작성한 내용을 저장하시겠습니까?')){saveDoc()}
   }
   state.editMode=false;state.editBackup=null;
+  clearHistory();
   state.page=p;
   // URL 해시 업데이트
   history.pushState(null,null,'#'+id);
@@ -160,7 +162,7 @@ export function loadPage(id){
 export function loadPageWithoutPush(id){
   var p=getPage(id);if(!p)return;
   if(state.editMode&&hasChanges()){if(confirm('작성한 내용을 저장하시겠습니까?')){saveDoc()}}
-  state.editMode=false;state.editBackup=null;state.page=p;
+  state.editMode=false;state.editBackup=null;clearHistory();state.page=p;
   $('pageIcon').textContent=p.icon;$('pageTitle').value=p.title;$('pageTitle').setAttribute('readonly','readonly');
   $('editBtn').style.display='inline-flex';$('deletePageBtn').style.display='inline-flex';
   $('saveBtn').style.display='none';$('cancelBtn').style.display='none';

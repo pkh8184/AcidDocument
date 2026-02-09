@@ -182,6 +182,11 @@ export function createBlockEl(b,idx){
         inner+='<select class="btn btn-sm btn-s" data-action="setTblAlign" data-block-id="'+b.id+'"><option value="">정렬</option><option value="left"'+(tAlign==='left'?' selected':'')+'>왼쪽</option><option value="center"'+(tAlign==='center'?' selected':'')+'>가운데</option><option value="right"'+(tAlign==='right'?' selected':'')+'>오른쪽</option></select>';
         inner+='<button class="btn btn-sm btn-s" data-action="openColWidthModal" data-block-id="'+b.id+'">열 너비</button>';
         inner+='<button class="btn btn-sm" style="color:var(--err)" data-action="deleteTable" data-block-id="'+b.id+'">삭제</button>';
+        inner+='<span style="margin-left:4px;color:var(--bdr)">|</span>';
+        inner+='<select class="btn btn-sm btn-s table-filter-col" style="min-width:60px">';
+        for(var fc=0;fc<numCols;fc++){inner+='<option value="'+fc+'">열 '+(fc+1)+'</option>';}
+        inner+='</select>';
+        inner+='<input type="text" class="table-filter-input" placeholder="필터..." style="padding:4px 8px;font-size:13px;width:120px;border-radius:var(--rad);border:1px solid var(--bdr);background:var(--bg3);color:var(--t1)">';
         inner+='</div>';
         inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       }
@@ -222,7 +227,8 @@ export function createBlockEl(b,idx){
     default:
       inner='<div class="block-content"'+ce+'>'+sanitizeHTML(b.content||'')+'</div>';
   }
-  div.innerHTML='<div class="block-handle" draggable="true" data-drag-idx="'+idx+'"><button class="btn btn-i" tabindex="0" data-action="showBlockCtx" data-idx="'+idx+'">⋮</button></div>'+inner;
+  var handleHtml=state.editMode?'<div class="block-handle" draggable="true" data-drag-idx="'+idx+'"><button class="btn btn-i" tabindex="0" data-action="showBlockCtx" data-idx="'+idx+'">⋮</button></div>':'';
+  div.innerHTML=handleHtml+inner;
   setupBlockEvents(div,b,idx);
   return div;
 }

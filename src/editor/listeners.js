@@ -270,7 +270,7 @@ export function setupBlockEvents(div,b,idx){
 
   // 블록 전체 클릭 시
   div.addEventListener('click',function(e){
-    if(e.target.closest('.block-handle')||e.target.closest('.block-add-below')||e.target.closest('button')||e.target.closest('select')||e.target.closest('a'))return;
+    if(e.target.closest('.block-handle')||e.target.closest('.block-add-below')||e.target.closest('button')||e.target.closest('select')||e.target.closest('input')||e.target.closest('a'))return;
     var con=div.querySelector('.block-content')||div.querySelector('.block-col-content');
     if(con&&state.editMode){con.focus()}
   });
@@ -283,6 +283,22 @@ export function setupBlockEvents(div,b,idx){
     cell.addEventListener('click',function(){if(state.editMode)cell.focus()});
     cell.addEventListener('dblclick',function(){if(!state.editMode){import('../ui/sidebar.js').then(function(m){m.toggleEdit();setTimeout(function(){cell.focus()},50)})}});
   })(cells[j])}
+
+  // 테이블 필터
+  var filterInput=div.querySelector('.table-filter-input');
+  if(filterInput){(function(fInput){
+    var colSelect=div.querySelector('.table-filter-col');
+    fInput.addEventListener('input',function(){
+      var col=colSelect?parseInt(colSelect.value):0;
+      var query=fInput.value;
+      import('../editor/table.js').then(function(m){
+        var visible=m.filterTableRows(b.id,col,query);
+        var trs=div.querySelectorAll('tr');
+        for(var ti=1;ti<trs.length;ti++){trs[ti].style.display=visible.indexOf(ti)===-1?'none':''}
+      });
+    });
+    if(colSelect){colSelect.addEventListener('change',function(){fInput.dispatchEvent(new Event('input'))})}
+  })(filterInput)}
 
   // 컬럼 콘텐츠
   var colCons=div.querySelectorAll('.block-col-content');
@@ -418,7 +434,7 @@ export function setupListeners(){
       case'delTblCol':import('../editor/table.js').then(function(m){m.delTblCol(blockId)});break;
       case'openColWidthModal':import('../editor/table.js').then(function(m){m.openColWidthModal(blockId)});break;
       case'deleteTable':import('../editor/table.js').then(function(m){m.deleteTable(blockId)});break;
-      case'sortTable':import('../editor/table.js').then(function(m){var col=parseInt(target.dataset.col);var blk=null;for(var si=0;si<state.page.blocks.length;si++){if(state.page.blocks[si].id===blockId){blk=state.page.blocks[si];break}}var curDir=(blk&&blk.sortCol===col)?blk.sortDir:'desc';var newDir=curDir==='asc'?'desc':'asc';m.sortTable(blockId,col,newDir)});break;
+      case'sortTable':import('../editor/table.js').then(function(m){var col=parseInt(target.dataset.col);var blk=null;if(state.page&&state.page.blocks){for(var si=0;si<state.page.blocks.length;si++){if(state.page.blocks[si].id===blockId){blk=state.page.blocks[si];break}}}if(!blk)return;var curDir=(blk.sortCol===col)?blk.sortDir:'desc';var newDir=curDir==='asc'?'desc':'asc';m.sortTable(blockId,col,newDir)});break;
       case'copyCode':copyCode(target);break;
       case'downloadCode':downloadCode(target);break;
       case'openCalloutIconPicker':import('./media.js').then(function(m){m.openCalloutIconPicker(blockId)});break;

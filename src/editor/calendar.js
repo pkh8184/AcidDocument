@@ -33,7 +33,7 @@ export function renderCalendar(b,idx){
     var start=new Date(ev.startDate);
     var end=new Date(ev.endDate);
     var curr=new Date(start);
-    while(curr<=end){
+    var safety=0;while(curr<=end&&safety<366){safety++;
       var dk=curr.getFullYear()+'-'+String(curr.getMonth()+1).padStart(2,'0')+'-'+String(curr.getDate()).padStart(2,'0');
       if(!eventRows[dk])eventRows[dk]=[];
       var type='middle';
@@ -108,6 +108,7 @@ export function renderCalendar(b,idx){
   return html;
 }
 export function changeCalMonth(idx,dir){
+  if(!state.page||!state.page.blocks[idx])return;
   var b=state.page.blocks[idx];
   b.month=(b.month||1)+dir;
   if(b.month<1){b.month=12;b.year--;}
@@ -115,6 +116,7 @@ export function changeCalMonth(idx,dir){
   renderBlocks();triggerAutoSave();
 }
 export function openCalEventAdd(idx,dateKey){
+  if(!state.page||!state.page.blocks[idx])return;
   state.currentCalIdx=idx;
   var b=state.page.blocks[idx];
   var rangeEvents=b.rangeEvents||[];
