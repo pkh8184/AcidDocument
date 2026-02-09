@@ -26,7 +26,11 @@ var state={
   lastSearchQuery:'',
   viewerImages:[],
   viewerIndex:0,
-  slideIntervals:{}
+  slideIntervals:{},
+  undoStack:[],
+  redoStack:[],
+  undoTimer:null,
+  dragBlockIdx:null
 };
 
 export default state;

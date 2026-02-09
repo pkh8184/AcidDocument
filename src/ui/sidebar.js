@@ -151,6 +151,7 @@ export function loadPage(id){
   $('editBtn').style.display='inline-flex';$('deletePageBtn').style.display='inline-flex';
   $('saveBtn').style.display='none';$('cancelBtn').style.display='none';
   renderMeta();renderTags();renderBlocks();renderBreadcrumb();renderTree();
+  import('../features/pagelink.js').then(function(m){m.renderBacklinks()});
   if(state.panelType==='versions')renderVersions();
   if(state.panelType==='comments')renderComments();
   state.db.recent=state.db.recent.filter(function(x){return x!==id});state.db.recent.unshift(id);if(state.db.recent.length>30)state.db.recent.pop();
@@ -164,6 +165,7 @@ export function loadPageWithoutPush(id){
   $('editBtn').style.display='inline-flex';$('deletePageBtn').style.display='inline-flex';
   $('saveBtn').style.display='none';$('cancelBtn').style.display='none';
   renderMeta();renderTags();renderBlocks();renderBreadcrumb();renderTree();
+  import('../features/pagelink.js').then(function(m){m.renderBacklinks()});
   if(state.panelType==='versions')renderVersions();
   if(state.panelType==='comments')renderComments();
   state.db.recent=state.db.recent.filter(function(x){return x!==id});state.db.recent.unshift(id);if(state.db.recent.length>30)state.db.recent.pop();

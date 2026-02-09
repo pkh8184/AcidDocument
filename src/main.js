@@ -53,6 +53,8 @@ import {openVersions,restoreVer,deleteVer} from './features/versions.js';
 import {openComments,addComment,editComment,submitEditComment,deleteComment} from './features/comments.js';
 import {openExport,exportDoc,exportPdf} from './features/export.js';
 import {doSearch} from './features/search.js';
+import {openPageLinkPicker,renderPageLinkList,insertPageLink,renderBacklinks} from './features/pagelink.js';
+import {undo,redo} from './editor/history.js';
 
 // initApp — 로그인 성공 후 앱 초기화
 export function initApp(){
@@ -294,6 +296,10 @@ window.highlightText=highlightText;
 window.addUserTag=addUserTag;
 window.removeUserTag=removeUserTag;
 window.openUserTagModal=openUserTagModal;
+window.undo=undo;
+window.redo=redo;
+window.selectPageLink=function(id,title){closeModal('pageLinkModal');insertPageLink(id,title)};
+window.filterPageLinks=function(q){renderPageLinkList(q)};
 
 // DOMContentLoaded
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();

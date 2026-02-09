@@ -162,7 +162,13 @@ export function createBlockEl(b,idx){
         inner+='<tr>';
         for(var c=0;c<rows[r].length;c++){
           var cs=(r===0&&thc?'background:'+thc+';':'')+(r>0&&tdc?'background:'+tdc+';':'')+'padding:10px;border:1px solid var(--bdr);text-align:'+tAlign+';';
-          inner+=(r===0?'<th':'<td')+ce+' style="'+cs+'">'+sanitizeHTML(rows[r][c]||'')+(r===0?'</th>':'</td>');
+          if(r===0){
+            inner+='<th'+ce+' style="'+cs+'">'+sanitizeHTML(rows[r][c]||'');
+            if(state.editMode){var sortIcon=(b.sortCol===c)?(b.sortDir==='asc'?'\u2191':'\u2193'):'\u21C5';inner+='<span class="sort-btn" data-action="sortTable" data-block-id="'+b.id+'" data-col="'+c+'">'+sortIcon+'</span>'}
+            inner+='</th>';
+          }else{
+            inner+='<td'+ce+' style="'+cs+'">'+sanitizeHTML(rows[r][c]||'')+'</td>';
+          }
         }
         inner+='</tr>';
       }
@@ -216,7 +222,7 @@ export function createBlockEl(b,idx){
     default:
       inner='<div class="block-content"'+ce+'>'+sanitizeHTML(b.content||'')+'</div>';
   }
-  div.innerHTML='<div class="block-handle"><button class="btn btn-i" tabindex="0" data-action="showBlockCtx" data-idx="'+idx+'">⋮</button></div>'+inner;
+  div.innerHTML='<div class="block-handle" draggable="true" data-drag-idx="'+idx+'"><button class="btn btn-i" tabindex="0" data-action="showBlockCtx" data-idx="'+idx+'">⋮</button></div>'+inner;
   setupBlockEvents(div,b,idx);
   return div;
 }

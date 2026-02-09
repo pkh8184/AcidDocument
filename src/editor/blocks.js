@@ -3,8 +3,9 @@
 import state from '../data/store.js';
 import {$,genId,toast,esc} from '../utils/helpers.js';
 import {renderBlocks,insertBlockEl,removeBlockEl} from './renderer.js';
+import {pushUndo,pushUndoImmediate} from './history.js';
 
-export function triggerAutoSave(){if(!state.editMode)return;clearTimeout(state.autoSaveTimer);state.autoSaveTimer=setTimeout(saveCurrent,1500)}
+export function triggerAutoSave(){if(!state.editMode)return;clearTimeout(state.autoSaveTimer);state.autoSaveTimer=setTimeout(saveCurrent,1500);clearTimeout(state.undoTimer);state.undoTimer=setTimeout(function(){pushUndo()},500)}
 export function onTitleChange(){triggerAutoSave()}
 
 export function saveCurrent(){if(!state.page)return;var p=getPage(state.page.id);if(!p)return;p.title=$('pageTitle').value||'제목 없음';p.icon=$('pageIcon').textContent;p.blocks=collectBlocks();p.updated=Date.now();import('../data/firestore.js').then(function(m){m.saveDB()})}
@@ -73,6 +74,7 @@ export function focusBlock(idx,cursorPos){
   },30);
 }
 export function insertBlock(idx,b){
+  pushUndoImmediate();
   state.page.blocks.splice(idx,0,b);
   insertBlockEl(b,idx);
   focusBlock(idx,0);
@@ -81,6 +83,7 @@ export function addBlockBelow(idx){
   insertBlock(idx+1,{id:genId(),type:'text',content:''});
 }
 export function deleteBlock(idx){
+  pushUndoImmediate();
   if(state.page.blocks.length<=1){
     // 마지막 블록이면 내용만 비우기
     state.page.blocks[0]={id:genId(),type:'text',content:''};
@@ -96,6 +99,7 @@ export function deleteBlock(idx){
   focusBlock(newIdx,-1);
 }
 export function dupBlock(idx){
+  pushUndoImmediate();
   var orig=state.page.blocks[idx];
   var copy=JSON.parse(JSON.stringify(orig));
   copy.id=genId();
@@ -106,6 +110,7 @@ export function dupBlock(idx){
 }
 export function moveBlockUp(idx){
   if(idx<=0)return;
+  pushUndoImmediate();
   var temp=state.page.blocks[idx];
   state.page.blocks[idx]=state.page.blocks[idx-1];
   state.page.blocks[idx-1]=temp;
@@ -114,6 +119,7 @@ export function moveBlockUp(idx){
 }
 export function moveBlockDown(idx){
   if(idx>=state.page.blocks.length-1)return;
+  pushUndoImmediate();
   var temp=state.page.blocks[idx];
   state.page.blocks[idx]=state.page.blocks[idx+1];
   state.page.blocks[idx+1]=temp;
@@ -121,6 +127,7 @@ export function moveBlockDown(idx){
   focusBlock(idx+1);
 }
 export function changeBlockType(idx,newType){
+  pushUndoImmediate();
   var b=state.page.blocks[idx];
   var oldContent=b.content||'';
   b.type=newType;

@@ -55,6 +55,7 @@ export function execSlash(type){
   if(type==='bookmark'){state.slashMenuState.idx=idx;insertBookmark();return}
   if(type==='emoji'){state.slashMenuState.idx=idx;openEmojiPicker();return}
   if(type==='mention'){state.slashMenuState.idx=idx;openMentionPicker();return}
+  if(type==='pagelink'){state.slashMenuState.idx=idx;import('../features/pagelink.js').then(function(m){m.openPageLinkPicker()});return}
   var b=state.page.blocks[idx];b.type=type;b.content='';
   switch(type){
     case'table':b.rows=[['','',''],['','','']];break;

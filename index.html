@@ -93,6 +93,11 @@
 </div>
 <div class="toolbar-divider"></div>
 <div class="toolbar-group">
+<button class="toolbar-btn" onclick="undo()" title="실행취소 (Ctrl+Z)">↩</button>
+<button class="toolbar-btn" onclick="redo()" title="다시실행 (Ctrl+Y)">↪</button>
+</div>
+<div class="toolbar-divider"></div>
+<div class="toolbar-group">
 <button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'bullet',content:''})" title="글머리">•</button>
 <button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'number',content:'',num:1})" title="번호">1.</button>
 <button class="toolbar-btn" onclick="insertBlock(getCurrentIdx()+1,{id:genId(),type:'todo',content:'',checked:false})" title="할일">☑</button>
@@ -138,6 +143,7 @@
 <div class="page-tags" id="pageTags"></div>
 </div>
 <div class="editor" id="editor"></div>
+<div class="backlinks" id="backlinks" style="display:none"></div>
 </div>
 </div></article>
 </main>
@@ -270,6 +276,7 @@
 <div class="modal-bg" id="mentionModal" role="dialog" aria-modal="true" aria-labelledby="mentionModal-title" onclick="if(event.target===this)closeModal('mentionModal')"><div class="modal" style="max-width:320px"><div class="modal-head"><h2 id="mentionModal-title">👤 사용자 멘션</h2><button class="btn btn-i btn-g" onclick="closeModal('mentionModal')">✕</button></div><div class="modal-body"><div id="mentionUserList"></div></div></div></div>
 <div class="modal-bg" id="renamePageModal" role="dialog" aria-modal="true" aria-labelledby="renamePageModal-title" onclick="if(event.target===this)closeModal('renamePageModal')"><div class="modal" style="max-width:360px"><div class="modal-head"><h2 id="renamePageModal-title">✏️ 이름 변경</h2><button class="btn btn-i btn-g" onclick="closeModal('renamePageModal')">✕</button></div><div class="modal-body"><div class="fg"><label>페이지 이름</label><input type="text" id="renamePageInput" placeholder="새 이름"></div></div><div class="modal-foot"><button class="btn btn-s" onclick="closeModal('renamePageModal')">취소</button><button class="btn btn-p" onclick="submitRenamePage()">변경</button></div></div></div>
 <div class="modal-bg" id="userTagModal" role="dialog" aria-modal="true" aria-labelledby="userTagModal-title" onclick="if(event.target===this)closeModal('userTagModal')"><div class="modal" style="max-width:320px"><div class="modal-head"><h2 id="userTagModal-title">👤 작업자 추가</h2><button class="btn btn-i btn-g" onclick="closeModal('userTagModal')">✕</button></div><div class="modal-body"><div id="userTagList"></div></div></div></div>
+<div class="modal-bg" id="pageLinkModal" role="dialog" aria-modal="true" aria-labelledby="pageLinkModal-title" onclick="if(event.target===this)closeModal('pageLinkModal')"><div class="modal" style="max-width:400px"><div class="modal-head"><h2 id="pageLinkModal-title">🔗 페이지 링크</h2><button class="btn btn-i btn-g" onclick="closeModal('pageLinkModal')">✕</button></div><div class="modal-body"><input type="text" id="pageLinkSearch" placeholder="페이지 검색..." oninput="filterPageLinks(this.value)" style="margin-bottom:12px"><div id="pageLinkList"></div></div></div></div>
 <div class="ctx-menu" id="ctxMenu" role="menu" aria-label="컨텍스트 메뉴"></div>
 <div class="slash-menu" id="slashMenu" role="listbox" aria-label="블록 유형 선택"></div>
 <div class="tag-picker" id="tagPicker">

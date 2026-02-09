@@ -11,6 +11,19 @@ import {showSlash,hideSlash,filterSlash,moveSlashSel,execSlash,showFmtBar,hideFm
 import {openSearch,closeModal,closeAllModals,closeAllPanels,openShortcutHelp} from '../ui/modals.js';
 import {hideCtx} from '../ui/sidebar.js';
 import {showTagPicker,hideTagPicker} from '../ui/toolbar.js';
+import {undo,redo,pushUndoImmediate} from './history.js';
+
+export function reorderBlock(fromIdx,toIdx){
+  if(!state.page||!state.page.blocks)return;
+  if(fromIdx===toIdx)return;
+  if(fromIdx<0||fromIdx>=state.page.blocks.length)return;
+  if(toIdx<0||toIdx>=state.page.blocks.length)return;
+  pushUndoImmediate();
+  var block=state.page.blocks.splice(fromIdx,1)[0];
+  state.page.blocks.splice(toIdx,0,block);
+  renderBlocks();
+  triggerAutoSave();
+}
 
 export function handleKey(e,b,idx,el){
   if(state.isComposing)return;
@@ -405,6 +418,7 @@ export function setupListeners(){
       case'delTblCol':import('../editor/table.js').then(function(m){m.delTblCol(blockId)});break;
       case'openColWidthModal':import('../editor/table.js').then(function(m){m.openColWidthModal(blockId)});break;
       case'deleteTable':import('../editor/table.js').then(function(m){m.deleteTable(blockId)});break;
+      case'sortTable':import('../editor/table.js').then(function(m){var col=parseInt(target.dataset.col);var blk=null;for(var si=0;si<state.page.blocks.length;si++){if(state.page.blocks[si].id===blockId){blk=state.page.blocks[si];break}}var curDir=(blk&&blk.sortCol===col)?blk.sortDir:'desc';var newDir=curDir==='asc'?'desc':'asc';m.sortTable(blockId,col,newDir)});break;
       case'copyCode':copyCode(target);break;
       case'downloadCode':downloadCode(target);break;
       case'openCalloutIconPicker':import('./media.js').then(function(m){m.openCalloutIconPicker(blockId)});break;
@@ -429,6 +443,13 @@ export function setupListeners(){
     if(!$('ctxMenu').contains(e.target))hideCtx();
     if(!$('slashMenu').contains(e.target)&&!e.target.classList.contains('block-content'))hideSlash();
     if(!$('fmtBar').contains(e.target)&&!e.target.closest('.block-content')&&!e.target.closest('.block-col-content'))hideFmtBar();
+    // 페이지 링크 클릭
+    if(e.target.classList.contains('page-link')){
+      e.preventDefault();
+      var pid=e.target.getAttribute('data-page-id');
+      if(pid){import('../ui/sidebar.js').then(function(m){m.loadPage(pid)})}
+      return;
+    }
     // 인라인 태그 클릭
     if(e.target.classList.contains('inline-tag')&&state.editMode){
       e.preventDefault();
@@ -439,6 +460,9 @@ export function setupListeners(){
     }
   });
   document.addEventListener('keydown',function(e){
+    if((e.metaKey||e.ctrlKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();undo();return}
+    if((e.metaKey||e.ctrlKey)&&e.key==='y'){e.preventDefault();redo();return}
+    if((e.metaKey||e.ctrlKey)&&e.shiftKey&&e.key==='Z'){e.preventDefault();redo();return}
     if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openSearch()}
     if((e.metaKey||e.ctrlKey)&&e.key==='s'){e.preventDefault();if(state.editMode){import('../ui/sidebar.js').then(function(m){m.saveAndExit()})}}
     if((e.metaKey||e.ctrlKey)&&e.key==='/'){e.preventDefault();openShortcutHelp()}
@@ -479,13 +503,63 @@ export function setupListeners(){
     }
   });
 
-  // 에디터 드래그앤드롭 이미지 업로드
+  // 블록 드래그앤드롭 재정렬 + 이미지/파일 드롭
   var editor=$('editor');
-  editor.addEventListener('dragover',function(e){e.preventDefault();if(state.editMode)editor.classList.add('drag-over')});
-  editor.addEventListener('dragleave',function(e){editor.classList.remove('drag-over')});
+  editor.addEventListener('dragstart',function(e){
+    if(!state.editMode)return;
+    var handle=e.target.closest('.block-handle[draggable]');
+    if(!handle)return;
+    state.dragBlockIdx=parseInt(handle.getAttribute('data-drag-idx'));
+    var block=handle.closest('.block');
+    if(block)block.classList.add('dragging');
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain','block');
+  });
+  editor.addEventListener('dragend',function(){
+    state.dragBlockIdx=null;
+    var dragging=editor.querySelectorAll('.block.dragging');
+    for(var i=0;i<dragging.length;i++)dragging[i].classList.remove('dragging');
+    var ind=editor.querySelector('.drag-indicator');
+    if(ind)ind.remove();
+  });
+  editor.addEventListener('dragover',function(e){
+    e.preventDefault();
+    if(state.dragBlockIdx!==null){
+      e.dataTransfer.dropEffect='move';
+      var ind=editor.querySelector('.drag-indicator');
+      if(!ind){ind=document.createElement('div');ind.className='drag-indicator';editor.appendChild(ind)}
+      var blocks=editor.querySelectorAll('.block');
+      var targetIdx=-1;
+      for(var i=0;i<blocks.length;i++){
+        var rect=blocks[i].getBoundingClientRect();
+        if(e.clientY<rect.top+rect.height/2){targetIdx=i;break}
+      }
+      if(targetIdx===-1)targetIdx=blocks.length;
+      ind.setAttribute('data-drop-idx',targetIdx);
+      if(targetIdx<blocks.length){
+        editor.insertBefore(ind,blocks[targetIdx]);
+      }else{
+        editor.appendChild(ind);
+      }
+    }else{
+      if(state.editMode)editor.classList.add('drag-over');
+    }
+  });
+  editor.addEventListener('dragleave',function(){
+    editor.classList.remove('drag-over');
+  });
   editor.addEventListener('drop',function(e){
     e.preventDefault();editor.classList.remove('drag-over');
     if(!state.editMode)return;
+    if(state.dragBlockIdx!==null){
+      var ind=editor.querySelector('.drag-indicator');
+      var toIdx=ind?parseInt(ind.getAttribute('data-drop-idx')):state.dragBlockIdx;
+      if(ind)ind.remove();
+      if(toIdx>state.dragBlockIdx)toIdx--;
+      reorderBlock(state.dragBlockIdx,toIdx);
+      state.dragBlockIdx=null;
+      return;
+    }
     var files=e.dataTransfer.files;
     for(var i=0;i<files.length;i++){
       var file=files[i];

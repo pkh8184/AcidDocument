@@ -131,6 +131,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .block-table-tools select:hover{border-color:var(--acc)}
 .block-table-tools .tool-group{display:flex;gap:4px;padding-right:12px;border-right:1px solid var(--bdr)}
 .block-table-tools .tool-group:last-child{border-right:none;padding-right:0}
+.sort-btn{cursor:pointer;font-size:11px;color:var(--t4);margin-left:4px;user-select:none;vertical-align:middle}.sort-btn:hover{color:var(--acc)}
 .block-toc{margin:20px 0}
 .block-toc-wrap{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rad);padding:20px}
 .block-add-below{text-align:center;padding:8px;margin-top:8px;color:var(--t4);font-size:13px;cursor:pointer;border:1px dashed var(--bdr);border-radius:var(--rad);transition:all .15s}.block-add-below:hover{color:var(--acc);border-color:var(--acc);background:var(--accM)}
@@ -356,6 +357,12 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .block-slide-thumb.active{border-color:var(--acc);opacity:1}
 .block-slide-add{width:60px;height:60px;border-radius:6px;background:var(--bg3);border:2px dashed var(--bdr);display:flex;justify-content:center;align-items:center;cursor:pointer;font-size:24px;color:var(--t4)}
 .block-slide-add:hover{border-color:var(--acc);color:var(--acc)}
+.page-link{color:var(--acc);text-decoration:none;padding:2px 6px;background:var(--accM);border-radius:4px;cursor:pointer;font-weight:500}.page-link:hover{text-decoration:underline}
+.backlinks{margin-top:32px;padding-top:24px;border-top:1px solid var(--bdr)}
+.backlinks-title{font-size:13px;font-weight:600;color:var(--t4);margin-bottom:12px}
+.backlink-item{padding:8px 12px;border-radius:var(--rad);cursor:pointer;font-size:14px;color:var(--t2)}.backlink-item:hover{background:var(--bg3);color:var(--t1)}
+.block.dragging{opacity:0.4;background:var(--accM)}
+.drag-indicator{height:3px;background:var(--acc);border-radius:2px;margin:2px 0;pointer-events:none;transition:all .1s}
 @media(min-width:769px) and (max-width:1024px){
   .sidebar{width:220px;min-width:220px}
   .editor-inner{padding:30px 30px 120px}
