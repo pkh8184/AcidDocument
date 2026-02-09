@@ -371,9 +371,13 @@ export function showBlockCtx(e,idx){
   html+='<div class="ctx-divider"></div>';
   html+='<div class="ctx-item danger" onclick="deleteBlock('+idx+');hideCtx()"><span class="ctx-icon">🗑️</span>삭제</div>';
   m.innerHTML=html;
-  showCtxAt(e.pageX,e.pageY);
+  // 우측 고정 위치에 표시
+  m.style.right='32px';
+  m.style.left='auto';
+  m.style.top='160px';
+  m.classList.add('open');
 }
-export function showCtxAt(x,y){var m=$('ctxMenu');m.style.left=Math.min(x,window.innerWidth-180)+'px';m.style.top=Math.min(y,window.innerHeight-200)+'px';m.classList.add('open')}
+export function showCtxAt(x,y){var m=$('ctxMenu');m.style.right='auto';m.style.left=Math.min(x,window.innerWidth-180)+'px';m.style.top=Math.min(y,window.innerHeight-200)+'px';m.classList.add('open')}
 export function hideCtx(){$('ctxMenu').classList.remove('open')}
 
 // 버전 렌더링
