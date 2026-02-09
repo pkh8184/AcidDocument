@@ -19,7 +19,7 @@ export function renderCalendar(b,idx){
     html+='<button class="btn btn-sm btn-s" onclick="changeCalMonth('+idx+',1)">다음 ▶</button>';
     html+='</div>';
   }
-  html+='<table class="block-calendar"><thead><tr><th class="cal-sun">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class="cal-sat">토</th></tr></thead><tbody>';
+  html+='<div class="block-calendar-wrap"><table class="block-calendar"><thead><tr><th class="cal-sun">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class="cal-sat">토</th></tr></thead><tbody>';
   var firstDay=new Date(year,month-1,1).getDay();
   var lastDate=new Date(year,month,0).getDate();
   var prevLastDate=new Date(year,month-1,0).getDate();
@@ -69,15 +69,15 @@ export function renderCalendar(b,idx){
         if(isThisMonth&&day===today.getDate())cellClass+=' cal-today';
         day++;
       }
-      html+='<td class="'+cellClass+'"'+(isCurrentMonth&&state.editMode?' onclick="openCalEventAdd('+idx+',\''+dateKey+'\')"':'')+' style="vertical-align:top;height:80px;padding-top:24px">';
-      html+='<div class="cal-day" style="position:absolute;top:4px;left:4px">'+cellDay+'</div>';
+      html+='<td class="'+cellClass+'"'+(isCurrentMonth&&state.editMode?' onclick="openCalEventAdd('+idx+',\''+dateKey+'\')"':'')+'>';
+      html+='<div class="cal-day">'+cellDay+'</div>';
       // 기간 일정 바 표시
       if(dateKey&&eventRows[dateKey]){
         for(var ri=0;ri<Math.min(eventRows[dateKey].length,3);ri++){
           var item=eventRows[dateKey][ri];
           var barClass='cal-event-bar '+item.type;
           var showTitle=(item.type==='start'||item.type==='single');
-          html+='<div class="'+barClass+'" style="background:'+esc(item.event.color||'#3b82f6')+';top:'+(24+ri*20)+'px" title="'+esc(item.event.title)+'">';
+          html+='<div class="'+barClass+'" style="background:'+esc(item.event.color||'#3b82f6')+';top:'+(26+ri*20)+'px" title="'+esc(item.event.title)+'">';
           if(showTitle)html+=esc(item.event.title);
           html+='</div>';
         }
@@ -89,7 +89,7 @@ export function renderCalendar(b,idx){
     }
     html+='</tr>';
   }
-  html+='</tbody></table>';
+  html+='</tbody></table></div>';
   // 일정 목록 (편집 모드)
   if(state.editMode&&rangeEvents.length>0){
     html+='<div style="margin-top:12px;padding:12px;background:var(--bg3);border-radius:8px">';

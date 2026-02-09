@@ -256,15 +256,15 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 /* 사용자 태그 (페이지 태그) */
 .user-tag{background:linear-gradient(135deg,var(--acc),#a855f7);color:#fff}
 /* 캘린더 */
-.block-calendar{border-collapse:collapse;width:100%;font-size:13px;overflow-x:auto;display:block}
-.block-calendar th{background:var(--acc);color:#fff;padding:8px 4px;text-align:center;font-weight:500}
-.block-calendar td{border:1px solid var(--bdr);padding:6px;text-align:center;vertical-align:top;min-height:60px;height:60px}
-.block-calendar .cal-day{font-weight:600;margin-bottom:4px}
+.block-calendar-wrap{overflow-x:auto;border-radius:var(--rad);border:1px solid var(--bdr)}
+.block-calendar{border-collapse:collapse;width:100%;font-size:13px;table-layout:fixed}
+.block-calendar th{background:var(--acc);color:#fff;padding:10px 6px;text-align:center;font-weight:600;font-size:13px}
+.block-calendar td{border:1px solid var(--bdr);text-align:center;vertical-align:top;height:90px;position:relative;cursor:pointer;transition:background .15s;padding:4px}
+.block-calendar .cal-day{font-weight:600;font-size:13px}
 .block-calendar .cal-sun{color:#e74c3c}
 .block-calendar .cal-sat{color:#3498db}
-.block-calendar .cal-other{color:var(--t4);opacity:0.5}
+.block-calendar .cal-other{color:var(--t4);opacity:0.4}
 .block-calendar .cal-today{background:var(--accM)}
-.block-calendar td{cursor:pointer;transition:background .15s;position:relative}
 .block-calendar td:hover{background:var(--bg3)}
 .cal-month-title{text-align:center;font-size:18px;font-weight:600;margin-bottom:12px;color:var(--t1)}
 .cal-events{display:flex;flex-direction:column;gap:2px;margin-top:4px}
