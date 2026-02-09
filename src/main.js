@@ -92,6 +92,45 @@ function init(){
     if(checkServerLockOnInit())return;
 
     var sessionHandled=false;
+    var authFallbackTimer=null;
+
+    // Firebase Auth 사용자 처리 헬퍼
+    function handleFirebaseUser(firebaseUser){
+      sessionHandled=true;
+      console.log('Firebase Auth 세션 복원:',firebaseUser.email);
+      var legacyId=firebaseUser.email.replace(/@aciddocument\.local$/,'');
+
+      // 레거시 users 배열에서 사용자 찾기
+      var u=null;
+      for(var i=0;i<state.db.users.length;i++){
+        if(state.db.users[i].id===legacyId&&state.db.users[i].active){u=state.db.users[i];break}
+      }
+
+      if(u){
+        state.user=u;
+      }else{
+        // 레거시 배열에 없으면 Firebase Auth 정보로 임시 state.user
+        state.user={
+          id:legacyId,
+          pw:'',
+          role:'admin',
+          active:true,
+          nickname:firebaseUser.displayName||legacyId
+        };
+      }
+
+      localStorage.setItem('ad_session',legacyId);
+
+      // Firestore에서 역할 확인 (비동기)
+      checkFirestoreRole(firebaseUser.uid).then(function(){
+        if(state.user.needPw){
+          $('loginScreen').classList.add('hidden');
+          openModal('pwChangeModal');
+        }else{
+          initApp();
+        }
+      });
+    }
 
     // 1. Firebase Auth onAuthStateChanged (우선)
     auth.onAuthStateChanged(function(firebaseUser){
@@ -101,60 +140,35 @@ function init(){
 
       if(firebaseUser){
         // Firebase Auth로 로그인된 사용자
-        sessionHandled=true;
-        console.log('Firebase Auth 세션 복원:',firebaseUser.email);
-        var legacyId=firebaseUser.email.replace(/@aciddocument\.local$/,'');
-
-        // 레거시 users 배열에서 사용자 찾기
-        var u=null;
-        for(var i=0;i<state.db.users.length;i++){
-          if(state.db.users[i].id===legacyId&&state.db.users[i].active){u=state.db.users[i];break}
-        }
-
-        if(u){
-          state.user=u;
-        }else{
-          // 레거시 배열에 없으면 Firebase Auth 정보로 임시 state.user
-          state.user={
-            id:legacyId,
-            pw:'',
-            role:'admin',
-            active:true,
-            nickname:firebaseUser.displayName||legacyId
-          };
-        }
-
-        localStorage.setItem('ad_session',legacyId);
-
-        // Firestore에서 역할 확인 (비동기)
-        checkFirestoreRole(firebaseUser.uid).then(function(){
-          if(state.user.needPw){
-            $('loginScreen').classList.add('hidden');
-            openModal('pwChangeModal');
-          }else{
-            initApp();
-          }
-        });
+        if(authFallbackTimer){clearTimeout(authFallbackTimer);authFallbackTimer=null;}
+        handleFirebaseUser(firebaseUser);
       }else{
-        // Firebase Auth 세션 없음 -> localStorage 폴백
-        sessionHandled=true;
-        var localSession=localStorage.getItem('ad_session');
-        if(localSession){
-          var u=null;
-          for(var i=0;i<state.db.users.length;i++){
-            if(state.db.users[i].id===localSession&&state.db.users[i].active){u=state.db.users[i];break}
-          }
-          if(u){
-            state.user=u;
-            if(u.needPw){
-              $('loginScreen').classList.add('hidden');
-              openModal('pwChangeModal');
-            }else{
-              initApp();
+        // null 수신 — Auth 상태가 아직 로딩 중일 수 있음 (IndexedDB 비동기)
+        // 짧은 시간 내 firebaseUser로 재호출되면 위 분기에서 처리
+        if(!authFallbackTimer){
+          authFallbackTimer=setTimeout(function(){
+            if(sessionHandled)return;
+            sessionHandled=true;
+            // localStorage 폴백
+            var localSession=localStorage.getItem('ad_session');
+            if(localSession){
+              var u=null;
+              for(var i=0;i<state.db.users.length;i++){
+                if(state.db.users[i].id===localSession&&state.db.users[i].active){u=state.db.users[i];break}
+              }
+              if(u){
+                state.user=u;
+                if(u.needPw){
+                  $('loginScreen').classList.add('hidden');
+                  openModal('pwChangeModal');
+                }else{
+                  initApp();
+                }
+              }
             }
-          }
+            // 둘 다 없으면 로그인 화면 유지 (기본 상태)
+          },500);
         }
-        // 둘 다 없으면 로그인 화면 유지 (기본 상태)
       }
     });
   });
