@@ -352,34 +352,33 @@ export function showBlockCtx(e,idx){
   var b=state.page.blocks[idx];
   var m=$('ctxMenu');
   var html='';
-  // 블록 타입 변경
-  html+='<div class="ctx-item" onclick="changeBlockType('+idx+',\'text\');hideCtx()"><span class="ctx-icon">T</span>텍스트</div>';
-  html+='<div class="ctx-item" onclick="changeBlockType('+idx+',\'h1\');hideCtx()"><span class="ctx-icon">H1</span>제목 1</div>';
-  html+='<div class="ctx-item" onclick="changeBlockType('+idx+',\'h2\');hideCtx()"><span class="ctx-icon">H2</span>제목 2</div>';
-  html+='<div class="ctx-item" onclick="changeBlockType('+idx+',\'bullet\');hideCtx()"><span class="ctx-icon">•</span>글머리</div>';
-  html+='<div class="ctx-item" onclick="changeBlockType('+idx+',\'number\');hideCtx()"><span class="ctx-icon">1.</span>번호</div>';
-  html+='<div class="ctx-item" onclick="changeBlockType('+idx+',\'todo\');hideCtx()"><span class="ctx-icon">☑</span>할일</div>';
-  html+='<div class="ctx-item" onclick="changeBlockType('+idx+',\'quote\');hideCtx()"><span class="ctx-icon">"</span>인용</div>';
-  html+='<div class="ctx-divider"></div>';
-  // 위치 이동
-  html+='<div class="ctx-item'+(idx===0?' disabled':'')+'" onclick="moveBlockUp('+idx+');hideCtx()"><span class="ctx-icon">⬆️</span>위로 이동</div>';
-  html+='<div class="ctx-item'+(idx>=state.page.blocks.length-1?' disabled':'')+'" onclick="moveBlockDown('+idx+');hideCtx()"><span class="ctx-icon">⬇️</span>아래로 이동</div>';
-  html+='<div class="ctx-divider"></div>';
-  // 복제/삭제
-  html+='<div class="ctx-item" onclick="dupBlock('+idx+');hideCtx()"><span class="ctx-icon">📋</span>복제</div>';
-  html+='<div class="ctx-item" onclick="addBlockBelow('+idx+');hideCtx()"><span class="ctx-icon">➕</span>아래에 추가</div>';
-  html+='<div class="ctx-divider"></div>';
-  html+='<div class="ctx-item danger" onclick="deleteBlock('+idx+');hideCtx()"><span class="ctx-icon">🗑️</span>삭제</div>';
+  html+='<button class="ctx-btn" title="텍스트" onclick="changeBlockType('+idx+',\'text\');hideCtx()">T</button>';
+  html+='<button class="ctx-btn" title="제목 1" onclick="changeBlockType('+idx+',\'h1\');hideCtx()">H1</button>';
+  html+='<button class="ctx-btn" title="제목 2" onclick="changeBlockType('+idx+',\'h2\');hideCtx()">H2</button>';
+  html+='<button class="ctx-btn" title="글머리" onclick="changeBlockType('+idx+',\'bullet\');hideCtx()">•</button>';
+  html+='<button class="ctx-btn" title="번호" onclick="changeBlockType('+idx+',\'number\');hideCtx()">1.</button>';
+  html+='<button class="ctx-btn" title="할일" onclick="changeBlockType('+idx+',\'todo\');hideCtx()">☑</button>';
+  html+='<button class="ctx-btn" title="인용" onclick="changeBlockType('+idx+',\'quote\');hideCtx()">"</button>';
+  html+='<div class="ctx-sep-v"></div>';
+  html+='<button class="ctx-btn'+(idx===0?' disabled':'')+'" title="위로 이동" onclick="moveBlockUp('+idx+');hideCtx()">⬆</button>';
+  html+='<button class="ctx-btn'+(idx>=state.page.blocks.length-1?' disabled':'')+'" title="아래로 이동" onclick="moveBlockDown('+idx+');hideCtx()">⬇</button>';
+  html+='<div class="ctx-sep-v"></div>';
+  html+='<button class="ctx-btn" title="복제" onclick="dupBlock('+idx+');hideCtx()">📋</button>';
+  html+='<button class="ctx-btn" title="아래에 추가" onclick="addBlockBelow('+idx+');hideCtx()">➕</button>';
+  html+='<div class="ctx-sep-v"></div>';
+  html+='<button class="ctx-btn ctx-danger" title="삭제" onclick="deleteBlock('+idx+');hideCtx()">🗑️</button>';
   m.innerHTML=html;
-  // 슬래시 메뉴와 동일한 위치
+  m.classList.add('ctx-horizontal');
+  var btn=e.target.closest('.btn-i')||e.target;
+  var rect=btn.getBoundingClientRect();
   m.style.right='auto';
-  m.style.left='320px';
-  m.style.top='auto';
-  m.style.bottom='200px';
+  m.style.bottom='auto';
+  m.style.left=(rect.right+4)+'px';
+  m.style.top=rect.top+'px';
   m.classList.add('open');
 }
 export function showCtxAt(x,y){var m=$('ctxMenu');m.style.right='auto';m.style.bottom='auto';m.style.left=Math.min(x,window.innerWidth-180)+'px';m.style.top=Math.min(y,window.innerHeight-200)+'px';m.classList.add('open')}
-export function hideCtx(){$('ctxMenu').classList.remove('open')}
+export function hideCtx(){var m=$('ctxMenu');m.classList.remove('open','ctx-horizontal')}
 
 // 버전 렌더링
 export function renderVersions(){var list=state.page.versions.slice().reverse(),html='';if(list.length===0){$('versionList').innerHTML='<div style="text-align:center;color:var(--t4);padding:30px">버전 기록 없음</div>';return}for(var i=0;i<list.length;i++){var v=list[i],isCur=i===0;html+='<div class="ver-item'+(isCur?' current':'')+'" onclick="'+(isCur?'':'restoreVer(\''+v.id+'\')')+'"><div><div style="font-weight:500">'+formatDateTime(v.date)+(isCur?' <span class="badge badge-p">현재</span>':'')+'</div><div style="font-size:13px;color:var(--t4)">'+esc(v.author)+'</div></div>'+(isCur?'':'<button class="btn btn-sm btn-s" onclick="event.stopPropagation();deleteVer(\''+v.id+'\')">삭제</button>')+'</div>'}$('versionList').innerHTML=html}
