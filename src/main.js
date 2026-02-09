@@ -96,6 +96,8 @@ function init(){
     // 1. Firebase Auth onAuthStateChanged (우선)
     auth.onAuthStateChanged(function(firebaseUser){
       if(sessionHandled)return;
+      // handleLogin이 진행 중이면 무시 (handleLogin이 직접 initApp 호출)
+      if(state.loginInProgress){sessionHandled=true;return;}
 
       if(firebaseUser){
         // Firebase Auth로 로그인된 사용자

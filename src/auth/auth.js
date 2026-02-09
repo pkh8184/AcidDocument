@@ -90,6 +90,16 @@ export function handleLogin(e){
   var id=$('loginId').value.trim(),pw=$('loginPw').value;
   if(!id){toast('아이디를 입력하세요','warn');return}
 
+  // 로그인 진행 중 표시 (onAuthStateChanged 충돌 방지 + 사용자 피드백)
+  state.loginInProgress=true;
+  var loginBtn=$('loginForm').querySelector('button[type="submit"]');
+  if(loginBtn){loginBtn.disabled=true;loginBtn.textContent='로그인 중...';}
+
+  function resetLoginBtn(){
+    state.loginInProgress=false;
+    if(loginBtn){loginBtn.disabled=false;loginBtn.textContent='로그인';}
+  }
+
   // localStorage 빠른 체크 (캐시)
   var localSt=getLoginState();
   if(localSt.blocked||localSt.lockUntil>Date.now()){
@@ -109,18 +119,21 @@ export function handleLogin(e){
       $('loginError').style.display='none';
       // localStorage도 동기화
       saveLoginState({attempts:serverSt.attempts,lockUntil:0,blocked:true});
+      resetLoginBtn();
       return;
     }
     if(serverSt.lockUntil>Date.now()){
       showLockTimer(serverSt.lockUntil);
       // localStorage도 동기화
       saveLoginState({attempts:serverSt.attempts,lockUntil:serverSt.lockUntil,blocked:false});
+      resetLoginBtn();
       return;
     }
 
     var email=id+AUTH_DOMAIN;
 
-    // 1. Firebase Auth 시도
+    // .then(onSuccess, onFailure) 패턴 사용:
+    // onSuccess 내부 에러가 onFailure(레거시 폴백)로 빠지는 것을 방지
     auth.signInWithEmailAndPassword(email,pw).then(function(cred){
       // Firebase Auth 로그인 성공
       console.log('Firebase Auth 로그인 성공:',id);
@@ -152,10 +165,11 @@ export function handleLogin(e){
       }else{
         initApp();
       }
-    }).catch(function(authErr){
+      resetLoginBtn();
+    }, function(authErr){
+      // 2. Firebase Auth 실패 -> 레거시 폴백
       console.log('Firebase Auth 실패:',authErr.code,'- 레거시 폴백 시도');
 
-      // 2. Firebase Auth 실패 -> 레거시 폴백
       var u=findLegacyUser(id,pw);
 
       if(!u){
@@ -177,6 +191,7 @@ export function handleLogin(e){
           $('loginBlocked').style.display='block';
           $('loginForm').style.display='none';
           $('loginError').style.display='none';
+          resetLoginBtn();
           return;
         }
         if(serverSt.attempts>=5){
@@ -185,6 +200,7 @@ export function handleLogin(e){
           updateLoginLockState(id,serverSt);
           saveLoginState({attempts:serverSt.attempts,lockUntil:serverSt.lockUntil,blocked:false});
           showLockTimer(serverSt.lockUntil);
+          resetLoginBtn();
           return;
         }
         // 5회 미만: 경고 메시지
@@ -194,6 +210,7 @@ export function handleLogin(e){
         $('loginPw').value='';
         updateLoginLockState(id,serverSt);
         saveLoginState({attempts:serverSt.attempts,lockUntil:0,blocked:false});
+        resetLoginBtn();
         return;
       }
 
@@ -216,7 +233,18 @@ export function handleLogin(e){
       }else{
         initApp();
       }
+      resetLoginBtn();
+    }).catch(function(err){
+      // initApp() 등에서 발생한 예외 처리
+      console.error('로그인 후 앱 초기화 실패:', err);
+      toast('앱 초기화 중 오류가 발생했습니다','err');
+      resetLoginBtn();
     });
+  }).catch(function(err){
+    // getLoginLockState 또는 전체 체인의 예외 처리
+    console.error('로그인 처리 중 오류:', err);
+    toast('로그인 처리 중 오류가 발생했습니다','err');
+    resetLoginBtn();
   });
 }
 

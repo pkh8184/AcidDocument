@@ -30,7 +30,8 @@ var state={
   undoStack:[],
   redoStack:[],
   undoTimer:null,
-  dragBlockIdx:null
+  dragBlockIdx:null,
+  loginInProgress:false
 };
 
 export default state;
