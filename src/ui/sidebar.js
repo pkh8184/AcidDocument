@@ -371,15 +371,14 @@ export function showBlockCtx(e,idx){
   html+='<div class="ctx-divider"></div>';
   html+='<div class="ctx-item danger" onclick="deleteBlock('+idx+');hideCtx()"><span class="ctx-icon">🗑️</span>삭제</div>';
   m.innerHTML=html;
-  // ⋮ 버튼의 X좌표에 맞춰 왼쪽 고정, Y는 고정 위치
-  var btn=e.target.closest('.btn-i')||e.target;
-  var rect=btn.getBoundingClientRect();
+  // 슬래시 메뉴와 동일한 위치
   m.style.right='auto';
-  m.style.left=rect.left+'px';
-  m.style.top='120px';
+  m.style.left='320px';
+  m.style.top='auto';
+  m.style.bottom='200px';
   m.classList.add('open');
 }
-export function showCtxAt(x,y){var m=$('ctxMenu');m.style.right='auto';m.style.left=Math.min(x,window.innerWidth-180)+'px';m.style.top=Math.min(y,window.innerHeight-200)+'px';m.classList.add('open')}
+export function showCtxAt(x,y){var m=$('ctxMenu');m.style.right='auto';m.style.bottom='auto';m.style.left=Math.min(x,window.innerWidth-180)+'px';m.style.top=Math.min(y,window.innerHeight-200)+'px';m.classList.add('open')}
 export function hideCtx(){$('ctxMenu').classList.remove('open')}
 
 // 버전 렌더링
