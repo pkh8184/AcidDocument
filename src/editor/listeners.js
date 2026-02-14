@@ -575,6 +575,20 @@ export function setupListeners(){
       if(ci<state.page.blocks.length-1){moveBlockDown(ci);focusBlock(ci+1)}
       return;
     }
+    var COLOR_MAP={'1':'#FF0000','2':'#FF8C00','3':'#FFD700','4':'#00C853','5':'#2196F3','6':'#1A237E','7':'#9C27B0','8':'#E91E63','9':'#9E9E9E','0':null};
+    if((e.metaKey||e.ctrlKey)&&COLOR_MAP.hasOwnProperty(e.key)){
+      var sel=window.getSelection();
+      if(sel&&!sel.isCollapsed&&state.editMode){
+        e.preventDefault();
+        if(e.key==='0'){
+          document.execCommand('removeFormat',false,null);
+        }else{
+          document.execCommand('foreColor',false,COLOR_MAP[e.key]);
+        }
+        triggerAutoSave();
+      }
+      return;
+    }
     if(e.key==='Escape'){closeImageViewer();closeAllModals();closeAllPanels();hideCtx();hideSlash();hideFmtBar()}
     // 이미지 뷰어에서 좌우 화살표
     if($('imageViewer').classList.contains('open')){
