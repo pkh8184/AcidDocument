@@ -70,11 +70,12 @@ export function execSlash(type){
   pushUndoImmediate();
   var b=state.page.blocks[idx];b.type=type;b.content='';
   switch(type){
+    case'bullet':b.indent=0;break;
     case'table':b.rows=[['','',''],['','','']];break;
     case'callout':b.calloutType='info';break;
-    case'number':b.num=1;break;
+    case'number':b.num=1;b.indent=0;break;
     case'toggle':b.open=false;b.innerContent='';break;
-    case'todo':b.checked=false;break;
+    case'todo':b.checked=false;b.indent=0;break;
     case'col2':b.type='columns';b.colType='col2';b.columns=['',''];break;
     case'col3':b.type='columns';b.colType='col3';b.columns=['','',''];break;
     case'calendar':b.year=2026;b.month=new Date().getMonth()+1;b.rangeEvents=[];break;

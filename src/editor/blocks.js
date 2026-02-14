@@ -128,9 +128,17 @@ export function deleteBlock(idx){
     focusBlock(0,0);
     return;
   }
-  var blockId=state.page.blocks[idx].id;
-  state.page.blocks.splice(idx,1);
-  removeBlockEl(blockId);
+  // collapsed 블록이면 하위 항목도 함께 삭제
+  if(state.page.blocks[idx].collapsed){
+    var children=getChildren(idx);
+    var deleteCount=1+children.length;
+    state.page.blocks.splice(idx,deleteCount);
+    renderBlocks();
+  }else{
+    var blockId=state.page.blocks[idx].id;
+    state.page.blocks.splice(idx,1);
+    removeBlockEl(blockId);
+  }
   updateNums();
   // 삭제된 위치나 이전 블록으로 포커스
   var newIdx=Math.min(idx,state.page.blocks.length-1);

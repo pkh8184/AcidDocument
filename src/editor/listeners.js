@@ -150,7 +150,13 @@ export function handleKey(e,b,idx,el){
     if(['bullet','number','todo'].indexOf(newType)!==-1){
       newB.indent=b.indent||0;
     }
-    insertBlock(idx+1,newB);
+    // collapsed 블록이면 하위 항목 뒤에 삽입
+    var insertIdx=idx+1;
+    if(b.collapsed){
+      var children=getChildren(idx);
+      insertIdx=idx+1+children.length;
+    }
+    insertBlock(insertIdx,newB);
     updateNums();
     return;
   }
@@ -277,6 +283,15 @@ export function handleKey(e,b,idx,el){
     if(isAtStart(el)&&idx>0){
       e.preventDefault();
       var upIdx=idx-1;
+      // 이전 블록이 collapsed-child이면 부모로 건너뛰기
+      for(var pi=upIdx-1;pi>=0;pi--){
+        if(state.page.blocks[pi].collapsed){
+          var piIndent=state.page.blocks[pi].indent||0;
+          var ch=getChildren(pi);
+          if(ch.indexOf(upIdx)!==-1){upIdx=pi;break}
+        }
+      }
+      // 콘텐츠 블록 스킵
       while(upIdx>0&&CONTENT_TYPES.indexOf(state.page.blocks[upIdx].type)!==-1){upIdx--}
       if(CONTENT_TYPES.indexOf(state.page.blocks[upIdx].type)!==-1)upIdx=idx-1;
       focusBlock(upIdx,-1);
@@ -287,7 +302,14 @@ export function handleKey(e,b,idx,el){
     if(isAtEnd(el)&&idx<state.page.blocks.length-1){
       e.preventDefault();
       var downIdx=idx+1;
+      // collapsed 블록이면 하위 항목 건너뛰기
+      if(state.page.blocks[idx].collapsed){
+        var myIndent=state.page.blocks[idx].indent||0;
+        while(downIdx<state.page.blocks.length&&(state.page.blocks[downIdx].indent||0)>myIndent){downIdx++}
+      }
+      // 콘텐츠 블록 스킵
       while(downIdx<state.page.blocks.length-1&&CONTENT_TYPES.indexOf(state.page.blocks[downIdx].type)!==-1){downIdx++}
+      if(downIdx>=state.page.blocks.length)downIdx=state.page.blocks.length-1;
       if(CONTENT_TYPES.indexOf(state.page.blocks[downIdx].type)!==-1)downIdx=idx+1;
       focusBlock(downIdx,0);
       return;
@@ -697,6 +719,24 @@ export function setupBlockEvents(div,b,idx){
       });
     }
   }
+
+  // 리스트 접기/펼치기 화살표
+  var collapseArrow=div.querySelector('.list-collapse-arrow');
+  if(collapseArrow){(function(blockId){
+    collapseArrow.addEventListener('click',function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var blk=findBlock(blockId);
+      if(blk){
+        pushUndoImmediate();
+        blk.collapsed=!blk.collapsed;
+        renderBlocks();
+        // 포커스 유지
+        var newIdx=findBlockIndex(blockId);
+        if(newIdx>=0)focusBlock(newIdx,-1);
+      }
+    });
+  })(b.id)}
 }
 
 export function setupListeners(){
@@ -916,7 +956,6 @@ export function setupListeners(){
       var ind=editor.querySelector('.drag-indicator');
       var toIdx=ind?parseInt(ind.getAttribute('data-drop-idx')):state.dragBlockIdx;
       if(ind)ind.remove();
-      if(toIdx>state.dragBlockIdx)toIdx--;
       // 드래그 전 현재 편집 중인 DOM 내용을 state에 동기화
       var edChs=editor.children;
       for(var si=0;si<edChs.length;si++){
@@ -930,7 +969,26 @@ export function setupListeners(){
           }
         }
       }
-      reorderBlock(state.dragBlockIdx,toIdx);
+      // collapsed 블록이면 하위 항목도 함께 이동
+      var fromIdx=state.dragBlockIdx;
+      var dragBlock=state.page.blocks[fromIdx];
+      if(dragBlock&&dragBlock.collapsed){
+        var children=getChildren(fromIdx);
+        var groupCount=1+children.length;
+        pushUndoImmediate();
+        var group=state.page.blocks.splice(fromIdx,groupCount);
+        if(toIdx>fromIdx)toIdx-=groupCount;
+        if(toIdx<0)toIdx=0;
+        if(toIdx>state.page.blocks.length)toIdx=state.page.blocks.length;
+        for(var gi=0;gi<group.length;gi++){
+          state.page.blocks.splice(toIdx+gi,0,group[gi]);
+        }
+        renderBlocks();
+        triggerAutoSave();
+      }else{
+        if(toIdx>state.dragBlockIdx)toIdx--;
+        reorderBlock(state.dragBlockIdx,toIdx);
+      }
       state.dragBlockIdx=null;
       return;
     }
