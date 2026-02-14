@@ -623,6 +623,9 @@ export function setupListeners(){
   var editorWrap=$('editorWrap');
   editorWrap.addEventListener('click',function(e){
     if(!state.editMode)return;
+    // 텍스트 드래그 선택 중이면 무시 (최하단 이동 방지)
+    var sel=window.getSelection();
+    if(sel&&!sel.isCollapsed)return;
     // 클릭이 editor 내부 블록이 아닌 빈 공간일 때
     var editor=$('editor');
     if(e.target===editor||e.target.classList.contains('editor-inner')){
