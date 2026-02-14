@@ -206,3 +206,21 @@ describe('logout', function() {
     expect(mockState.appInitialized).toBe(false);
   });
 });
+
+describe('showLockTimer', function() {
+  it('이전 interval을 정리하고 새로 생성해야 함', async function() {
+    var clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval');
+    var setIntervalSpy = vi.spyOn(globalThis, 'setInterval').mockReturnValue(42);
+
+    mockState.lockTimerInterval = 123;
+
+    var { showLockTimer } = await import('../../auth/auth.js');
+    showLockTimer(Date.now() + 60000);
+
+    expect(clearIntervalSpy).toHaveBeenCalledWith(123);
+    expect(mockState.lockTimerInterval).toBe(42);
+
+    clearIntervalSpy.mockRestore();
+    setIntervalSpy.mockRestore();
+  });
+});

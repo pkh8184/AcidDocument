@@ -149,7 +149,6 @@ export function handleLogin(e){
       }else{
         state.user={
           id:id,
-          pw:pw,
           role:'admin',
           active:true,
           nickname:cred.user.displayName||id
@@ -250,9 +249,10 @@ export function handleLogin(e){
 
 export function showLockTimer(until){
   $('loginLocked').style.display='block';$('loginForm').style.display='none';$('loginError').style.display='none';
-  var interval=setInterval(function(){
+  if(state.lockTimerInterval){clearInterval(state.lockTimerInterval);state.lockTimerInterval=null}
+  state.lockTimerInterval=setInterval(function(){
     var remaining=until-Date.now();
-    if(remaining<=0){clearInterval(interval);$('loginLocked').style.display='none';$('loginForm').style.display='block';return}
+    if(remaining<=0){clearInterval(state.lockTimerInterval);state.lockTimerInterval=null;$('loginLocked').style.display='none';$('loginForm').style.display='block';return}
     var min=Math.floor(remaining/60000),sec=Math.floor((remaining%60000)/1000);
     $('lockTimer').textContent=min+':'+(sec<10?'0':'')+sec
   },1000)
@@ -290,7 +290,9 @@ export function submitPwChange(){
   var nick=$('pwNickname').value.trim(),c=$('pwCur').value,n=$('pwNew').value,cf=$('pwConfirm').value;
   if(!c||!n||!cf){toast('비밀번호를 입력하세요','err');return}
   if(n!==cf){toast('비밀번호가 일치하지 않습니다','err');return}
-  if(state.user.pw!==c){toast('현재 비밀번호가 틀립니다','err');return}
+  var currentPw=null;
+  for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===state.user.id){currentPw=state.db.users[i].pw;break}}
+  if(currentPw!==c){toast('현재 비밀번호가 틀립니다','err');return}
 
   // 레거시 users 배열 업데이트 (항상)
   for(var i=0;i<state.db.users.length;i++){
@@ -309,7 +311,7 @@ export function submitPwChange(){
       console.log('Firebase Auth 비밀번호 업데이트 완료');
     }).catch(function(e){
       console.warn('Firebase Auth 비밀번호 업데이트 실패:',e);
-      // 레거시는 이미 업데이트됨, Firebase Auth 실패는 경고만
+      toast('비밀번호 변경됨 (일부 동기화 실패, 다음 로그인에 영향 없음)','warn');
     });
   }
 
