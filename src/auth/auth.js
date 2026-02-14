@@ -10,6 +10,19 @@ import {openModal,closeModal,closeAllModals,closeAllPanels} from '../ui/modals.j
 // AUTH_DOMAIN: Firebase Auth용 이메일 도메인
 var AUTH_DOMAIN='@aciddocument.local';
 
+// --- 유틸: Firebase Auth 에러 코드 → 한국어 메시지 ---
+export function getAuthErrorMessage(code){
+  var messages={
+    'auth/network-request-failed':'네트워크 연결을 확인하세요',
+    'auth/too-many-requests':'잠시 후 다시 시도하세요',
+    'auth/user-disabled':'비활성화된 계정입니다',
+    'auth/invalid-credential':'아이디 또는 비밀번호가 올바르지 않습니다',
+    'auth/user-not-found':'존재하지 않는 계정입니다',
+    'auth/wrong-password':'비밀번호가 올바르지 않습니다'
+  };
+  return messages[code]||'로그인 처리 중 오류가 발생했습니다';
+}
+
 // --- 유틸: 레거시 users 배열에서 사용자 찾기 ---
 function findLegacyUser(id,pw){
   if(!state.db||!state.db.users)return null;
@@ -234,15 +247,15 @@ export function handleLogin(e){
       }
       resetLoginBtn();
     }).catch(function(err){
-      // initApp() 등에서 발생한 예외 처리
       console.error('로그인 후 앱 초기화 실패:', err);
-      toast('앱 초기화 중 오류가 발생했습니다','err');
+      toast(getAuthErrorMessage(err&&err.code),'err');
+      $('loginPw').value='';
       resetLoginBtn();
     });
   }).catch(function(err){
-    // getLoginLockState 또는 전체 체인의 예외 처리
     console.error('로그인 처리 중 오류:', err);
-    toast('로그인 처리 중 오류가 발생했습니다','err');
+    toast(getAuthErrorMessage(err&&err.code),'err');
+    $('loginPw').value='';
     resetLoginBtn();
   });
 }

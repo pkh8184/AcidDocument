@@ -224,3 +224,13 @@ describe('showLockTimer', function() {
     setIntervalSpy.mockRestore();
   });
 });
+
+describe('getAuthErrorMessage', function() {
+  it('네트워크 오류 코드를 한국어로 변환해야 함', async function() {
+    var { getAuthErrorMessage } = await import('../../auth/auth.js');
+    expect(getAuthErrorMessage('auth/network-request-failed')).toBe('네트워크 연결을 확인하세요');
+    expect(getAuthErrorMessage('auth/too-many-requests')).toBe('잠시 후 다시 시도하세요');
+    expect(getAuthErrorMessage('auth/user-disabled')).toBe('비활성화된 계정입니다');
+    expect(getAuthErrorMessage('unknown-code')).toBe('로그인 처리 중 오류가 발생했습니다');
+  });
+});
