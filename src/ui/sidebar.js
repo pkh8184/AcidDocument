@@ -144,6 +144,7 @@ export function loadPage(id){
   if(state.editMode&&hasChanges()){
     if(confirm('작성한 내용을 저장하시겠습니까?')){saveDoc()}
   }
+  clearTimeout(state.autoSaveTimer);state.autoSaveTimer=null;
   state.editMode=false;state.editBackup=null;
   clearHistory();
   state.page=p;
@@ -162,6 +163,7 @@ export function loadPage(id){
 export function loadPageWithoutPush(id){
   var p=getPage(id);if(!p)return;
   if(state.editMode&&hasChanges()){if(confirm('작성한 내용을 저장하시겠습니까?')){saveDoc()}}
+  clearTimeout(state.autoSaveTimer);state.autoSaveTimer=null;
   state.editMode=false;state.editBackup=null;clearHistory();state.page=p;
   $('pageIcon').textContent=p.icon;$('pageTitle').value=p.title;$('pageTitle').setAttribute('readonly','readonly');
   $('editBtn').style.display='inline-flex';$('deletePageBtn').style.display='inline-flex';
@@ -176,8 +178,14 @@ export function loadPageWithoutPush(id){
 export function saveDoc(){
   if(!state.page)return;clearTimeout(state.autoSaveTimer);state.autoSaveTimer=null;var p=getPage(state.page.id);if(!p)return;
   p.title=$('pageTitle').value||'제목 없음';p.icon=$('pageIcon').textContent;p.blocks=collectBlocks();p.updated=Date.now();
-  p.versions.push({id:genId(),date:Date.now(),author:state.user.id,blocks:JSON.parse(JSON.stringify(p.blocks))});
-  if(p.versions.length>MAX_VER)p.versions.shift();
+  // 중복 버전 방지: 마지막 버전과 내용이 같으면 스킵
+  var newSnap=JSON.stringify(p.blocks);
+  var lastVer=p.versions.length>0?p.versions[p.versions.length-1]:null;
+  var isDup=lastVer&&JSON.stringify(lastVer.blocks)===newSnap;
+  if(!isDup){
+    p.versions.push({id:genId(),date:Date.now(),author:state.user.id,blocks:JSON.parse(newSnap)});
+    if(p.versions.length>MAX_VER)p.versions.shift();
+  }
   saveDB();state.page=p;renderMeta();renderTree();renderVersions();toast('저장됨')
 }
 export function toggleEdit(){

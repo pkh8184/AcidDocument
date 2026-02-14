@@ -8,7 +8,7 @@ import {pushUndo,pushUndoImmediate} from './history.js';
 export function triggerAutoSave(){if(!state.editMode)return;clearTimeout(state.autoSaveTimer);state.autoSaveTimer=setTimeout(saveCurrent,1500);clearTimeout(state.undoTimer);state.undoTimer=setTimeout(function(){pushUndo()},500)}
 export function onTitleChange(){triggerAutoSave()}
 
-export function saveCurrent(){if(!state.page)return;var p=getPage(state.page.id);if(!p)return;p.title=$('pageTitle').value||'제목 없음';p.icon=$('pageIcon').textContent;p.blocks=collectBlocks();p.updated=Date.now();import('../data/firestore.js').then(function(m){m.saveDB()})}
+export function saveCurrent(){if(!state.editMode||!state.page)return;var p=getPage(state.page.id);if(!p)return;p.title=$('pageTitle').value||'제목 없음';p.icon=$('pageIcon').textContent;p.blocks=collectBlocks();p.updated=Date.now();import('../data/firestore.js').then(function(m){m.saveDB()})}
 
 // 페이지 조회 헬퍼
 export function getPages(pid){var r=[];for(var i=0;i<state.db.pages.length;i++){if(state.db.pages[i].parentId===pid&&!state.db.pages[i].deleted)r.push(state.db.pages[i])}return r}
