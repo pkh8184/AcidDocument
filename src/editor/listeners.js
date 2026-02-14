@@ -13,6 +13,8 @@ import {hideCtx} from '../ui/sidebar.js';
 import {showTagPicker,hideTagPicker} from '../ui/toolbar.js';
 import {undo,redo,pushUndoImmediate} from './history.js';
 
+var TEXT_TYPES=['text','h1','h2','h3','bullet','number','quote','todo'];
+
 export function reorderBlock(fromIdx,toIdx){
   if(!state.page||!state.page.blocks)return;
   if(fromIdx===toIdx)return;
@@ -225,13 +227,25 @@ export function handlePaste(e){
   if(txt&&txt.indexOf('\n')!==-1){
     var lines=txt.split(/\n+/).filter(function(l){return l.trim()!==''});
     if(lines.length>1){
+      // 48글자 단위로 추가 분할
+      var chunks=[];
+      for(var ci=0;ci<lines.length;ci++){
+        var line=lines[ci];
+        while(line.length>48){
+          chunks.push(line.substring(0,48));
+          line=line.substring(48);
+        }
+        if(line.length>0)chunks.push(line);
+      }
       var idx=state.currentInsertIdx!==null?state.currentInsertIdx:state.page.blocks.length-1;
-      // 현재 블록에 첫 줄 삽입
-      document.execCommand('insertText',false,lines[0]);
-      // 나머지 줄은 새 블록으로
-      for(var j=1;j<lines.length;j++){
+      // 현재 블록에 첫 청크 삽입 (48글자 이내로 잘라서)
+      var firstChunk=chunks[0];
+      if(firstChunk.length>48)firstChunk=firstChunk.substring(0,48);
+      document.execCommand('insertText',false,firstChunk);
+      // 나머지 청크는 새 블록으로
+      for(var j=1;j<chunks.length;j++){
         idx++;
-        state.page.blocks.splice(idx,0,{id:genId(),type:'text',content:lines[j]});
+        state.page.blocks.splice(idx,0,{id:genId(),type:'text',content:chunks[j]});
       }
       renderBlocks();triggerAutoSave();
       return;
@@ -252,6 +266,27 @@ export function setupBlockEvents(div,b,idx){
     });
     el.addEventListener('input',function(){
       triggerAutoSave();
+      // 48글자 초과 시 자동 블록 분할
+      var curIdx=findBlockIndex(b.id);
+      var blk=state.page.blocks[curIdx];
+      if(blk&&TEXT_TYPES.indexOf(blk.type)!==-1){
+        if(el.textContent.length>48){
+          var full=el.textContent;
+          var keep=full.substring(0,48);
+          var overflow=full.substring(48);
+          el.textContent=keep;
+          blk.content=keep;
+          var newB={id:genId(),type:blk.type,content:overflow};
+          if(blk.type==='todo')newB.checked=false;
+          if(blk.type==='number')newB.num=(blk.num||1)+1;
+          pushUndoImmediate();
+          state.page.blocks.splice(curIdx+1,0,newB);
+          renderBlocks();
+          focusBlock(curIdx+1,0);
+          updateNums();
+          return;
+        }
+      }
       // 슬래시 메뉴 필터링
       var menu=$('slashMenu');
       if(menu.classList.contains('open')){
