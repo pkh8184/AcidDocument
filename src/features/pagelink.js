@@ -4,6 +4,7 @@ import state from '../data/store.js';
 import {$,esc} from '../utils/helpers.js';
 import {renderBlocks} from '../editor/renderer.js';
 import {focusBlock,triggerAutoSave} from '../editor/blocks.js';
+import {pushUndoImmediate} from '../editor/history.js';
 import {openModal,closeModal} from '../ui/modals.js';
 
 export function searchPages(query){
@@ -36,6 +37,7 @@ export function getBacklinks(pageId){
 export function insertPageLink(pageId,pageTitle){
   var idx=state.slashMenuState.idx;
   if(idx===null||idx===undefined||!state.page||!state.page.blocks[idx])return;
+  pushUndoImmediate();
   var tag='<a class="page-link" contenteditable="false" data-page-id="'+esc(pageId)+'">📄 '+esc(pageTitle)+'</a>&nbsp;';
   state.page.blocks[idx].content=(state.page.blocks[idx].content||'')+tag;
   state.page.blocks[idx].type=state.page.blocks[idx].type||'text';

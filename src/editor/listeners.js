@@ -16,6 +16,26 @@ import {undo,redo,pushUndoImmediate} from './history.js';
 var TEXT_TYPES=['text','h1','h2','h3','bullet','number','quote','todo'];
 var CONTENT_TYPES=['table','image','video','pdf','file','slide','calendar','columns','toc','divider'];
 
+// Range 기반 커서 위치 판별 (리치 텍스트에서도 정확)
+function isAtStart(el){
+  var sel=window.getSelection();
+  if(!sel.isCollapsed||!sel.rangeCount)return false;
+  var range=sel.getRangeAt(0);
+  var testRange=document.createRange();
+  testRange.setStart(el,0);
+  testRange.setEnd(range.startContainer,range.startOffset);
+  return testRange.toString().length===0;
+}
+function isAtEnd(el){
+  var sel=window.getSelection();
+  if(!sel.isCollapsed||!sel.rangeCount)return false;
+  var range=sel.getRangeAt(0);
+  var testRange=document.createRange();
+  testRange.setStart(range.endContainer,range.endOffset);
+  testRange.setEnd(el,el.childNodes.length);
+  return testRange.toString().length===0;
+}
+
 export function reorderBlock(fromIdx,toIdx){
   if(!state.page||!state.page.blocks)return;
   if(fromIdx===toIdx)return;
@@ -102,13 +122,11 @@ export function handleKey(e,b,idx,el){
 
   // 규칙 3: Backspace - 빈 블록 처리
   if(e.key==='Backspace'){
-    var sel=window.getSelection();
-    var atStart=sel.anchorOffset===0&&sel.isCollapsed;
-
     if(el.textContent===''||el.innerHTML==='<br>'){
       e.preventDefault();
       // 서식 블록(리스트/헤딩/인용)이면 text로 변환
       if(b.type==='bullet'||b.type==='number'||b.type==='todo'||b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='quote'){
+        pushUndoImmediate();
         state.page.blocks[idx].type='text';
         renderBlocks();
         focusBlock(idx);
@@ -127,7 +145,7 @@ export function handleKey(e,b,idx,el){
       return;
     }
     // 커서가 맨 앞이고 이전 블록이 있으면 → 이전 블록 끝으로 포커스 (콘텐츠 블록 스킵)
-    if(atStart&&idx>0){
+    if(isAtStart(el)&&idx>0){
       e.preventDefault();
       var prevIdx=idx-1;
       while(prevIdx>=0&&CONTENT_TYPES.indexOf(state.page.blocks[prevIdx].type)!==-1){
@@ -141,17 +159,20 @@ export function handleKey(e,b,idx,el){
 
   // 규칙 4: Delete - 다음 블록과 병합
   if(e.key==='Delete'){
-    var sel=window.getSelection();
-    var atEnd=sel.anchorOffset===el.textContent.length&&sel.isCollapsed;
-    if(atEnd&&idx<state.page.blocks.length-1){
+    if(isAtEnd(el)&&idx<state.page.blocks.length-1){
       e.preventDefault();
       var nextB=state.page.blocks[idx+1];
       if(['text','h1','h2','h3','bullet','number','quote'].includes(nextB.type)){
-        var curHTML=el.innerHTML.replace(/<br\s*\/?>$/i,'');
-        b.content=curHTML+(nextB.content||'');
+        pushUndoImmediate();
+        // sync 후 state에서 다시 읽기 (syncBlocksFromDOM이 배열을 교체하므로)
+        var curBlock=state.page.blocks[idx];
+        var nextBlock=state.page.blocks[idx+1];
+        var curContent=(curBlock.content||'').replace(/<br\s*\/?>$/i,'');
+        var curTextLen=curContent.replace(/<[^>]*>/g,'').length;
+        curBlock.content=curContent+(nextBlock.content||'');
         state.page.blocks.splice(idx+1,1);
         renderBlocks();
-        focusBlock(idx,el.textContent.length);
+        focusBlock(idx,curTextLen);
       }
       return;
     }
@@ -159,16 +180,14 @@ export function handleKey(e,b,idx,el){
 
   // 규칙 7-8: 방향키로 블록 이동
   if(e.key==='ArrowUp'&&!e.shiftKey){
-    var sel=window.getSelection();
-    if(sel.anchorOffset===0&&idx>0){
+    if(isAtStart(el)&&idx>0){
       e.preventDefault();
       focusBlock(idx-1,-1); // -1은 끝으로
       return;
     }
   }
   if(e.key==='ArrowDown'&&!e.shiftKey){
-    var sel=window.getSelection();
-    if(sel.anchorOffset===el.textContent.length&&idx<state.page.blocks.length-1){
+    if(isAtEnd(el)&&idx<state.page.blocks.length-1){
       e.preventDefault();
       focusBlock(idx+1,0);
       return;
@@ -230,6 +249,7 @@ export function handlePaste(e){
         var mode=state.db.settings.imageStorage||'storage';
         if(mode==='storage'){
           uploadToStorage(file,'images',ALLOWED_IMAGE_TYPES).then(function(result){
+            pushUndoImmediate();
             var b={id:genId(),type:'image',src:result.url,caption:''};
             var idx=state.currentInsertIdx!==null?state.currentInsertIdx+1:state.page.blocks.length;
             state.page.blocks.splice(idx,0,b);
@@ -242,6 +262,7 @@ export function handlePaste(e){
         }else{
           var reader=new FileReader();
           reader.onload=function(ev){
+            pushUndoImmediate();
             var b={id:genId(),type:'image',src:ev.target.result,caption:''};
             var idx=state.currentInsertIdx!==null?state.currentInsertIdx+1:state.page.blocks.length;
             state.page.blocks.splice(idx,0,b);
@@ -714,6 +735,7 @@ export function setupListeners(){
         var reader=new FileReader();
         (function(f){
           reader.onload=function(ev){
+            pushUndoImmediate();
             var b={id:genId(),type:'file',url:ev.target.result,name:f.name};
             state.page.blocks.push(b);renderBlocks();triggerAutoSave()
           }

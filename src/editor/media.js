@@ -7,9 +7,11 @@ import {sanitizeURL} from '../utils/sanitize.js';
 import {saveDB,uploadToStorage} from '../data/firestore.js';
 import {renderBlocks} from './renderer.js';
 import {triggerAutoSave,deleteBlock,findBlock} from './blocks.js';
+import {pushUndoImmediate} from './history.js';
 import {openModal,closeModal} from '../ui/modals.js';
 
 function insertMediaBlock(b){
+  pushUndoImmediate();
   if(state.slashMenuState.idx!==null){state.page.blocks[state.slashMenuState.idx]=b;state.slashMenuState.idx=null}
   else if(state.currentInsertIdx!==null){state.page.blocks.splice(state.currentInsertIdx+1,0,b);state.currentInsertIdx=null}
   else state.page.blocks.push(b);
@@ -99,7 +101,7 @@ export function copyImageUrl(idx){
     img.src=b.src;
   }
 }
-export function setImageScale(idx,scale){state.page.blocks[idx].scale=scale;renderBlocks();triggerAutoSave();toast(scale+'% 크기')}
+export function setImageScale(idx,scale){pushUndoImmediate();state.page.blocks[idx].scale=scale;renderBlocks();triggerAutoSave();toast(scale+'% 크기')}
 export function downloadImage(idx){
   var b=state.page.blocks[idx];
   if(b&&b.src){
@@ -175,6 +177,8 @@ export function slideNav(idx,dir){
   var b=state.page.blocks[idx];
   var images=b.images||[];
   if(images.length<2)return;
+  pushUndoImmediate();
+  b=state.page.blocks[idx];
   var current=b.currentSlide||0;
   current+=dir;
   if(current<0)current=images.length-1;
@@ -183,10 +187,12 @@ export function slideNav(idx,dir){
   renderBlocks();
 }
 export function slideTo(idx,i){
+  pushUndoImmediate();
   state.page.blocks[idx].currentSlide=i;
   renderBlocks();
 }
 export function setSlideAuto(idx,auto){
+  pushUndoImmediate();
   state.page.blocks[idx].autoPlay=auto;
   triggerAutoSave();
   renderBlocks();
@@ -231,6 +237,7 @@ export function submitSlideImage(){
 }
 export function addSlideImageSrc(src){
   if(state.currentSlideIdx===null)return;
+  pushUndoImmediate();
   if(!state.page.blocks[state.currentSlideIdx].images)state.page.blocks[state.currentSlideIdx].images=[];
   state.page.blocks[state.currentSlideIdx].images.push(src);
   renderBlocks();triggerAutoSave();
@@ -239,6 +246,7 @@ export function addSlideImageSrc(src){
   state.currentSlideIdx=null;
 }
 export function removeSlideImage(idx,imgIdx){
+  pushUndoImmediate();
   state.page.blocks[idx].images.splice(imgIdx,1);
   if(state.page.blocks[idx].currentSlide>=state.page.blocks[idx].images.length){
     state.page.blocks[idx].currentSlide=Math.max(0,state.page.blocks[idx].images.length-1);
@@ -334,6 +342,6 @@ export function submitFile(){
 
 // 콜아웃/코드 설정
 export function openCalloutIconPicker(id){state.currentEditBlockId=id;var icons=['💡','✅','⚠️','❌','📌','🔔','💬','📝','🎯','⭐','🚀','💪','🔥','❤️','👍','📢'];var html='';for(var i=0;i<icons.length;i++)html+='<div class="icon-item" onclick="setCalloutIcon(\''+icons[i]+'\')">'+icons[i]+'</div>';$('calloutIconGrid').innerHTML=html;openModal('calloutIconModal')}
-export function setCalloutIcon(icon){if(!state.currentEditBlockId)return;var b=findBlock(state.currentEditBlockId);if(b)b.icon=icon;renderBlocks();triggerAutoSave();closeModal('calloutIconModal');state.currentEditBlockId=null}
+export function setCalloutIcon(icon){if(!state.currentEditBlockId)return;pushUndoImmediate();var b=findBlock(state.currentEditBlockId);if(b)b.icon=icon;renderBlocks();triggerAutoSave();closeModal('calloutIconModal');state.currentEditBlockId=null}
 export function openCodeSetting(id){state.currentEditBlockId=id;var b=findBlock(id);if(b)$('codeLangInput').value=b.lang||'';openModal('codeSettingModal')}
-export function submitCodeLang(){if(!state.currentEditBlockId)return;var lang=$('codeLangInput').value.trim();var b=findBlock(state.currentEditBlockId);if(b)b.lang=lang;renderBlocks();triggerAutoSave();closeModal('codeSettingModal');state.currentEditBlockId=null;toast('저장됨')}
+export function submitCodeLang(){if(!state.currentEditBlockId)return;pushUndoImmediate();var lang=$('codeLangInput').value.trim();var b=findBlock(state.currentEditBlockId);if(b)b.lang=lang;renderBlocks();triggerAutoSave();closeModal('codeSettingModal');state.currentEditBlockId=null;toast('저장됨')}

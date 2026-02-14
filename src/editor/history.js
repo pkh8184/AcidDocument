@@ -8,6 +8,7 @@ var MAX_UNDO=50;
 
 export function pushUndo(){
   if(!state.editMode||!state.page)return;
+  syncBlocksFromDOM();
   var snapshot=JSON.parse(JSON.stringify(state.page.blocks));
   state.undoStack.push(snapshot);
   if(state.undoStack.length>MAX_UNDO)state.undoStack.shift();

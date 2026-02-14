@@ -5,6 +5,7 @@ import {$,$$,genId,esc,toast} from '../utils/helpers.js';
 import {COLORS,SLASH,EMOJIS} from '../config/firebase.js';
 import {renderBlocks} from '../editor/renderer.js';
 import {triggerAutoSave,focusBlock,insertBlock} from '../editor/blocks.js';
+import {pushUndoImmediate} from '../editor/history.js';
 import {openModal,closeModal} from './modals.js';
 import {insertImage,insertSlide,insertVideo,insertPdf,insertFile,insertBookmark} from '../editor/media.js';
 
@@ -66,6 +67,7 @@ export function execSlash(type){
   if(type==='emoji'){state.slashMenuState.idx=idx;openEmojiPicker();return}
   if(type==='mention'){state.slashMenuState.idx=idx;openMentionPicker();return}
   if(type==='pagelink'){state.slashMenuState.idx=idx;import('../features/pagelink.js').then(function(m){m.openPageLinkPicker()});return}
+  pushUndoImmediate();
   var b=state.page.blocks[idx];b.type=type;b.content='';
   switch(type){
     case'table':b.rows=[['','',''],['','','']];break;
@@ -114,6 +116,7 @@ export function insertEmoji(emoji){
   closeModal('emojiModal');
   var idx=state.slashMenuState.idx;
   if(idx!==null&&state.page.blocks[idx]){
+    pushUndoImmediate();
     state.page.blocks[idx].content=(state.page.blocks[idx].content||'')+emoji;
     state.page.blocks[idx].type=state.page.blocks[idx].type||'text';
     renderBlocks();focusBlock(idx,'end');triggerAutoSave();
@@ -141,6 +144,7 @@ export function insertMention(userId,userName){
   closeModal('mentionModal');
   var idx=state.slashMenuState.idx;
   if(idx!==null&&state.page.blocks[idx]){
+    pushUndoImmediate();
     var tag='<span class="mention-tag" contenteditable="false" data-user="'+esc(userId)+'">@'+esc(userName)+'</span>&nbsp;';
     state.page.blocks[idx].content=(state.page.blocks[idx].content||'')+tag;
     state.page.blocks[idx].type=state.page.blocks[idx].type||'text';
