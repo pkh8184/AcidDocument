@@ -41,7 +41,7 @@ export function focusBlock(idx,cursorPos){
       c=el.querySelector('.block-col-content')||el.querySelector('th')||el.querySelector('td');
     }
     if(!c)return;
-    c.focus();
+    c.focus({preventScroll:true});
     if(cursorPos==='end'){cursorPos=-1}
     if(typeof cursorPos==='number'){
       try{
@@ -66,6 +66,15 @@ export function focusBlock(idx,cursorPos){
         sel.removeAllRanges();
         sel.addRange(rng);
       }catch(ex){console.warn('focusBlock:',ex)}
+    }
+    // 뷰포트 밖이면 최소 스크롤
+    var rect=c.getBoundingClientRect();
+    var wrap=document.getElementById('editorWrap');
+    if(wrap){
+      var wrapRect=wrap.getBoundingClientRect();
+      if(rect.bottom>wrapRect.bottom||rect.top<wrapRect.top){
+        c.scrollIntoView({block:'nearest',behavior:'smooth'});
+      }
     }
   };
   if(typeof requestAnimationFrame==='function'){

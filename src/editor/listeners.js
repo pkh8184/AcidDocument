@@ -107,11 +107,13 @@ export function handleKey(e,b,idx,el){
       return;
     }
     var sel=window.getSelection();
+    if(!sel||!sel.rangeCount)return;
     var range=sel.getRangeAt(0);
     // 텍스트 선택 상태면 선택 영역 삭제
     if(!sel.isCollapsed){
       range.deleteContents();
       sel=window.getSelection();
+      if(!sel||!sel.rangeCount)return;
       range=sel.getRangeAt(0);
     }
     // 커서 뒤의 콘텐츠를 추출
@@ -743,6 +745,12 @@ export function setupListeners(){
     // 클릭이 editor 내부 블록이 아닌 빈 공간일 때
     var editor=$('editor');
     if(e.target===editor||e.target.classList.contains('editor-inner')){
+      // 블록 사이 여백 클릭 시 최하단 이동 방지: 마지막 블록 아래만 반응
+      var lastBlock=editor.lastElementChild;
+      if(lastBlock){
+        var lastRect=lastBlock.getBoundingClientRect();
+        if(e.clientY<lastRect.bottom)return;
+      }
       e.preventDefault();
       if(state.page.blocks.length===0){
         // 블록이 없으면 새로 생성
