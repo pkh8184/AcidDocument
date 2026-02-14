@@ -58,6 +58,8 @@ import {undo,redo} from './editor/history.js';
 
 // initApp — 로그인 성공 후 앱 초기화
 export function initApp(){
+  if(state.appInitialized)return;
+  state.appInitialized=true;
   $('loginScreen').classList.add('hidden');
   $('appWrap').style.display='flex';
   $('userName').textContent=state.user.nickname||state.user.id;
@@ -135,6 +137,7 @@ function init(){
     // 1. Firebase Auth onAuthStateChanged (우선)
     auth.onAuthStateChanged(function(firebaseUser){
       if(sessionHandled)return;
+      if(state.loggingOut)return;
       // handleLogin이 진행 중이면 무시 (handleLogin이 직접 initApp 호출)
       if(state.loginInProgress){sessionHandled=true;return;}
 
@@ -164,6 +167,9 @@ function init(){
                 }else{
                   initApp();
                 }
+              }else{
+                // 사용자를 찾을 수 없으면 세션 정리
+                localStorage.removeItem('ad_session');
               }
             }
             // 둘 다 없으면 로그인 화면 유지 (기본 상태)
