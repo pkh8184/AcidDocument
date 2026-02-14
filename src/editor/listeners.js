@@ -643,6 +643,94 @@ export function setupBlockEvents(div,b,idx){
     caption.addEventListener('input',triggerAutoSave);
     caption.addEventListener('paste',handlePaste);
     caption.addEventListener('dblclick',function(){if(!state.editMode){import('../ui/sidebar.js').then(function(m){m.toggleEdit();setTimeout(function(){caption.focus({preventScroll:true})},50)})}});
+    caption.addEventListener('keydown',function(e){
+      if(!state.editMode)return;
+      // CLOSURE fix: data-id로 최신 idx 조회
+      var blockEl=div.closest('.block')||div;
+      var curIdx=idx;
+      if(blockEl&&state.page&&state.page.blocks){
+        var bid=blockEl.getAttribute('data-id');
+        for(var fi=0;fi<state.page.blocks.length;fi++){
+          if(state.page.blocks[fi].id===bid){curIdx=fi;break}
+        }
+      }
+      if(e.key==='Enter'&&!e.shiftKey){
+        e.preventDefault();
+        var newB={id:genId(),type:'text',content:''};
+        pushUndoImmediate();
+        state.page.blocks.splice(curIdx+1,0,newB);
+        renderBlocks();
+        focusBlock(curIdx+1,0);
+        return;
+      }
+      if(e.key==='Backspace'&&(caption.textContent===''||caption.innerHTML==='<br>')){
+        e.preventDefault();
+        var mw=div.querySelector('.block-image-wrap');
+        if(mw)mw.focus({preventScroll:true});
+        return;
+      }
+      if(e.key==='ArrowUp'&&isAtStart(caption)){
+        e.preventDefault();
+        var mw=div.querySelector('.block-image-wrap');
+        if(mw)mw.focus({preventScroll:true});
+        return;
+      }
+      if(e.key==='ArrowDown'&&isAtEnd(caption)){
+        e.preventDefault();
+        if(curIdx<state.page.blocks.length-1)focusBlock(curIdx+1,0);
+        return;
+      }
+      if(e.key==='Escape'){
+        e.preventDefault();
+        var mw=div.querySelector('.block-image-wrap');
+        if(mw)mw.focus({preventScroll:true});
+        return;
+      }
+    });
+  }
+
+  // 이미지 리사이즈 핸들
+  var resizeHandle=div.querySelector('.img-resize-handle');
+  if(resizeHandle){
+    resizeHandle.addEventListener('mousedown',function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var imgInner=div.querySelector('.block-image-inner');
+      if(!imgInner)return;
+      // CLOSURE fix: data-id로 최신 idx 조회
+      var blockEl=div.closest('.block')||div;
+      var curIdx=idx;
+      if(blockEl&&state.page&&state.page.blocks){
+        var bid=blockEl.getAttribute('data-id');
+        for(var fi=0;fi<state.page.blocks.length;fi++){
+          if(state.page.blocks[fi].id===bid){curIdx=fi;break}
+        }
+      }
+      var startX=e.clientX;
+      var startW=imgInner.offsetWidth;
+      var tooltip=div.querySelector('.img-resize-tooltip');
+      var editorEl=$('editor');
+      var maxW=editorEl.offsetWidth-80;
+      if(tooltip)tooltip.style.display='block';
+      function onMove(ev){
+        var diff=ev.clientX-startX;
+        var newW=Math.max(100,Math.min(maxW,startW+diff));
+        imgInner.style.width=newW+'px';
+        if(tooltip)tooltip.textContent=Math.round(newW)+'px';
+      }
+      function onUp(){
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onUp);
+        if(tooltip)tooltip.style.display='none';
+        var finalW=imgInner.offsetWidth;
+        pushUndoImmediate();
+        state.page.blocks[curIdx].width=finalW;
+        delete state.page.blocks[curIdx].scale;
+        triggerAutoSave();
+      }
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onUp);
+    });
   }
 
   // 이미지/파일 블록 백스페이스 삭제
@@ -650,9 +738,45 @@ export function setupBlockEvents(div,b,idx){
   if(mediaWrap){
     mediaWrap.addEventListener('keydown',function(e){
       if(!state.editMode)return;
+      // CLOSURE fix: data-id로 최신 idx 조회
+      var blockEl=div.closest('.block')||div;
+      var curIdx=idx;
+      if(blockEl&&state.page&&state.page.blocks){
+        var bid=blockEl.getAttribute('data-id');
+        for(var fi=0;fi<state.page.blocks.length;fi++){
+          if(state.page.blocks[fi].id===bid){curIdx=fi;break}
+        }
+      }
       if(e.key==='Backspace'||e.key==='Delete'){
         e.preventDefault();
-        deleteBlock(idx);
+        deleteBlock(curIdx);
+        return;
+      }
+      if(e.key==='Enter'){
+        e.preventDefault();
+        var cap=div.querySelector('.block-image-caption');
+        if(cap){cap.focus({preventScroll:true})}
+        return;
+      }
+      if(e.key==='ArrowUp'){
+        e.preventDefault();
+        if(curIdx>0)focusBlock(curIdx-1,-1);
+        return;
+      }
+      if(e.key==='ArrowDown'){
+        e.preventDefault();
+        var cap=div.querySelector('.block-image-caption');
+        if(cap){cap.focus({preventScroll:true})}
+        return;
+      }
+      if(e.key==='Escape'){
+        mediaWrap.blur();
+        return;
+      }
+      if(e.key==='Tab'){
+        e.preventDefault();
+        if(curIdx<state.page.blocks.length-1)focusBlock(curIdx+1,0);
+        return;
       }
     });
     mediaWrap.addEventListener('click',function(){if(state.editMode)mediaWrap.focus({preventScroll:true})});
@@ -789,6 +913,7 @@ export function setupListeners(){
       case'downloadCode':downloadCode(target);break;
       case'openCalloutIconPicker':import('./media.js').then(function(m){m.openCalloutIconPicker(blockId)});break;
       case'openCodeSetting':import('./media.js').then(function(m){m.openCodeSetting(blockId)});break;
+      case'setImageAlign':import('./media.js').then(function(m){m.setImageAlign(idx,target.dataset.align)});break;
       case'setImageScale':import('./media.js').then(function(m){m.setImageScale(idx,parseInt(target.dataset.scale))});break;
       case'copyImageUrl':import('./media.js').then(function(m){m.copyImageUrl(idx)});break;
       case'downloadImage':import('./media.js').then(function(m){m.downloadImage(idx)});break;

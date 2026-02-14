@@ -150,11 +150,27 @@ export function createBlockEl(b,idx){
       inner+='<div class="block-content"'+ce+' style="font-family:monospace;white-space:pre-wrap">'+sanitizeHTML(b.content||'')+'</div></div>';
       break;
     case'image':
-      var imgScale=b.scale||100;
-      inner='<div class="block-image-wrap" tabindex="0" data-block-idx="'+idx+'">';
-      if(state.editMode)inner+='<div class="block-media-toolbar"><div class="media-toolbar-group"><button class="media-btn" data-action="copyImageUrl" data-idx="'+idx+'" title="복사">📋</button><button class="media-btn" data-action="downloadImage" data-idx="'+idx+'" title="다운로드">💾</button><button class="media-btn danger" data-action="deleteBlock" data-idx="'+idx+'" title="삭제">🗑️</button></div><div class="media-toolbar-group"><button class="media-btn'+(imgScale===25?' active':'')+'" data-action="setImageScale" data-idx="'+idx+'" data-scale="25">25%</button><button class="media-btn'+(imgScale===50?' active':'')+'" data-action="setImageScale" data-idx="'+idx+'" data-scale="50">50%</button><button class="media-btn'+(imgScale===75?' active':'')+'" data-action="setImageScale" data-idx="'+idx+'" data-scale="75">75%</button><button class="media-btn'+(imgScale===100?' active':'')+'" data-action="setImageScale" data-idx="'+idx+'" data-scale="100">100%</button></div></div>';
-      inner+='<img src="'+esc(b.src||'')+'" style="max-width:'+imgScale+'%;border-radius:var(--rad);display:block;margin:0 auto;cursor:'+(state.editMode?'default':'zoom-in')+'" onerror="this.style.display=\'none\'"'+(state.editMode?'':' onclick="openImageViewer([\''+esc(b.src||'')+'\'],0)"')+'>';
-      inner+='<div class="block-image-caption"'+ce+' style="text-align:center;color:var(--t4);font-size:13px;margin-top:8px">'+sanitizeHTML(b.caption||'')+'</div>';
+      var imgWidth=b.width;
+      var imgAlign=b.align||'center';
+      var alignCls='img-align-'+imgAlign;
+      inner='<div class="block-image-wrap '+alignCls+'" tabindex="0" data-block-idx="'+idx+'">';
+      inner+='<div class="block-image-inner"'+(imgWidth?' style="width:'+imgWidth+'px"':(b.scale&&b.scale!==100?' style="width:'+b.scale+'%"':''))+'>';
+      if(state.editMode){
+        inner+='<div class="img-overlay-toolbar">';
+        inner+='<button class="media-btn'+(imgAlign==='left'?' active':'')+'" data-action="setImageAlign" data-idx="'+idx+'" data-align="left" title="왼쪽">◀</button>';
+        inner+='<button class="media-btn'+(imgAlign==='center'?' active':'')+'" data-action="setImageAlign" data-idx="'+idx+'" data-align="center" title="가운데">■</button>';
+        inner+='<button class="media-btn'+(imgAlign==='right'?' active':'')+'" data-action="setImageAlign" data-idx="'+idx+'" data-align="right" title="오른쪽">▶</button>';
+        inner+='<span style="width:1px;background:rgba(255,255,255,0.3);margin:0 2px"></span>';
+        inner+='<button class="media-btn" data-action="copyImageUrl" data-idx="'+idx+'" title="복사">📋</button>';
+        inner+='<button class="media-btn" data-action="downloadImage" data-idx="'+idx+'" title="다운로드">💾</button>';
+        inner+='<button class="media-btn danger" data-action="deleteBlock" data-idx="'+idx+'" title="삭제">🗑️</button>';
+        inner+='</div>';
+        inner+='<div class="img-resize-handle" data-idx="'+idx+'"></div>';
+        inner+='<div class="img-resize-tooltip"></div>';
+      }
+      inner+='<img src="'+esc(b.src||'')+'" style="width:100%;border-radius:var(--rad);display:block;cursor:'+(state.editMode?'default':'zoom-in')+'" onerror="this.style.display=\'none\'"'+(state.editMode?'':' onclick="openImageViewer([\''+esc(b.src||'')+'\'],0)"')+'>';
+      inner+='</div>';
+      inner+='<div class="block-image-caption"'+ce+'>'+sanitizeHTML(b.caption||'')+'</div>';
       inner+='</div>';
       if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;

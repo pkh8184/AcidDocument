@@ -101,7 +101,8 @@ export function copyImageUrl(idx){
     img.src=b.src;
   }
 }
-export function setImageScale(idx,scale){pushUndoImmediate();state.page.blocks[idx].scale=scale;renderBlocks();triggerAutoSave();toast(scale+'% 크기')}
+export function setImageScale(idx,scale){pushUndoImmediate();state.page.blocks[idx].scale=scale;delete state.page.blocks[idx].width;renderBlocks();triggerAutoSave();toast(scale+'% 크기')}
+export function setImageAlign(idx,align){pushUndoImmediate();state.page.blocks[idx].align=align;renderBlocks();triggerAutoSave();toast(align==='left'?'왼쪽 정렬':align==='right'?'오른쪽 정렬':'가운데 정렬')}
 export function downloadImage(idx){
   var b=state.page.blocks[idx];
   if(b&&b.src){

@@ -159,7 +159,9 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .block-callout-icon{font-size:22px}
 .block-divider{padding:20px 40px}.block-divider hr{border:none;height:2px;background:var(--bdr)}
 .block-image{margin:20px 0}.block-image img{max-width:100%;border-radius:var(--rad);display:block}
-.block-image-caption{margin-top:8px;font-size:14px;color:var(--t4);text-align:center;outline:none}
+.block-image-caption{margin-top:8px;font-size:14px;color:var(--t4);text-align:center;outline:none;min-height:1em}
+.edit-mode .block-image-caption:empty::before{content:'이미지 캡션을 입력하세요';color:var(--t4);pointer-events:none}
+.view-mode .block-image-caption:empty{display:none}
 .block-video{margin:20px 0}.block-video iframe{width:100%;aspect-ratio:16/9;border:none;border-radius:var(--rad)}
 .block-pdf{margin:20px 0}.block-pdf iframe{width:100%;height:500px;border:1px solid var(--bdr);border-radius:var(--rad)}
 .block-file{margin:16px 0;padding:16px;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rad);display:flex;align-items:center;gap:12px}
@@ -262,13 +264,30 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .fmt-bar{position:fixed;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rad);padding:4px;display:none;z-index:350;box-shadow:0 4px 20px rgba(0,0,0,.2)}
 .fmt-bar.open{display:flex;gap:2px}
 .fmt-bar .btn-i{width:32px;height:32px;font-size:14px}
+.block-image-wrap{position:relative;outline:none;display:inline-block}
+.block-image-wrap:focus{outline:2px solid var(--acc);border-radius:var(--rad)}
+.block-image-wrap:hover .img-overlay-toolbar{opacity:1}
+.block-image-wrap:focus .img-overlay-toolbar{opacity:1}
+.block-image-inner{position:relative;display:inline-block}
+.img-overlay-toolbar{position:absolute;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:6px;background:rgba(0,0,0,0.65);padding:4px 8px;border-radius:8px;opacity:0;transition:opacity 0.15s;z-index:10;white-space:nowrap}
+.img-overlay-toolbar .media-btn{background:transparent;border:none;padding:5px 8px;cursor:pointer;font-size:13px;color:#fff;border-radius:5px;transition:all .15s}
+.img-overlay-toolbar .media-btn:hover{background:rgba(255,255,255,0.2)}
+.img-overlay-toolbar .media-btn.active{background:var(--acc)}
+.img-overlay-toolbar .media-btn.danger:hover{background:var(--err)}
+.img-resize-handle{position:absolute;right:-4px;top:50%;transform:translateY(-50%);width:6px;height:40px;background:var(--acc);border-radius:3px;cursor:col-resize;opacity:0;transition:opacity 0.15s;z-index:11}
+.block-image-wrap:hover .img-resize-handle{opacity:0.6}
+.block-image-wrap:focus .img-resize-handle{opacity:0.8}
+.img-resize-handle:hover{opacity:1!important}
+.img-resize-tooltip{position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;font-size:11px;padding:2px 8px;border-radius:4px;white-space:nowrap;pointer-events:none;display:none}
+.img-align-left .block-image-inner{margin-right:auto}
+.img-align-center .block-image-inner{margin:0 auto}
+.img-align-right .block-image-inner{margin-left:auto}
 .block-media-toolbar{display:flex;gap:8px;justify-content:center;margin-bottom:12px;flex-wrap:wrap}
 .media-toolbar-group{display:flex;gap:4px;background:var(--bg3);padding:4px;border-radius:8px}
 .media-btn{background:transparent;border:none;padding:6px 10px;cursor:pointer;font-size:13px;color:var(--t2);border-radius:6px;transition:all .15s}
 .media-btn:hover{background:var(--bg4);color:var(--t1)}
 .media-btn.active{background:var(--acc);color:#fff}
 .media-btn.danger:hover{background:var(--err);color:#fff}
-.block-image-wrap{position:relative;outline:none}.block-image-wrap:focus{outline:2px solid var(--acc);border-radius:var(--rad)}
 .block-file-wrap{outline:none}.block-file-wrap:focus{outline:2px solid var(--acc);border-radius:var(--rad)}
 .block-file-card{display:flex;align-items:center;gap:16px;padding:16px 20px;background:var(--bg2);border:1px solid var(--bdr);border-radius:12px;transition:all .15s}
 .block-file-card:hover{border-color:var(--acc);box-shadow:0 2px 8px rgba(0,0,0,0.1)}
