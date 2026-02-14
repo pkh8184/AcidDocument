@@ -11,7 +11,7 @@ import {insertImage,insertSlide,insertVideo,insertPdf,insertFile,insertBookmark}
 // 서식바
 export function showFmtBar(){var sel=window.getSelection();if(!sel.rangeCount||sel.isCollapsed){hideFmtBar();return}var rng=sel.getRangeAt(0),rect=rng.getBoundingClientRect();if(rect.width<5){hideFmtBar();return}var bar=$('fmtBar');bar.style.left=Math.max(10,rect.left+rect.width/2-110)+'px';bar.style.top=Math.max(10,rect.top-50)+'px';bar.classList.add('open')}
 export function hideFmtBar(){$('fmtBar').classList.remove('open')}
-export function fmtCmd(cmd){document.execCommand(cmd,false,null);triggerAutoSave()}
+export function fmtCmd(cmd){var sel=window.getSelection();if(!sel||sel.isCollapsed){toast('텍스트를 선택해주세요','warn');return}document.execCommand(cmd,false,null);triggerAutoSave()}
 export function saveSelection(){
   var sel=window.getSelection();
   if(sel.rangeCount>0)state.savedSelection=sel.getRangeAt(0).cloneRange();
@@ -24,7 +24,17 @@ export function restoreSelection(){
   }
 }
 export function openColorPicker(){saveSelection();var html='';for(var i=0;i<COLORS.length;i++)html+='<div class="color-item" style="background:'+COLORS[i]+'" onclick="applyColor(\''+COLORS[i]+'\')"></div>';$('colorGrid').innerHTML=html;openModal('colorModal')}
-export function applyColor(c){closeModal('colorModal');restoreSelection();document.execCommand('foreColor',false,c);triggerAutoSave()}
+export function applyColor(c){
+  closeModal('colorModal');
+  restoreSelection();
+  var sel=window.getSelection();
+  if((!sel||sel.isCollapsed)&&state.savedSelection){
+    try{sel.removeAllRanges();sel.addRange(state.savedSelection)}catch(ex){}
+  }
+  document.execCommand('foreColor',false,c);
+  state.savedSelection=null;
+  triggerAutoSave();
+}
 
 // 슬래시 메뉴
 export function showSlash(el){var menu=$('slashMenu');menu.style.left='320px';menu.style.top='auto';menu.style.bottom='200px';renderSlashMenu('');menu.classList.add('open')}

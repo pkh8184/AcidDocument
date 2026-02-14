@@ -174,7 +174,7 @@ export function loadPageWithoutPush(id){
   saveRecent();saveDB();closeMobile();$('editorWrap').scrollTop=0
 }
 export function saveDoc(){
-  if(!state.page)return;var p=getPage(state.page.id);if(!p)return;
+  if(!state.page)return;clearTimeout(state.autoSaveTimer);state.autoSaveTimer=null;var p=getPage(state.page.id);if(!p)return;
   p.title=$('pageTitle').value||'제목 없음';p.icon=$('pageIcon').textContent;p.blocks=collectBlocks();p.updated=Date.now();
   p.versions.push({id:genId(),date:Date.now(),author:state.user.id,blocks:JSON.parse(JSON.stringify(p.blocks))});
   if(p.versions.length>MAX_VER)p.versions.shift();
@@ -225,7 +225,6 @@ export function exitEditMode(){
   renderBlocks()
 }
 export function deleteCurrentPage(){if(state.page)deletePage(state.page.id)}
-export function onTitleChange(){triggerAutoSave()}
 export function deletePage(id){state.deleteTargetId=id;var p=getPage(id);$('deleteConfirmText').textContent='"'+p.title+'" 페이지를 삭제하시겠습니까?';openModal('deleteConfirmModal')}
 export function confirmDelete(){
   closeModal('deleteConfirmModal');

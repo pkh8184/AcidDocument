@@ -121,8 +121,8 @@ export function handleKey(e,b,idx,el){
         while(prevIdx>=0&&CONTENT_TYPES.indexOf(state.page.blocks[prevIdx].type)!==-1){
           prevIdx--;
         }
-        if(prevIdx>=0){setTimeout(function(){focusBlock(prevIdx,'end')},50)}
-        else{setTimeout(function(){focusBlock(0,0)},50)}
+        if(prevIdx<0)prevIdx=Math.max(0,idx-1);
+        setTimeout(function(){focusBlock(prevIdx,'end')},50)
       }
       return;
     }
@@ -133,7 +133,8 @@ export function handleKey(e,b,idx,el){
       while(prevIdx>=0&&CONTENT_TYPES.indexOf(state.page.blocks[prevIdx].type)!==-1){
         prevIdx--;
       }
-      if(prevIdx>=0)focusBlock(prevIdx,'end');
+      if(prevIdx<0)prevIdx=Math.max(0,idx-1);
+      focusBlock(prevIdx,'end');
       return;
     }
   }
@@ -146,7 +147,8 @@ export function handleKey(e,b,idx,el){
       e.preventDefault();
       var nextB=state.page.blocks[idx+1];
       if(['text','h1','h2','h3','bullet','number','quote'].includes(nextB.type)){
-        b.content=el.innerHTML+(nextB.content||'');
+        var curHTML=el.innerHTML.replace(/<br\s*\/?>$/i,'');
+        b.content=curHTML+(nextB.content||'');
         state.page.blocks.splice(idx+1,1);
         renderBlocks();
         focusBlock(idx,el.textContent.length);
@@ -257,25 +259,17 @@ export function handlePaste(e){
   if(txt&&txt.indexOf('\n')!==-1){
     var lines=txt.split(/\n+/).filter(function(l){return l.trim()!==''});
     if(lines.length>1){
-      // 48글자 단위로 추가 분할
-      var chunks=[];
-      for(var ci=0;ci<lines.length;ci++){
-        var line=lines[ci];
-        while(line.length>48){
-          chunks.push(line.substring(0,48));
-          line=line.substring(48);
-        }
-        if(line.length>0)chunks.push(line);
-      }
+      pushUndoImmediate();
       var idx=state.currentInsertIdx!==null?state.currentInsertIdx:state.page.blocks.length-1;
-      // 현재 블록에 첫 청크 삽입 (48글자 이내로 잘라서)
-      var firstChunk=chunks[0];
-      if(firstChunk.length>48)firstChunk=firstChunk.substring(0,48);
-      document.execCommand('insertText',false,firstChunk);
-      // 나머지 청크는 새 블록으로
-      for(var j=1;j<chunks.length;j++){
+      var curBlock=state.page.blocks[idx];
+      // 첫 줄을 현재 블록의 content에 append (state 직접)
+      if(curBlock){
+        curBlock.content=(curBlock.content||'')+lines[0];
+      }
+      // 나머지 줄은 새 블록으로
+      for(var j=1;j<lines.length;j++){
         idx++;
-        state.page.blocks.splice(idx,0,{id:genId(),type:'text',content:chunks[j]});
+        state.page.blocks.splice(idx,0,{id:genId(),type:'text',content:lines[j]});
       }
       renderBlocks();triggerAutoSave();
       return;
@@ -296,27 +290,7 @@ export function setupBlockEvents(div,b,idx){
     });
     el.addEventListener('input',function(){
       triggerAutoSave();
-      // 48글자 초과 시 자동 블록 분할
-      var curIdx=findBlockIndex(b.id);
-      var blk=state.page.blocks[curIdx];
-      if(blk&&TEXT_TYPES.indexOf(blk.type)!==-1){
-        if(el.textContent.length>48){
-          var full=el.textContent;
-          var keep=full.substring(0,48);
-          var overflow=full.substring(48);
-          el.textContent=keep;
-          blk.content=keep;
-          var newB={id:genId(),type:blk.type,content:overflow};
-          if(blk.type==='todo')newB.checked=false;
-          if(blk.type==='number')newB.num=(blk.num||1)+1;
-          pushUndoImmediate();
-          state.page.blocks.splice(curIdx+1,0,newB);
-          renderBlocks();
-          focusBlock(curIdx+1,0);
-          updateNums();
-          return;
-        }
-      }
+      if(state.isComposing)return;
       // 슬래시 메뉴 필터링
       var menu=$('slashMenu');
       if(menu.classList.contains('open')){
@@ -331,14 +305,6 @@ export function setupBlockEvents(div,b,idx){
     el.addEventListener('compositionstart',function(){state.isComposing=true});
     el.addEventListener('compositionend',function(){
       state.isComposing=false;
-      // 한글 조합 완료 후 슬래시 메뉴 필터링
-      var menu=$('slashMenu');
-      if(menu.classList.contains('open')){
-        var txt=el.innerText||el.textContent;
-        txt=txt.replace(/\n/g,'').trim();
-        if(txt.startsWith('/'))filterSlash(txt.slice(1));
-        else hideSlash();
-      }
     });
     el.addEventListener('mouseup',showFmtBar);
     // 클릭 시 포커스
@@ -497,12 +463,28 @@ export function setupBlockEvents(div,b,idx){
 export function setupListeners(){
   setupBlockTracking();
 
-  // 제목에서 Enter → 첫 블록 포커스
-  $('pageTitle').addEventListener('keydown',function(e){
+  // 제목 IME composition 추적
+  var titleEl=$('pageTitle');
+  var titleComposing=false;
+  titleEl.addEventListener('compositionstart',function(){titleComposing=true});
+  titleEl.addEventListener('compositionend',function(){titleComposing=false});
+  // 제목에서 Enter → 첫 블록 포커스 (없으면 생성)
+  titleEl.addEventListener('keydown',function(e){
     if(e.key==='Enter'){
       e.preventDefault();
+      if(!state.page||!state.page.blocks||state.page.blocks.length===0){
+        if(state.page){
+          state.page.blocks=[{id:genId(),type:'text',content:''}];
+          renderBlocks();
+        }
+      }
       focusBlock(0,0);
     }
+  });
+  // 제목 input에서 composition 중 autoSave 방지
+  titleEl.addEventListener('input',function(){
+    if(titleComposing)return;
+    triggerAutoSave();
   });
 
   // Editor event delegation (click)
@@ -687,10 +669,26 @@ export function setupListeners(){
       var toIdx=ind?parseInt(ind.getAttribute('data-drop-idx')):state.dragBlockIdx;
       if(ind)ind.remove();
       if(toIdx>state.dragBlockIdx)toIdx--;
+      // 드래그 전 현재 편집 중인 DOM 내용을 state에 동기화
+      var edChs=editor.children;
+      for(var si=0;si<edChs.length;si++){
+        var sEl=edChs[si],sId=sEl.getAttribute('data-id');
+        if(!sId)continue;
+        for(var sj=0;sj<state.page.blocks.length;sj++){
+          if(state.page.blocks[sj].id===sId){
+            var sCon=sEl.querySelector('.block-content');
+            if(sCon)state.page.blocks[sj].content=sCon.innerHTML;
+            break;
+          }
+        }
+      }
       reorderBlock(state.dragBlockIdx,toIdx);
       state.dragBlockIdx=null;
       return;
     }
+    // 파일 드롭 시에도 drag indicator 제거
+    var fileInd=editor.querySelector('.drag-indicator');
+    if(fileInd)fileInd.remove();
     var files=e.dataTransfer.files;
     for(var i=0;i<files.length;i++){
       var file=files[i];
