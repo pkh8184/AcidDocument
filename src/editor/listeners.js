@@ -14,6 +14,7 @@ import {showTagPicker,hideTagPicker} from '../ui/toolbar.js';
 import {undo,redo,pushUndoImmediate} from './history.js';
 
 var TEXT_TYPES=['text','h1','h2','h3','bullet','number','quote','todo'];
+var CONTENT_TYPES=['table','image','video','pdf','file','slide','calendar','columns','toc','divider'];
 
 export function reorderBlock(fromIdx,toIdx){
   if(!state.page||!state.page.blocks)return;
@@ -106,23 +107,33 @@ export function handleKey(e,b,idx,el){
 
     if(el.textContent===''||el.innerHTML==='<br>'){
       e.preventDefault();
-      // 리스트 타입이면 text로 변환
-      if(b.type==='bullet'||b.type==='number'||b.type==='todo'){
+      // 서식 블록(리스트/헤딩/인용)이면 text로 변환
+      if(b.type==='bullet'||b.type==='number'||b.type==='todo'||b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='quote'){
         state.page.blocks[idx].type='text';
         renderBlocks();
         focusBlock(idx);
       }
-      // text이고 첫 블록이 아니면 삭제 후 이전 블록으로 포커스
+      // text이고 첫 블록이 아니면 삭제 후 이전 블록으로 포커스 (콘텐츠 블록 스킵)
       else if(state.page.blocks.length>1){
         deleteBlock(idx);
-        if(idx>0)focusBlock(idx-1);
+        // deleteBlock의 기본 포커스를 오버라이드 — 콘텐츠 블록 스킵
+        var prevIdx=idx-1;
+        while(prevIdx>=0&&CONTENT_TYPES.indexOf(state.page.blocks[prevIdx].type)!==-1){
+          prevIdx--;
+        }
+        if(prevIdx>=0){setTimeout(function(){focusBlock(prevIdx,'end')},50)}
+        else{setTimeout(function(){focusBlock(0,0)},50)}
       }
       return;
     }
-    // 커서가 맨 앞이고 이전 블록이 있으면 → 이전 블록 끝으로 포커스 (병합 안함)
+    // 커서가 맨 앞이고 이전 블록이 있으면 → 이전 블록 끝으로 포커스 (콘텐츠 블록 스킵)
     if(atStart&&idx>0){
       e.preventDefault();
-      focusBlock(idx-1,'end');
+      var prevIdx=idx-1;
+      while(prevIdx>=0&&CONTENT_TYPES.indexOf(state.page.blocks[prevIdx].type)!==-1){
+        prevIdx--;
+      }
+      if(prevIdx>=0)focusBlock(prevIdx,'end');
       return;
     }
   }
