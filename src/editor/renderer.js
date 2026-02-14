@@ -3,7 +3,7 @@
 import state from '../data/store.js';
 import {$,esc} from '../utils/helpers.js';
 import {sanitizeHTML} from '../utils/sanitize.js';
-import {updateNums,genTOC,triggerAutoSave,focusBlock,deleteBlock,addBlockBelow,scrollToBlk,findBlock,findBlockIndex} from './blocks.js';
+import {updateNums,genTOC,triggerAutoSave,focusBlock,deleteBlock,addBlockBelow,scrollToBlk,findBlock,findBlockIndex,getChildren} from './blocks.js';
 import {renderCalendar} from './calendar.js';
 import {renderChart} from './chart.js';
 import {renderSlideBlock,getYTId,openImageViewer,setupSlideAutoPlay} from './media.js';
@@ -11,13 +11,61 @@ import {setupBlockEvents} from './listeners.js';
 
 var blockElements=new Map();
 
+var LIST_TYPES_SET=['bullet','number','todo'];
+
+// 리스트 부모 판별: 하위 항목(indent 더 큰 연속 블록)이 있는 인덱스
+function getListParents(blocks){
+  var result={};
+  for(var i=0;i<blocks.length;i++){
+    if(LIST_TYPES_SET.indexOf(blocks[i].type)===-1)continue;
+    var myIndent=blocks[i].indent||0;
+    if(i+1<blocks.length&&(blocks[i+1].indent||0)>myIndent){
+      result[i]=true;
+    }
+  }
+  return result;
+}
+
+// collapsed 부모의 하위 항목 인덱스 Set
+function getCollapsedChildren(blocks){
+  var hidden=new Set();
+  for(var i=0;i<blocks.length;i++){
+    if(!blocks[i].collapsed)continue;
+    var myIndent=blocks[i].indent||0;
+    for(var j=i+1;j<blocks.length;j++){
+      if((blocks[j].indent||0)>myIndent)hidden.add(j);
+      else break;
+    }
+  }
+  return hidden;
+}
+
+// 접기 화살표 DOM 추가
+function addCollapseArrow(div,block,isCollapsed){
+  var arrow=document.createElement('span');
+  arrow.className='list-collapse-arrow'+(isCollapsed?'':' open');
+  arrow.textContent='\u25B6';
+  arrow.setAttribute('data-collapse-id',block.id);
+  var content=div.querySelector('.block-content');
+  if(content)content.parentNode.insertBefore(arrow,content);
+  else div.insertBefore(arrow,div.firstChild);
+}
+
 export function renderBlocks(){
   var ed=$('editor');
   ed.innerHTML='';
   blockElements.clear();
   ed.className='editor '+(state.editMode?'edit-mode':'view-mode');
+  var hasChildren=getListParents(state.page.blocks);
+  var hiddenSet=getCollapsedChildren(state.page.blocks);
   for(var i=0;i<state.page.blocks.length;i++){
     var el=createBlockEl(state.page.blocks[i],i);
+    if(hasChildren[i]){
+      var isCollapsed=state.page.blocks[i].collapsed;
+      addCollapseArrow(el,state.page.blocks[i],isCollapsed);
+      if(isCollapsed)el.classList.add('collapsed-parent');
+    }
+    if(hiddenSet.has(i))el.classList.add('collapsed-child');
     ed.appendChild(el);
     blockElements.set(state.page.blocks[i].id,el);
   }
@@ -64,6 +112,8 @@ export function createBlockEl(b,idx){
   div.className='block block-'+b.type;
   div.setAttribute('data-id',b.id);
   div.setAttribute('data-idx',idx);
+  var indent=b.indent||0;
+  if(indent>0)div.setAttribute('data-indent',indent);
   var ce=state.editMode?' contenteditable="true"':'';
   var inner='';
 
@@ -212,6 +262,7 @@ export function createBlockEl(b,idx){
       break;
     case'number':
       div.setAttribute('data-num',b.num||1);
+      div.setAttribute('data-num-style',indent%5);
       inner='<div class="block-content"'+ce+'>'+sanitizeHTML(b.content||'')+'</div>';
       break;
     case'calendar':

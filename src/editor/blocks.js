@@ -20,6 +20,33 @@ export function getPath(id){var path=[],p=getPage(id);while(p){path.unshift(p);p
 export function findBlock(id){if(!state.page)return null;for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id)return state.page.blocks[i]}return null}
 export function findBlockIndex(id){if(!state.page)return -1;for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id)return i}return -1}
 
+// 블록 idx의 하위 항목 인덱스 배열 반환
+export function getChildren(idx){
+  if(!state.page||!state.page.blocks)return[];
+  var myIndent=state.page.blocks[idx].indent||0;
+  var children=[];
+  for(var j=idx+1;j<state.page.blocks.length;j++){
+    if((state.page.blocks[j].indent||0)>myIndent)children.push(j);
+    else break;
+  }
+  return children;
+}
+
+// 숫자 → 알파벳 변환 (1→a, 2→b, ..., 26→z, 27→aa)
+function numToAlpha(n,upper){
+  var s='';
+  while(n>0){n--;s=String.fromCharCode((upper?65:97)+(n%26))+s;n=Math.floor(n/26)}
+  return s;
+}
+// 숫자 → 로마 숫자 변환
+function numToRoman(n,upper){
+  var vals=[1000,900,500,400,100,90,50,40,10,9,5,4,1];
+  var syms=upper?['M','CM','D','CD','C','XC','L','XL','X','IX','V','IV','I']:['m','cm','d','cd','c','xc','l','xl','x','ix','v','iv','i'];
+  var s='';
+  for(var i=0;i<vals.length;i++){while(n>=vals[i]){s+=syms[i];n-=vals[i]}}
+  return s;
+}
+
 /* ========== 블록 생성/삭제 규칙 ==========
  * 1. insertBlock: 지정 위치에 블록 삽입 후 포커스
  * 2. deleteBlock: 블록 삭제 후 이전/다음 블록 포커스
@@ -196,7 +223,43 @@ export function collectBlocks(){
   }
   return blks
 }
-export function updateNums(){var n=0,chs=$('editor').children;for(var i=0;i<chs.length;i++){if(chs[i].classList.contains('block-number')){n++;chs[i].setAttribute('data-num',n)}else if(!chs[i].classList.contains('block-bullet'))n=0}}
+export function updateNums(){
+  var chs=$('editor').children;
+  var counters=[0,0,0,0,0];
+  var prevIndent=-1;
+  var prevType='';
+  for(var i=0;i<chs.length;i++){
+    var el=chs[i];
+    var indent=parseInt(el.getAttribute('data-indent'))||0;
+    if(el.classList.contains('block-number')){
+      if(indent!==prevIndent||prevType!=='number'){
+        counters[indent]=0;
+        for(var r=indent+1;r<5;r++)counters[r]=0;
+      }
+      counters[indent]++;
+      var n=counters[indent];
+      var numStr;
+      switch(indent%5){
+        case 0:numStr=String(n);break;
+        case 1:numStr=numToAlpha(n,false);break;
+        case 2:numStr=numToRoman(n,false);break;
+        case 3:numStr=numToAlpha(n,true);break;
+        case 4:numStr=numToRoman(n,true);break;
+      }
+      el.setAttribute('data-num',numStr);
+      prevType='number';
+      prevIndent=indent;
+    }else if(el.classList.contains('block-bullet')||el.classList.contains('block-todo')){
+      prevType=el.classList.contains('block-bullet')?'bullet':'todo';
+      prevIndent=indent;
+      for(var r=indent+1;r<5;r++)counters[r]=0;
+    }else{
+      for(var r=0;r<5;r++)counters[r]=0;
+      prevType='';
+      prevIndent=-1;
+    }
+  }
+}
 export function genTOC(){var hs=[];for(var i=0;i<state.page.blocks.length;i++){var b=state.page.blocks[i];if(b.type==='h1'||b.type==='h2'||b.type==='h3')hs.push(b)}if(hs.length===0)return'<div class="block-toc-title">📑 목차</div><p style="color:var(--t4)">제목이 없습니다</p>';var html='<div class="block-toc-title">📑 목차</div><ul class="block-toc-list">',tmp=document.createElement('div');for(var j=0;j<hs.length;j++){var h=hs[j];tmp.innerHTML=h.content||'';var txt=tmp.textContent||'';var lv=h.type==='h1'?1:h.type==='h2'?2:3;html+='<li class="block-toc-item l'+lv+'"><a href="#" onclick="scrollToBlk(\''+h.id+'\');return false">'+esc(txt)+'</a></li>'}html+='</ul>';return html}
 export function scrollToBlk(id){var el=document.querySelector('[data-id="'+id+'"]');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.background='var(--accM)';setTimeout(function(){el.style.background=''},2000)}}
 
