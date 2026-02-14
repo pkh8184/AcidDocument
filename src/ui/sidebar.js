@@ -365,6 +365,7 @@ export function showBlockCtx(e,idx){
   html+='<button class="ctx-btn" title="텍스트" onclick="changeBlockType('+idx+',\'text\');hideCtx()">T</button>';
   html+='<button class="ctx-btn" title="제목 1" onclick="changeBlockType('+idx+',\'h1\');hideCtx()">H1</button>';
   html+='<button class="ctx-btn" title="제목 2" onclick="changeBlockType('+idx+',\'h2\');hideCtx()">H2</button>';
+  html+='<button class="ctx-btn" title="제목 3" onclick="changeBlockType('+idx+',\'h3\');hideCtx()">H3</button>';
   html+='<button class="ctx-btn" title="글머리" onclick="changeBlockType('+idx+',\'bullet\');hideCtx()">•</button>';
   html+='<button class="ctx-btn" title="번호" onclick="changeBlockType('+idx+',\'number\');hideCtx()">1.</button>';
   html+='<button class="ctx-btn" title="할일" onclick="changeBlockType('+idx+',\'todo\');hideCtx()">☑</button>';

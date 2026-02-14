@@ -2,7 +2,7 @@
 
 import state from '../data/store.js';
 import {ALLOWED_IMAGE_TYPES} from '../config/firebase.js';
-import {$,$$,genId,toast} from '../utils/helpers.js';
+import {$,$$,genId,toast,esc} from '../utils/helpers.js';
 import {uploadToStorage} from '../data/firestore.js';
 import {renderBlocks} from './renderer.js';
 import {triggerAutoSave,focusBlock,insertBlock,deleteBlock,addBlockBelow,updateNums,setupBlockTracking,copyCode,downloadCode,findBlock,findBlockIndex,getCurrentIdx,moveBlockUp,moveBlockDown} from './blocks.js';
@@ -12,6 +12,7 @@ import {openSearch,closeModal,closeAllModals,closeAllPanels,openShortcutHelp} fr
 import {hideCtx} from '../ui/sidebar.js';
 import {showTagPicker,hideTagPicker} from '../ui/toolbar.js';
 import {undo,redo,pushUndoImmediate} from './history.js';
+import {sanitizeHTML} from '../utils/sanitize.js';
 
 var TEXT_TYPES=['text','h1','h2','h3','bullet','number','quote','todo'];
 var CONTENT_TYPES=['table','image','video','pdf','file','slide','calendar','columns','toc','divider'];
@@ -50,6 +51,15 @@ export function reorderBlock(fromIdx,toIdx){
 
 export function handleKey(e,b,idx,el){
   if(state.isComposing)return;
+  // CLOSURE-01 fix: 클로저의 stale idx 대신 DOM에서 현재 idx 조회
+  var blockEl=el.closest('.block');
+  if(blockEl){
+    var freshIdx=parseInt(blockEl.getAttribute('data-idx'));
+    if(!isNaN(freshIdx)&&state.page&&state.page.blocks[freshIdx]){
+      idx=freshIdx;
+      b=state.page.blocks[idx];
+    }
+  }
   var menu=$('slashMenu'),menuOpen=menu.classList.contains('open');
   if(menuOpen){
     if(e.key==='ArrowDown'){e.preventDefault();moveSlashSel(1);return}
@@ -71,7 +81,7 @@ export function handleKey(e,b,idx,el){
     if(tagMatch){
       e.preventDefault();
       var tagText=tagMatch[1];
-      var newHtml=txt.replace(/@([^@<>\s]+)$/,'<span class="inline-tag tag-blue" contenteditable="false">@'+tagText+'</span>&nbsp;');
+      var newHtml=txt.replace(/@([^@<>\s]+)$/,'<span class="inline-tag tag-blue" contenteditable="false">@'+sanitizeHTML(tagText)+'</span>&nbsp;');
       el.innerHTML=newHtml;
       // 커서를 끝으로 이동
       var range=document.createRange();
@@ -85,6 +95,17 @@ export function handleKey(e,b,idx,el){
     }
 
     e.preventDefault();
+    // ENT-04: 빈 리스트 아이템에서 Enter → text로 변환 (리스트 탈출)
+    if((b.type==='bullet'||b.type==='number'||b.type==='todo')&&(el.textContent===''||el.innerHTML==='<br>')){
+      pushUndoImmediate();
+      state.page.blocks[idx].type='text';
+      state.page.blocks[idx].content='';
+      if(b.type==='todo')delete state.page.blocks[idx].checked;
+      renderBlocks();
+      updateNums();
+      focusBlock(idx,0);
+      return;
+    }
     var sel=window.getSelection();
     var range=sel.getRangeAt(0);
     // 텍스트 선택 상태면 선택 영역 삭제
@@ -100,9 +121,9 @@ export function handleKey(e,b,idx,el){
     var afterFrag=afterRange.extractContents();
     var tempDiv=document.createElement('div');
     tempDiv.appendChild(afterFrag);
-    var afterHTML=tempDiv.innerHTML;
+    var afterHTML=sanitizeHTML(tempDiv.innerHTML);
     // 현재 블록은 커서 앞 텍스트만 남음
-    state.page.blocks[idx].content=el.innerHTML;
+    state.page.blocks[idx].content=sanitizeHTML(el.innerHTML);
     var newType='text';
     if((b.type==='bullet'||b.type==='number'||b.type==='todo')&&el.textContent.trim()!==''){
       newType=b.type;
@@ -115,9 +136,12 @@ export function handleKey(e,b,idx,el){
     return;
   }
 
-  // 규칙 2: Shift+Enter - 줄바꿈 (기본 동작 허용)
+  // 규칙 2: Shift+Enter - 명시적 줄바꿈 (<br> 삽입)
   if(e.key==='Enter'&&e.shiftKey){
-    return; // 기본 동작
+    e.preventDefault();
+    document.execCommand('insertLineBreak');
+    triggerAutoSave();
+    return;
   }
 
   // 규칙 3: Backspace - 빈 블록 처리
@@ -144,15 +168,42 @@ export function handleKey(e,b,idx,el){
       }
       return;
     }
-    // 커서가 맨 앞이고 이전 블록이 있으면 → 이전 블록 끝으로 포커스 (콘텐츠 블록 스킵)
-    if(isAtStart(el)&&idx>0){
+    // 커서가 맨 앞일 때 (BS-01, BS-04, BS-05 수정)
+    if(isAtStart(el)){
       e.preventDefault();
-      var prevIdx=idx-1;
-      while(prevIdx>=0&&CONTENT_TYPES.indexOf(state.page.blocks[prevIdx].type)!==-1){
-        prevIdx--;
+      // BS-01/BS-05: 서식 블록이면 text로 타입 변환 (내용 유지, idx 무관)
+      if(b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='quote'||b.type==='bullet'||b.type==='number'||b.type==='todo'){
+        pushUndoImmediate();
+        state.page.blocks[idx].type='text';
+        if(b.type==='todo')delete state.page.blocks[idx].checked;
+        renderBlocks();
+        focusBlock(idx,0);
+        return;
       }
-      if(prevIdx<0)prevIdx=Math.max(0,idx-1);
-      focusBlock(prevIdx,'end');
+      // BS-04: text 블록이고 이전 블록이 있으면 → 이전 텍스트 블록과 병합
+      if(idx>0){
+        var prevIdx=idx-1;
+        while(prevIdx>=0&&CONTENT_TYPES.indexOf(state.page.blocks[prevIdx].type)!==-1){
+          prevIdx--;
+        }
+        if(prevIdx>=0&&TEXT_TYPES.indexOf(state.page.blocks[prevIdx].type)!==-1){
+          pushUndoImmediate();
+          var prevBlock=state.page.blocks[prevIdx];
+          var curBlock=state.page.blocks[idx];
+          var prevContent=(prevBlock.content||'').replace(/<br\s*\/?>$/i,'');
+          var prevTextLen=prevContent.replace(/<[^>]*>/g,'').length;
+          prevBlock.content=prevContent+(curBlock.content||'');
+          state.page.blocks.splice(idx,1);
+          renderBlocks();
+          focusBlock(prevIdx,prevTextLen);
+        }else{
+          // 이전 블록이 콘텐츠 블록뿐이면 포커스만 이동
+          if(prevIdx<0)prevIdx=Math.max(0,idx-1);
+          focusBlock(prevIdx,'end');
+        }
+        return;
+      }
+      // idx===0이고 text 블록이면 아무것도 안 함 (정상)
       return;
     }
   }
@@ -162,7 +213,7 @@ export function handleKey(e,b,idx,el){
     if(isAtEnd(el)&&idx<state.page.blocks.length-1){
       e.preventDefault();
       var nextB=state.page.blocks[idx+1];
-      if(['text','h1','h2','h3','bullet','number','quote'].includes(nextB.type)){
+      if(['text','h1','h2','h3','bullet','number','quote','todo'].includes(nextB.type)){
         pushUndoImmediate();
         // sync 후 state에서 다시 읽기 (syncBlocksFromDOM이 배열을 교체하므로)
         var curBlock=state.page.blocks[idx];
@@ -178,18 +229,24 @@ export function handleKey(e,b,idx,el){
     }
   }
 
-  // 규칙 7-8: 방향키로 블록 이동
+  // 규칙 7-8: 방향키로 블록 이동 (콘텐츠 블록 스킵)
   if(e.key==='ArrowUp'&&!e.shiftKey){
     if(isAtStart(el)&&idx>0){
       e.preventDefault();
-      focusBlock(idx-1,-1); // -1은 끝으로
+      var upIdx=idx-1;
+      while(upIdx>0&&CONTENT_TYPES.indexOf(state.page.blocks[upIdx].type)!==-1){upIdx--}
+      if(CONTENT_TYPES.indexOf(state.page.blocks[upIdx].type)!==-1)upIdx=idx-1;
+      focusBlock(upIdx,-1);
       return;
     }
   }
   if(e.key==='ArrowDown'&&!e.shiftKey){
     if(isAtEnd(el)&&idx<state.page.blocks.length-1){
       e.preventDefault();
-      focusBlock(idx+1,0);
+      var downIdx=idx+1;
+      while(downIdx<state.page.blocks.length-1&&CONTENT_TYPES.indexOf(state.page.blocks[downIdx].type)!==-1){downIdx++}
+      if(CONTENT_TYPES.indexOf(state.page.blocks[downIdx].type)!==-1)downIdx=idx+1;
+      focusBlock(downIdx,0);
       return;
     }
   }
@@ -220,10 +277,38 @@ export function handleKey(e,b,idx,el){
     }
   }
 
-  // Tab 들여쓰기
+  // Tab 들여쓰기 / Shift+Tab 내어쓰기
   if(e.key==='Tab'){
     e.preventDefault();
-    document.execCommand('insertText',false,'    '); // 4칸 스페이스
+    if(e.shiftKey){
+      // TAB-02: Shift+Tab — 커서 앞 또는 줄 시작의 4칸 스페이스 제거
+      var tSel=window.getSelection();
+      if(tSel.rangeCount>0){
+        var tRange=tSel.getRangeAt(0);
+        var tNode=tRange.startContainer;
+        if(tNode.nodeType===3){
+          var tText=tNode.textContent;
+          var tOff=tRange.startOffset;
+          if(tOff>=4&&tText.substring(tOff-4,tOff)==='    '){
+            tNode.textContent=tText.substring(0,tOff-4)+tText.substring(tOff);
+            var nRange=document.createRange();
+            nRange.setStart(tNode,tOff-4);
+            nRange.collapse(true);
+            tSel.removeAllRanges();
+            tSel.addRange(nRange);
+          }else if(tText.substring(0,4)==='    '){
+            tNode.textContent=tText.substring(4);
+            var nRange=document.createRange();
+            nRange.setStart(tNode,Math.max(0,tOff-4));
+            nRange.collapse(true);
+            tSel.removeAllRanges();
+            tSel.addRange(nRange);
+          }
+        }
+      }
+    }else{
+      document.execCommand('insertText',false,'    ');
+    }
     triggerAutoSave();
     return;
   }
@@ -276,23 +361,52 @@ export function handlePaste(e){
     }
   }
 
-  // 여러 줄 텍스트 붙여넣기 - 문단별 블록화
+  // 여러 줄 텍스트 붙여넣기 - 문단별 블록화 (PASTE-01: 커서 위치 반영)
   if(txt&&txt.indexOf('\n')!==-1){
     var lines=txt.split(/\n+/).filter(function(l){return l.trim()!==''});
     if(lines.length>1){
+      // 테이블/컬럼/캡션 안에서는 블록 분할 안 함
+      if(e.target.closest('.block-col-content')||e.target.closest('th')||e.target.closest('td')||e.target.closest('.block-image-caption')){
+        document.execCommand('insertText',false,txt.replace(/\n/g,' '));
+        triggerAutoSave();
+        return;
+      }
+      var pasteEl=e.target.closest('.block');
+      if(!pasteEl){document.execCommand('insertText',false,txt);triggerAutoSave();return}
+      var pasteIdx=parseInt(pasteEl.getAttribute('data-idx'));
+      if(isNaN(pasteIdx)){document.execCommand('insertText',false,txt);triggerAutoSave();return}
+      var contentEl=pasteEl.querySelector('.block-content');
+      if(!contentEl){document.execCommand('insertText',false,txt);triggerAutoSave();return}
+
       pushUndoImmediate();
-      var idx=state.currentInsertIdx!==null?state.currentInsertIdx:state.page.blocks.length-1;
-      var curBlock=state.page.blocks[idx];
-      // 첫 줄을 현재 블록의 content에 append (state 직접)
-      if(curBlock){
-        curBlock.content=(curBlock.content||'')+lines[0];
+      // 커서 위치에서 분할
+      var pSel=window.getSelection();
+      var afterHTML='';
+      if(pSel&&pSel.rangeCount>0){
+        var pRange=pSel.getRangeAt(0);
+        if(!pSel.isCollapsed)pRange.deleteContents();
+        var afterRange=document.createRange();
+        afterRange.setStart(pRange.endContainer,pRange.endOffset);
+        afterRange.setEnd(contentEl,contentEl.childNodes.length);
+        var afterFrag=afterRange.extractContents();
+        var tempDiv=document.createElement('div');
+        tempDiv.appendChild(afterFrag);
+        afterHTML=tempDiv.innerHTML;
       }
-      // 나머지 줄은 새 블록으로
-      for(var j=1;j<lines.length;j++){
-        idx++;
-        state.page.blocks.splice(idx,0,{id:genId(),type:'text',content:lines[j]});
+      var beforeHTML=sanitizeHTML(contentEl.innerHTML);
+      // 현재 블록 = 커서 앞 + 첫 줄 (text/plain → HTML escape)
+      state.page.blocks[pasteIdx].content=beforeHTML+esc(lines[0]);
+      // 중간 줄: 새 블록
+      var insertIdx=pasteIdx;
+      for(var j=1;j<lines.length-1;j++){
+        insertIdx++;
+        state.page.blocks.splice(insertIdx,0,{id:genId(),type:'text',content:esc(lines[j])});
       }
+      // 마지막 줄 + 커서 뒤 콘텐츠
+      insertIdx++;
+      state.page.blocks.splice(insertIdx,0,{id:genId(),type:'text',content:esc(lines[lines.length-1])+sanitizeHTML(afterHTML)});
       renderBlocks();triggerAutoSave();
+      focusBlock(insertIdx,-1);
       return;
     }
   }
