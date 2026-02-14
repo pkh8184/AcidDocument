@@ -163,10 +163,29 @@ export function handleKey(e,b,idx,el){
   }
 
   // 규칙 10: 슬래시 메뉴
-  if(e.key==='/'&&el.textContent===''){
-    state.slashMenuState={open:true,idx:idx};
-    showSlash(el);
-    return;
+  if(e.key==='/'){
+    if(el.textContent===''){
+      // 빈 블록: 기존 동작 (현재 블록 교체)
+      state.slashMenuState={open:true,idx:idx};
+      showSlash(el);
+      return;
+    }else{
+      // 내용 있는 블록: 다음 블록 생성 후 슬래시 메뉴
+      e.preventDefault();
+      var newB={id:genId(),type:'text',content:''};
+      pushUndoImmediate();
+      state.page.blocks.splice(idx+1,0,newB);
+      renderBlocks();
+      setTimeout(function(){
+        state.slashMenuState={open:true,idx:idx+1};
+        var newEl=$('editor').children[idx+1];
+        if(newEl){
+          var c=newEl.querySelector('.block-content');
+          if(c){c.focus();showSlash(c)}
+        }
+      },50);
+      return;
+    }
   }
 
   // Tab 들여쓰기
