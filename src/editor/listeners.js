@@ -62,13 +62,29 @@ export function handleKey(e,b,idx,el){
     }
 
     e.preventDefault();
+    var sel=window.getSelection();
+    var range=sel.getRangeAt(0);
+    // 텍스트 선택 상태면 선택 영역 삭제
+    if(!sel.isCollapsed){
+      range.deleteContents();
+      sel=window.getSelection();
+      range=sel.getRangeAt(0);
+    }
+    // 커서 뒤의 콘텐츠를 추출
+    var afterRange=document.createRange();
+    afterRange.setStart(range.endContainer,range.endOffset);
+    afterRange.setEnd(el,el.childNodes.length);
+    var afterFrag=afterRange.extractContents();
+    var tempDiv=document.createElement('div');
+    tempDiv.appendChild(afterFrag);
+    var afterHTML=tempDiv.innerHTML;
+    // 현재 블록은 커서 앞 텍스트만 남음
     state.page.blocks[idx].content=el.innerHTML;
     var newType='text';
-    // bullet/number/todo는 같은 타입 유지, 단 빈 내용이면 text로
     if((b.type==='bullet'||b.type==='number'||b.type==='todo')&&el.textContent.trim()!==''){
       newType=b.type;
     }
-    var newB={id:genId(),type:newType,content:''};
+    var newB={id:genId(),type:newType,content:afterHTML};
     if(newType==='todo')newB.checked=false;
     if(newType==='number')newB.num=(b.num||1)+1;
     insertBlock(idx+1,newB);
