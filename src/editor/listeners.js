@@ -51,13 +51,16 @@ export function reorderBlock(fromIdx,toIdx){
 
 export function handleKey(e,b,idx,el){
   if(state.isComposing)return;
-  // CLOSURE-01 fix: 클로저의 stale idx 대신 DOM에서 현재 idx 조회
+  // CLOSURE-01 fix v2: data-id로 블록을 찾아 항상 최신 idx/b 사용
   var blockEl=el.closest('.block');
-  if(blockEl){
-    var freshIdx=parseInt(blockEl.getAttribute('data-idx'));
-    if(!isNaN(freshIdx)&&state.page&&state.page.blocks[freshIdx]){
-      idx=freshIdx;
-      b=state.page.blocks[idx];
+  if(blockEl&&state.page&&state.page.blocks){
+    var blockId=blockEl.getAttribute('data-id');
+    for(var fi=0;fi<state.page.blocks.length;fi++){
+      if(state.page.blocks[fi].id===blockId){
+        idx=fi;
+        b=state.page.blocks[fi];
+        break;
+      }
     }
   }
   var menu=$('slashMenu'),menuOpen=menu.classList.contains('open');
@@ -272,7 +275,7 @@ export function handleKey(e,b,idx,el){
         var newEl=$('editor').children[idx+1];
         if(newEl){
           var c=newEl.querySelector('.block-content');
-          if(c){c.focus();showSlash(c)}
+          if(c){c.focus({preventScroll:true});showSlash(c)}
         }
       },50);
       return;
@@ -446,8 +449,11 @@ export function setupBlockEvents(div,b,idx){
     el.addEventListener('mouseup',showFmtBar);
     // 클릭 시 포커스
     el.addEventListener('click',function(e){
+      // 드래그 선택 중이면 focus 호출 생략 (최하단 이동 방지)
+      var sel=window.getSelection();
+      if(sel&&!sel.isCollapsed)return;
       if(state.editMode&&el.getAttribute('contenteditable')==='true'){
-        el.focus();
+        el.focus({preventScroll:true});
       }
     });
   })(cons[i])}
@@ -455,8 +461,11 @@ export function setupBlockEvents(div,b,idx){
   // 블록 전체 클릭 시
   div.addEventListener('click',function(e){
     if(e.target.closest('.block-handle')||e.target.closest('.block-add-below')||e.target.closest('button')||e.target.closest('select')||e.target.closest('input')||e.target.closest('a'))return;
+    // 드래그 선택 중이면 focus 호출 생략 (최하단 이동 방지)
+    var sel=window.getSelection();
+    if(sel&&!sel.isCollapsed)return;
     var con=div.querySelector('.block-content')||div.querySelector('.block-col-content');
-    if(con&&state.editMode){con.focus()}
+    if(con&&state.editMode){con.focus({preventScroll:true})}
   });
 
   // 테이블 셀
@@ -464,8 +473,8 @@ export function setupBlockEvents(div,b,idx){
   for(var j=0;j<cells.length;j++){(function(cell){
     cell.addEventListener('input',triggerAutoSave);
     cell.addEventListener('paste',handlePaste);
-    cell.addEventListener('click',function(){if(state.editMode)cell.focus()});
-    cell.addEventListener('dblclick',function(){if(!state.editMode){import('../ui/sidebar.js').then(function(m){m.toggleEdit();setTimeout(function(){cell.focus()},50)})}});
+    cell.addEventListener('click',function(){if(state.editMode)cell.focus({preventScroll:true})});
+    cell.addEventListener('dblclick',function(){if(!state.editMode){import('../ui/sidebar.js').then(function(m){m.toggleEdit();setTimeout(function(){cell.focus({preventScroll:true})},50)})}});
   })(cells[j])}
 
   // 테이블 필터
@@ -488,7 +497,7 @@ export function setupBlockEvents(div,b,idx){
   var colCons=div.querySelectorAll('.block-col-content');
   for(var k=0;k<colCons.length;k++){(function(el,colIdx){
     el.setAttribute('data-col-content','true');
-    el.addEventListener('dblclick',function(e){e.stopPropagation();if(!state.editMode){import('../ui/sidebar.js').then(function(m){m.toggleEdit();setTimeout(function(){el.focus()},50)})}});
+    el.addEventListener('dblclick',function(e){e.stopPropagation();if(!state.editMode){import('../ui/sidebar.js').then(function(m){m.toggleEdit();setTimeout(function(){el.focus({preventScroll:true})},50)})}});
     el.addEventListener('input',function(e){
       e.stopPropagation();
       // 해당 컬럼 데이터 직접 업데이트
@@ -518,7 +527,7 @@ export function setupBlockEvents(div,b,idx){
   if(caption){
     caption.addEventListener('input',triggerAutoSave);
     caption.addEventListener('paste',handlePaste);
-    caption.addEventListener('dblclick',function(){if(!state.editMode){import('../ui/sidebar.js').then(function(m){m.toggleEdit();setTimeout(function(){caption.focus()},50)})}});
+    caption.addEventListener('dblclick',function(){if(!state.editMode){import('../ui/sidebar.js').then(function(m){m.toggleEdit();setTimeout(function(){caption.focus({preventScroll:true})},50)})}});
   }
 
   // 이미지/파일 블록 백스페이스 삭제
@@ -531,7 +540,7 @@ export function setupBlockEvents(div,b,idx){
         deleteBlock(idx);
       }
     });
-    mediaWrap.addEventListener('click',function(){if(state.editMode)mediaWrap.focus()});
+    mediaWrap.addEventListener('click',function(){if(state.editMode)mediaWrap.focus({preventScroll:true})});
   }
 
   // 할일 체크박스

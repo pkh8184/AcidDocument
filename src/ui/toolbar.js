@@ -93,7 +93,7 @@ export function execSlash(type){
   setTimeout(function(){
     var focusIdx=(type==='toc'||type==='divider'||type==='calendar'||type.startsWith('chart-'))?idx+1:idx;
     var el=$('editor').children[focusIdx];
-    if(el){var c=el.querySelector('.block-content')||el.querySelector('.block-col-content');if(c)c.focus()}
+    if(el){var c=el.querySelector('.block-content')||el.querySelector('.block-col-content');if(c)c.focus({preventScroll:true})}
   },30)
 }
 
