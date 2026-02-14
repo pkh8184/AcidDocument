@@ -5,7 +5,7 @@ import {ALLOWED_IMAGE_TYPES} from '../config/firebase.js';
 import {$,$$,genId,toast} from '../utils/helpers.js';
 import {uploadToStorage} from '../data/firestore.js';
 import {renderBlocks} from './renderer.js';
-import {triggerAutoSave,focusBlock,insertBlock,deleteBlock,addBlockBelow,updateNums,setupBlockTracking,copyCode,downloadCode,findBlock,findBlockIndex} from './blocks.js';
+import {triggerAutoSave,focusBlock,insertBlock,deleteBlock,addBlockBelow,updateNums,setupBlockTracking,copyCode,downloadCode,findBlock,findBlockIndex,getCurrentIdx,moveBlockUp,moveBlockDown} from './blocks.js';
 import {addImageBlock,addPdfBlock,closeImageViewer,viewerNav,openImageViewer} from './media.js';
 import {showSlash,hideSlash,filterSlash,moveSlashSel,execSlash,showFmtBar,hideFmtBar} from '../ui/toolbar.js';
 import {openSearch,closeModal,closeAllModals,closeAllPanels,openShortcutHelp} from '../ui/modals.js';
@@ -563,6 +563,18 @@ export function setupListeners(){
     if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openSearch()}
     if((e.metaKey||e.ctrlKey)&&e.key==='s'){e.preventDefault();if(state.editMode){import('../ui/sidebar.js').then(function(m){m.saveAndExit()})}}
     if((e.metaKey||e.ctrlKey)&&e.key==='/'){e.preventDefault();openShortcutHelp()}
+    if((e.metaKey||e.ctrlKey)&&e.key===']'){
+      e.preventDefault();
+      var ci=getCurrentIdx();
+      if(ci>0){moveBlockUp(ci);focusBlock(ci-1)}
+      return;
+    }
+    if((e.metaKey||e.ctrlKey)&&e.key==='['){
+      e.preventDefault();
+      var ci=getCurrentIdx();
+      if(ci<state.page.blocks.length-1){moveBlockDown(ci);focusBlock(ci+1)}
+      return;
+    }
     if(e.key==='Escape'){closeImageViewer();closeAllModals();closeAllPanels();hideCtx();hideSlash();hideFmtBar()}
     // 이미지 뷰어에서 좌우 화살표
     if($('imageViewer').classList.contains('open')){
