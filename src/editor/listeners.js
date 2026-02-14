@@ -494,7 +494,7 @@ export function setupBlockEvents(div,b,idx){
       if(blockEl){
         var blockId=blockEl.getAttribute('data-id');
         var blk=findBlock(blockId);
-        if(blk&&blk.columns)blk.columns[colIdx]=el.innerHTML;
+        if(blk&&blk.columns)blk.columns[colIdx]=sanitizeHTML(el.innerHTML);
       }
       triggerAutoSave();
     });
@@ -535,17 +535,18 @@ export function setupBlockEvents(div,b,idx){
   // 할일 체크박스
   if(b.type==='todo'){
     var cb=div.querySelector('input[type="checkbox"]');
-    if(cb){
+    if(cb){(function(blockId){
       cb.addEventListener('change',function(){
         if(!state.editMode)return;
-        b.checked=cb.checked;
-        div.classList.toggle('done',b.checked);
+        var blk=findBlock(blockId);
+        if(blk)blk.checked=cb.checked;
+        div.classList.toggle('done',cb.checked);
         triggerAutoSave();
       });
       cb.addEventListener('click',function(e){
         if(!state.editMode){e.preventDefault();import('../ui/sidebar.js').then(function(m){m.toggleEdit()})}
       });
-    }
+    })(b.id)}
   }
 
   // 토글
@@ -553,18 +554,17 @@ export function setupBlockEvents(div,b,idx){
     var arrow=div.querySelector('.block-toggle-arrow');
     var head=div.querySelector('.block-toggle-head');
     var body=div.querySelector('.block-toggle-body');
-    if(arrow){
+    if(arrow){(function(blockId){
       arrow.addEventListener('click',function(e){
         e.preventDefault();
         e.stopPropagation();
-        b.open=!b.open;
-        head.classList.toggle('open',b.open);
-        body.classList.toggle('open',b.open);
-        // 상태 저장
-        var blk=findBlock(b.id);
-        if(blk)blk.open=b.open;
+        var blk=findBlock(blockId);
+        var isOpen=blk?!blk.open:!head.classList.contains('open');
+        if(blk)blk.open=isOpen;
+        head.classList.toggle('open',isOpen);
+        body.classList.toggle('open',isOpen);
       });
-    }
+    })(b.id)}
     // 토글 바디의 block-content에 별도 이벤트
     var bodyContent=body?body.querySelector('.block-content'):null;
     if(bodyContent){
@@ -574,7 +574,7 @@ export function setupBlockEvents(div,b,idx){
         e.stopPropagation();
         // 직접 innerContent 업데이트
         var blk=findBlock(b.id);
-        if(blk)blk.innerContent=bodyContent.innerHTML;
+        if(blk)blk.innerContent=sanitizeHTML(bodyContent.innerHTML);
         triggerAutoSave();
       });
       bodyContent.addEventListener('keydown',function(e){
@@ -815,7 +815,7 @@ export function setupListeners(){
         for(var sj=0;sj<state.page.blocks.length;sj++){
           if(state.page.blocks[sj].id===sId){
             var sCon=sEl.querySelector('.block-content');
-            if(sCon)state.page.blocks[sj].content=sCon.innerHTML;
+            if(sCon)state.page.blocks[sj].content=sanitizeHTML(sCon.innerHTML);
             break;
           }
         }
