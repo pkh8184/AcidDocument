@@ -497,6 +497,14 @@ export function setupBlockEvents(div,b,idx){
 export function setupListeners(){
   setupBlockTracking();
 
+  // 제목에서 Enter → 첫 블록 포커스
+  $('pageTitle').addEventListener('keydown',function(e){
+    if(e.key==='Enter'){
+      e.preventDefault();
+      focusBlock(0,0);
+    }
+  });
+
   // Editor event delegation (click)
   $('editor').addEventListener('click',function(e){
     var target=e.target.closest('[data-action]');
