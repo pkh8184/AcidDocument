@@ -316,11 +316,58 @@ export function submitPwChange(){
   saveDB();closeModal('pwChangeModal');toast('설정 완료');initApp()
 }
 
+// --- 유틸: 앱 상태 전체 초기화 (로그아웃 시 사용) ---
+export function resetAppState(){
+  // 1. 타이머 정리
+  clearTimeout(state.autoSaveTimer);
+  clearTimeout(state.undoTimer);
+  if(state.lockTimerInterval){clearInterval(state.lockTimerInterval);state.lockTimerInterval=null}
+  for(var k in state.slideIntervals){
+    if(state.slideIntervals.hasOwnProperty(k))clearInterval(state.slideIntervals[k]);
+  }
+  // 2. 에디터 상태
+  state.editMode=false;
+  state.editBackup=null;
+  state.undoStack=[];
+  state.redoStack=[];
+  state.isComposing=false;
+  state.autoSaveTimer=null;
+  state.undoTimer=null;
+  // 3. 뷰어/슬라이드
+  state.viewerImages=[];
+  state.viewerIndex=0;
+  state.slideIntervals={};
+  state.currentSlideIdx=null;
+  // 4. 컨텍스트 상태
+  state.slashMenuState={open:false,idx:null};
+  state.editingCommentId=null;
+  state.panelType=null;
+  state.currentEditBlockId=null;
+  state.renamePageId=null;
+  state.currentCalIdx=null;
+  state.colWidthTableId=null;
+  state.deleteTargetId=null;
+  state.currentInsertIdx=null;
+  state.dragBlockIdx=null;
+  state.dragPageId=null;
+  state.savedSelection=null;
+  state.currentTagElement=null;
+  state.lastSearchQuery='';
+  state.selectedEventColor='#3b82f6';
+  state.loginInProgress=false;
+  state.appInitialized=false;
+}
+
 // === logout: Firebase Auth + localStorage 모두 정리 ===
 export function logout(){
+  // 앱 상태 전체 초기화
+  resetAppState();
+  state.loggingOut=true;
   // Firebase Auth 로그아웃
   auth.signOut().catch(function(e){
     console.warn('Firebase Auth 로그아웃 실패:',e);
+  }).then(function(){
+    state.loggingOut=false;
   });
   // 레거시 세션 정리
   localStorage.removeItem('ad_session');
@@ -332,6 +379,7 @@ export function logout(){
   $('loginPw').value='';
   $('loginForm').style.display='block';
   $('loginLocked').style.display='none';
+  $('loginBlocked').style.display='none';
   closeAllModals();
   closeAllPanels();
   location.hash='';

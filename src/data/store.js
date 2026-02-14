@@ -31,7 +31,10 @@ var state={
   redoStack:[],
   undoTimer:null,
   dragBlockIdx:null,
-  loginInProgress:false
+  loginInProgress:false,
+  appInitialized:false,
+  loggingOut:false,
+  lockTimerInterval:null
 };
 
 export default state;
