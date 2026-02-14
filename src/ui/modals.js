@@ -258,16 +258,18 @@ export function exportUsers(){
 }
 export function genNewUser(){var id='admin'+Math.floor(1000+Math.random()*9000),chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789',pw='';for(var i=0;i<12;i++)pw+=chars[Math.floor(Math.random()*chars.length)];$('newUserId').value=id;$('newUserPw').value=pw}
 export function createUser(){if(!isSuper()){toast('권한 없음','err');return}var id=$('newUserId').value,pw=$('newUserPw').value;for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===id){toast('중복 아이디','err');return}}state.db.users.push({id:id,pw:pw,role:'admin',needPw:true,active:true,nickname:''});saveDB();renderUsers();genNewUser();toast('사용자 생성')}
-export function resetPw(id){if(!isSuper())return;var chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789',pw='';for(var i=0;i<12;i++)pw+=chars[Math.floor(Math.random()*chars.length)];for(var j=0;j<state.db.users.length;j++){if(state.db.users[j].id===id){state.db.users[j].pw=pw;state.db.users[j].needPw=true;break}}saveDB();alert('새 비밀번호: '+pw);renderUsers()}
+export function resetPw(id){if(!isSuper())return;var chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789',pw='';for(var i=0;i<12;i++)pw+=chars[Math.floor(Math.random()*chars.length)];for(var j=0;j<state.db.users.length;j++){if(state.db.users[j].id===id){state.db.users[j].pw=pw;state.db.users[j].needPw=true;break}}saveDB();alert('새 비밀번호: '+pw);console.warn('resetPw: Firebase Auth 비밀번호는 Admin SDK 없이 변경 불가. 사용자가 다음 로그인 시 레거시 폴백됩니다.');renderUsers()}
 export function toggleActive(id){if(!isSuper())return;for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===id){state.db.users[i].active=!state.db.users[i].active;break}}saveDB();renderUsers();toast('상태 변경')}
 export function delUser(id){if(!isSuper()||!confirm('삭제?'))return;state.db.users=state.db.users.filter(function(u){return u.id!==id});saveDB();renderUsers();toast('삭제됨')}
 export function changePassword(){
   var c=$('setPwCur').value,n=$('setPwNew').value;
   if(!c||!n){toast('비밀번호 입력','err');return}
-  if(state.user.pw!==c){toast('현재 비밀번호 틀림','err');return}
+  var currentPw=null;
+  for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===state.user.id){currentPw=state.db.users[i].pw;break}}
+  if(currentPw!==c){toast('현재 비밀번호 틀림','err');return}
   // 레거시 users 배열 업데이트 (항상)
   for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===state.user.id){state.db.users[i].pw=n;break}}
-  saveDB();state.user.pw=n;
+  saveDB();
   // Firebase Auth 비밀번호도 업데이트 (로그인된 경우)
   var currentUser=auth.currentUser;
   if(currentUser){
@@ -275,6 +277,7 @@ export function changePassword(){
       console.log('Firebase Auth 비밀번호 업데이트 완료');
     }).catch(function(e){
       console.warn('Firebase Auth 비밀번호 업데이트 실패:',e);
+      toast('비밀번호 변경됨 (일부 동기화 실패)','warn');
     });
   }
   $('setPwCur').value=$('setPwNew').value='';toast('변경됨');
