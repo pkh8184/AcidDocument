@@ -5,7 +5,7 @@ import {ALLOWED_IMAGE_TYPES} from '../config/firebase.js';
 import {$,$$,genId,toast,esc} from '../utils/helpers.js';
 import {uploadToStorage} from '../data/firestore.js';
 import {renderBlocks} from './renderer.js';
-import {triggerAutoSave,focusBlock,insertBlock,deleteBlock,addBlockBelow,updateNums,setupBlockTracking,copyCode,downloadCode,findBlock,findBlockIndex,getCurrentIdx,moveBlockUp,moveBlockDown} from './blocks.js';
+import {triggerAutoSave,focusBlock,insertBlock,deleteBlock,addBlockBelow,updateNums,setupBlockTracking,copyCode,downloadCode,findBlock,findBlockIndex,getChildren,getCurrentIdx,moveBlockUp,moveBlockDown} from './blocks.js';
 import {addImageBlock,addPdfBlock,closeImageViewer,viewerNav,openImageViewer} from './media.js';
 import {showSlash,hideSlash,filterSlash,moveSlashSel,execSlash,showFmtBar,hideFmtBar} from '../ui/toolbar.js';
 import {openSearch,closeModal,closeAllModals,closeAllPanels,openShortcutHelp} from '../ui/modals.js';
@@ -98,15 +98,26 @@ export function handleKey(e,b,idx,el){
     }
 
     e.preventDefault();
-    // ENT-04: 빈 리스트 아이템에서 Enter → text로 변환 (리스트 탈출)
+    // ENT-04: 빈 리스트 아이템에서 Enter
     if((b.type==='bullet'||b.type==='number'||b.type==='todo')&&(el.textContent===''||el.innerHTML==='<br>')){
-      pushUndoImmediate();
-      state.page.blocks[idx].type='text';
-      state.page.blocks[idx].content='';
-      if(b.type==='todo')delete state.page.blocks[idx].checked;
-      renderBlocks();
-      updateNums();
-      focusBlock(idx,0);
+      var curIndent=b.indent||0;
+      if(curIndent>0){
+        pushUndoImmediate();
+        state.page.blocks[idx].indent=curIndent-1;
+        renderBlocks();
+        updateNums();
+        focusBlock(idx,0);
+      }else{
+        pushUndoImmediate();
+        state.page.blocks[idx].type='text';
+        state.page.blocks[idx].content='';
+        delete state.page.blocks[idx].indent;
+        delete state.page.blocks[idx].collapsed;
+        if(b.type==='todo')delete state.page.blocks[idx].checked;
+        renderBlocks();
+        updateNums();
+        focusBlock(idx,0);
+      }
       return;
     }
     var sel=window.getSelection();
@@ -136,6 +147,9 @@ export function handleKey(e,b,idx,el){
     var newB={id:genId(),type:newType,content:afterHTML};
     if(newType==='todo')newB.checked=false;
     if(newType==='number')newB.num=(b.num||1)+1;
+    if(['bullet','number','todo'].indexOf(newType)!==-1){
+      newB.indent=b.indent||0;
+    }
     insertBlock(idx+1,newB);
     updateNums();
     return;
@@ -153,10 +167,23 @@ export function handleKey(e,b,idx,el){
   if(e.key==='Backspace'){
     if(el.textContent===''||el.innerHTML==='<br>'){
       e.preventDefault();
+      var curIndent=b.indent||0;
+      // 리스트 블록: indent > 0이면 아웃덴트
+      if((b.type==='bullet'||b.type==='number'||b.type==='todo')&&curIndent>0){
+        pushUndoImmediate();
+        state.page.blocks[idx].indent=curIndent-1;
+        renderBlocks();
+        updateNums();
+        focusBlock(idx,0);
+        return;
+      }
       // 서식 블록(리스트/헤딩/인용)이면 text로 변환
       if(b.type==='bullet'||b.type==='number'||b.type==='todo'||b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='quote'){
         pushUndoImmediate();
         state.page.blocks[idx].type='text';
+        delete state.page.blocks[idx].indent;
+        delete state.page.blocks[idx].collapsed;
+        if(b.type==='todo')delete state.page.blocks[idx].checked;
         renderBlocks();
         focusBlock(idx);
       }
@@ -176,10 +203,21 @@ export function handleKey(e,b,idx,el){
     // 커서가 맨 앞일 때 (BS-01, BS-04, BS-05 수정)
     if(isAtStart(el)){
       e.preventDefault();
+      var curIndent=b.indent||0;
+      if(['bullet','number','todo'].indexOf(b.type)!==-1&&curIndent>0){
+        pushUndoImmediate();
+        state.page.blocks[idx].indent=curIndent-1;
+        renderBlocks();
+        updateNums();
+        focusBlock(idx,0);
+        return;
+      }
       // BS-01/BS-05: 서식 블록이면 text로 타입 변환 (내용 유지, idx 무관)
       if(b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='quote'||b.type==='bullet'||b.type==='number'||b.type==='todo'){
         pushUndoImmediate();
         state.page.blocks[idx].type='text';
+        delete state.page.blocks[idx].indent;
+        delete state.page.blocks[idx].collapsed;
         if(b.type==='todo')delete state.page.blocks[idx].checked;
         renderBlocks();
         focusBlock(idx,0);
@@ -285,34 +323,60 @@ export function handleKey(e,b,idx,el){
   // Tab 들여쓰기 / Shift+Tab 내어쓰기
   if(e.key==='Tab'){
     e.preventDefault();
-    if(e.shiftKey){
-      // TAB-02: Shift+Tab — 커서 앞 또는 줄 시작의 4칸 스페이스 제거
-      var tSel=window.getSelection();
-      if(tSel.rangeCount>0){
-        var tRange=tSel.getRangeAt(0);
-        var tNode=tRange.startContainer;
-        if(tNode.nodeType===3){
-          var tText=tNode.textContent;
-          var tOff=tRange.startOffset;
-          if(tOff>=4&&tText.substring(tOff-4,tOff)==='    '){
-            tNode.textContent=tText.substring(0,tOff-4)+tText.substring(tOff);
-            var nRange=document.createRange();
-            nRange.setStart(tNode,tOff-4);
-            nRange.collapse(true);
-            tSel.removeAllRanges();
-            tSel.addRange(nRange);
-          }else if(tText.substring(0,4)==='    '){
-            tNode.textContent=tText.substring(4);
-            var nRange=document.createRange();
-            nRange.setStart(tNode,Math.max(0,tOff-4));
-            nRange.collapse(true);
-            tSel.removeAllRanges();
-            tSel.addRange(nRange);
-          }
+    var LIST_TYPES=['bullet','number','todo'];
+    if(LIST_TYPES.indexOf(b.type)!==-1){
+      var curIndent=b.indent||0;
+      if(e.shiftKey){
+        if(curIndent>0){
+          pushUndoImmediate();
+          state.page.blocks[idx].indent=curIndent-1;
+          renderBlocks();
+          updateNums();
+          focusBlock(idx,-1);
+        }
+      }else{
+        var maxIndent=4;
+        if(idx>0){
+          var prevIndent=state.page.blocks[idx-1].indent||0;
+          maxIndent=Math.min(4,prevIndent+1);
+        }
+        if(curIndent<maxIndent){
+          pushUndoImmediate();
+          state.page.blocks[idx].indent=curIndent+1;
+          renderBlocks();
+          updateNums();
+          focusBlock(idx,-1);
         }
       }
     }else{
-      document.execCommand('insertText',false,'    ');
+      if(e.shiftKey){
+        var tSel=window.getSelection();
+        if(tSel.rangeCount>0){
+          var tRange=tSel.getRangeAt(0);
+          var tNode=tRange.startContainer;
+          if(tNode.nodeType===3){
+            var tText=tNode.textContent;
+            var tOff=tRange.startOffset;
+            if(tOff>=4&&tText.substring(tOff-4,tOff)==='    '){
+              tNode.textContent=tText.substring(0,tOff-4)+tText.substring(tOff);
+              var nRange=document.createRange();
+              nRange.setStart(tNode,tOff-4);
+              nRange.collapse(true);
+              tSel.removeAllRanges();
+              tSel.addRange(nRange);
+            }else if(tText.substring(0,4)==='    '){
+              tNode.textContent=tText.substring(4);
+              var nRange=document.createRange();
+              nRange.setStart(tNode,Math.max(0,tOff-4));
+              nRange.collapse(true);
+              tSel.removeAllRanges();
+              tSel.addRange(nRange);
+            }
+          }
+        }
+      }else{
+        document.execCommand('insertText',false,'    ');
+      }
     }
     triggerAutoSave();
     return;
@@ -438,6 +502,35 @@ export function setupBlockEvents(div,b,idx){
         txt=txt.replace(/\n/g,'').trim();
         if(txt.startsWith('/'))filterSlash(txt.slice(1));
         else hideSlash();
+        return;
+      }
+      // 마크다운 자동 변환 (text 블록에서만)
+      var blockEl=el.closest('.block');
+      var curIdx=idx,curB=b;
+      if(blockEl&&state.page&&state.page.blocks){
+        var bid=blockEl.getAttribute('data-id');
+        for(var ai=0;ai<state.page.blocks.length;ai++){
+          if(state.page.blocks[ai].id===bid){curIdx=ai;curB=state.page.blocks[ai];break}
+        }
+      }
+      if(curB.type==='text'&&state.editMode){
+        var raw=el.textContent||'';
+        var converted=null;
+        if(raw==='- '||raw==='* '){converted={type:'bullet'}}
+        else if(/^1[\.\)] $/.test(raw)){converted={type:'number',num:1}}
+        else if(raw==='[] '||raw==='[ ] '){converted={type:'todo',checked:false}}
+        else if(raw==='[x] '||raw==='[X] '){converted={type:'todo',checked:true}}
+        else if(raw==='> '){converted={type:'quote'}}
+        if(converted){
+          pushUndoImmediate();
+          state.page.blocks[curIdx].type=converted.type;
+          state.page.blocks[curIdx].content='';
+          if(converted.num!==undefined)state.page.blocks[curIdx].num=converted.num;
+          if(converted.checked!==undefined)state.page.blocks[curIdx].checked=converted.checked;
+          renderBlocks();
+          updateNums();
+          focusBlock(curIdx,0);
+        }
       }
     });
     el.addEventListener('keydown',function(e){handleKey(e,b,idx,el)});
