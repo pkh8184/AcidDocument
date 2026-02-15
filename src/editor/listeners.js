@@ -51,6 +51,8 @@ export function reorderBlock(fromIdx,toIdx){
 
 export function handleKey(e,b,idx,el){
   if(state.isComposing)return;
+  // 토글 body는 전용 핸들러에서 처리 (handleKey 스킵)
+  if(el.hasAttribute('data-toggle-body'))return;
   // CLOSURE-01 fix v2: data-id로 블록을 찾아 항상 최신 idx/b 사용
   var blockEl=el.closest('.block');
   if(blockEl&&state.page&&state.page.blocks){
@@ -175,15 +177,29 @@ export function handleKey(e,b,idx,el){
         focusBlock(idx,0);
         return;
       }
-      // 서식 블록(리스트/헤딩/인용)이면 text로 변환
-      if(b.type==='bullet'||b.type==='number'||b.type==='todo'||b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='quote'){
+      // 서식 블록(리스트/헤딩/인용/콜아웃)이면 text로 변환
+      if(b.type==='bullet'||b.type==='number'||b.type==='todo'||b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='quote'||b.type==='callout'){
         pushUndoImmediate();
         state.page.blocks[idx].type='text';
         delete state.page.blocks[idx].indent;
         delete state.page.blocks[idx].collapsed;
         if(b.type==='todo')delete state.page.blocks[idx].checked;
+        if(b.type==='callout'){delete state.page.blocks[idx].calloutType;delete state.page.blocks[idx].icon;}
         renderBlocks();
         focusBlock(idx);
+      }
+      // 토글: text로 변환, body 내용이 있으면 별도 text 블록으로 보존
+      else if(b.type==='toggle'){
+        pushUndoImmediate();
+        var bCont=b.innerContent||'';
+        state.page.blocks[idx].type='text';
+        delete state.page.blocks[idx].innerContent;
+        delete state.page.blocks[idx].open;
+        if(bCont&&bCont!=='<br>'&&bCont.replace(/<[^>]*>/g,'').trim()!==''){
+          state.page.blocks.splice(idx+1,0,{id:genId(),type:'text',content:bCont});
+        }
+        renderBlocks();
+        focusBlock(idx,0);
       }
       // text이고 첫 블록이 아니면 삭제 후 이전 블록으로 포커스 (콘텐츠 블록 스킵)
       else if(state.page.blocks.length>1){
@@ -211,16 +227,33 @@ export function handleKey(e,b,idx,el){
         return;
       }
       // BS-01/BS-05: 서식 블록이면 text로 타입 변환 (내용 유지, idx 무관)
-      if(b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='quote'||b.type==='bullet'||b.type==='number'||b.type==='todo'){
+      if(b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='quote'||b.type==='bullet'||b.type==='number'||b.type==='todo'||b.type==='callout'){
         pushUndoImmediate();
         state.page.blocks[idx].type='text';
         delete state.page.blocks[idx].indent;
         delete state.page.blocks[idx].collapsed;
         if(b.type==='todo')delete state.page.blocks[idx].checked;
+        if(b.type==='callout'){delete state.page.blocks[idx].calloutType;delete state.page.blocks[idx].icon;}
         renderBlocks();
         focusBlock(idx,0);
         return;
       }
+      // 토글: text로 변환, body 내용 보존
+      if(b.type==='toggle'){
+        pushUndoImmediate();
+        var bCont=b.innerContent||'';
+        state.page.blocks[idx].type='text';
+        delete state.page.blocks[idx].innerContent;
+        delete state.page.blocks[idx].open;
+        if(bCont&&bCont!=='<br>'&&bCont.replace(/<[^>]*>/g,'').trim()!==''){
+          state.page.blocks.splice(idx+1,0,{id:genId(),type:'text',content:bCont});
+        }
+        renderBlocks();
+        focusBlock(idx,0);
+        return;
+      }
+      // 코드 블록: 이전 블록과 병합하지 않음 (독립 블록)
+      if(b.type==='code')return;
       // BS-04: text 블록이고 이전 블록이 있으면 → 이전 텍스트 블록과 병합
       if(idx>0){
         var prevIdx=idx-1;
@@ -646,7 +679,7 @@ export function setupBlockEvents(div,b,idx){
           if(state.page.blocks[fi].id===bid){curIdx=fi;break}
         }
       }
-      if(e.key==='Enter'&&!e.shiftKey){
+      if(e.key==='Enter'){
         e.preventDefault();
         var newB={id:genId(),type:'text',content:''};
         pushUndoImmediate();
@@ -823,10 +856,32 @@ export function setupBlockEvents(div,b,idx){
       });
       bodyContent.addEventListener('keydown',function(e){
         e.stopPropagation();
+        if(!state.editMode)return;
         // Enter 시 줄바꿈만 (새 블록 생성 안함)
         if(e.key==='Enter'){
           e.preventDefault();
           document.execCommand('insertLineBreak');
+          return;
+        }
+        // 빈 body에서 Backspace → 토글 head로 포커스
+        if(e.key==='Backspace'){
+          if(bodyContent.textContent===''||bodyContent.innerHTML==='<br>'){
+            e.preventDefault();
+            var headEl=div.querySelector('.block-toggle-head .block-content');
+            if(headEl){
+              headEl.focus({preventScroll:true});
+              var rng=document.createRange();var sel=window.getSelection();
+              rng.selectNodeContents(headEl);rng.collapse(false);
+              sel.removeAllRanges();sel.addRange(rng);
+            }
+            return;
+          }
+        }
+        // Ctrl+B/I/U 서식
+        if((e.metaKey||e.ctrlKey)&&!e.shiftKey){
+          if(e.key==='b'){e.preventDefault();document.execCommand('bold');return}
+          if(e.key==='i'){e.preventDefault();document.execCommand('italic');return}
+          if(e.key==='u'){e.preventDefault();document.execCommand('underline');return}
         }
       });
       bodyContent.addEventListener('focus',function(e){
