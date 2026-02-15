@@ -360,6 +360,9 @@ export function setupTableResize(div,b){
       if(!th)return;
       var w=Math.max(50,startW+(e.pageX-startX));
       th.style.width=w+'px';
+      // table-layout:fixed에서 <col> 요소도 업데이트해야 반영됨
+      var tbl=div.querySelector('table');
+      if(tbl){var cols=tbl.querySelectorAll('col');if(cols[colIdx])cols[colIdx].style.width=w+'px'}
       var tds=div.querySelectorAll('td[data-col="'+colIdx+'"]');
       tds.forEach(function(td){td.style.width=w+'px'});
     }
