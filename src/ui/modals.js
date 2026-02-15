@@ -1,10 +1,11 @@
 // src/ui/modals.js — 모달, 설정
 
 import state from '../data/store.js';
-import {SUPER,ICONS,STORAGE_LIMIT,auth} from '../config/firebase.js';
+import {ICONS,STORAGE_LIMIT,auth} from '../config/firebase.js';
 import {$,$$,esc,toast,formatDate,formatBytes} from '../utils/helpers.js';
 import {saveDB,uploadToStorage,updateStorageUsage} from '../data/firestore.js';
 import {isSuper} from '../auth/auth.js';
+import {generateSalt,hashPassword,verifyPassword} from '../auth/crypto.js';
 import {renderTree} from './sidebar.js';
 import {getPage} from '../editor/blocks.js';
 import {renderBlocks} from '../editor/renderer.js';
@@ -230,21 +231,26 @@ export function clearDeleteLog(){
   toast('로그 삭제됨');
 }
 export function saveNickname(){var nick=$('setNickname').value.trim();for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===state.user.id){state.db.users[i].nickname=nick;break}}state.user.nickname=nick;saveDB();$('userName').textContent=nick||state.user.id;import('./sidebar.js').then(function(m){m.renderMeta()});toast('닉네임 저장')}
-export function renderUsers(){if(!isSuper()){$('usersTable').innerHTML='<tr><td style="text-align:center;padding:20px;color:var(--t4)">권한 없음</td></tr>';return}var html='<tr><th>아이디</th><th>닉네임</th><th>비밀번호</th><th>상태</th><th></th></tr>';for(var i=0;i<state.db.users.length;i++){var u=state.db.users[i];html+='<tr><td>'+esc(u.id)+'</td><td>'+esc(u.nickname||'-')+'</td><td><code id="pw_'+u.id+'" style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px">••••••</code> <button class="btn btn-sm btn-s" onclick="togglePwView(\''+u.id+'\')">👁</button></td><td><span class="badge '+(u.active?'badge-p':'badge-w')+'">'+(u.active?'활성':'비활성')+'</span></td><td>'+(u.id!==SUPER?'<button class="btn btn-sm btn-s" onclick="resetPw(\''+u.id+'\')">초기화</button> <button class="btn btn-sm btn-s" onclick="toggleActive(\''+u.id+'\')">'+(u.active?'비활성':'활성')+'</button> <button class="btn btn-sm btn-d" onclick="delUser(\''+u.id+'\')">삭제</button>':'<span class="badge badge-w">최고관리자</span>')+'</td></tr>'}$('usersTable').innerHTML=html}
+export function renderUsers(){if(!isSuper()){$('usersTable').innerHTML='<tr><td style="text-align:center;padding:20px;color:var(--t4)">권한 없음</td></tr>';return}var html='<tr><th>아이디</th><th>닉네임</th><th>비밀번호</th><th>상태</th><th></th></tr>';for(var i=0;i<state.db.users.length;i++){var u=state.db.users[i];html+='<tr><td>'+esc(u.id)+'</td><td>'+esc(u.nickname||'-')+'</td><td><code id="pw_'+u.id+'" style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px">••••••</code> <button class="btn btn-sm btn-s" onclick="togglePwView(\''+u.id+'\')">👁</button></td><td><span class="badge '+(u.active?'badge-p':'badge-w')+'">'+(u.active?'활성':'비활성')+'</span></td><td>'+(u.role!=='super'?'<button class="btn btn-sm btn-s" onclick="resetPw(\''+u.id+'\')">초기화</button> <button class="btn btn-sm btn-s" onclick="toggleActive(\''+u.id+'\')">'+(u.active?'비활성':'활성')+'</button> <button class="btn btn-sm btn-d" onclick="delUser(\''+u.id+'\')">삭제</button>':'<span class="badge badge-w">최고관리자</span>')+'</td></tr>'}$('usersTable').innerHTML=html}
 export function togglePwView(userId){
   var el=$('pw_'+userId);
   if(!el)return;
   var u=null;
   for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===userId){u=state.db.users[i];break}}
   if(!u)return;
-  if(el.textContent==='••••••'){el.textContent=u.pw}else{el.textContent='••••••'}
+  if(el.textContent==='••••••'){
+    if(u.pwHash){el.textContent='[SHA-256 해시됨]'}
+    else if(u.pw){el.textContent=u.pw+' [마이그레이션 필요]'}
+  }else{el.textContent='••••••'}
 }
 export function exportUsers(){
   if(!isSuper()){toast('권한 없음','err');return}
   var data=[];
   for(var i=0;i<state.db.users.length;i++){
     var u=state.db.users[i];
-    data.push({id:u.id,pw:u.pw,nickname:u.nickname||'',active:u.active});
+    var entry={id:u.id,nickname:u.nickname||'',active:u.active,role:u.role||'admin'};
+    if(u.pwHash){entry.migrated=true}else{entry.migrated=false}
+    data.push(entry);
   }
   var json=JSON.stringify(data,null,2);
   var blob=new Blob([json],{type:'application/json'});
@@ -257,30 +263,41 @@ export function exportUsers(){
   toast('계정 목록 다운로드됨');
 }
 export function genNewUser(){var id='admin'+Math.floor(1000+Math.random()*9000),chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789',pw='';for(var i=0;i<12;i++)pw+=chars[Math.floor(Math.random()*chars.length)];$('newUserId').value=id;$('newUserPw').value=pw}
-export function createUser(){if(!isSuper()){toast('권한 없음','err');return}var id=$('newUserId').value,pw=$('newUserPw').value;for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===id){toast('중복 아이디','err');return}}state.db.users.push({id:id,pw:pw,role:'admin',needPw:true,active:true,nickname:''});saveDB();renderUsers();genNewUser();toast('사용자 생성')}
-export function resetPw(id){if(!isSuper())return;var chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789',pw='';for(var i=0;i<12;i++)pw+=chars[Math.floor(Math.random()*chars.length)];for(var j=0;j<state.db.users.length;j++){if(state.db.users[j].id===id){state.db.users[j].pw=pw;state.db.users[j].needPw=true;break}}saveDB();alert('새 비밀번호: '+pw);console.warn('resetPw: Firebase Auth 비밀번호는 Admin SDK 없이 변경 불가. 사용자가 다음 로그인 시 레거시 폴백됩니다.');renderUsers()}
+export function createUser(){if(!isSuper()){toast('권한 없음','err');return}var id=$('newUserId').value,pw=$('newUserPw').value;for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===id){toast('중복 아이디','err');return}}var salt=generateSalt();hashPassword(pw,salt).then(function(hash){state.db.users.push({id:id,pwHash:hash,pwSalt:salt,role:'admin',needPw:true,active:true,nickname:''});saveDB();renderUsers();genNewUser();toast('사용자 생성');alert('생성된 비밀번호: '+pw+'\n(이 비밀번호는 다시 볼 수 없습니다)')})}
+export function resetPw(id){if(!isSuper())return;var chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789',pw='';for(var i=0;i<12;i++)pw+=chars[Math.floor(Math.random()*chars.length)];var salt=generateSalt();hashPassword(pw,salt).then(function(hash){for(var j=0;j<state.db.users.length;j++){if(state.db.users[j].id===id){state.db.users[j].pwHash=hash;state.db.users[j].pwSalt=salt;delete state.db.users[j].pw;state.db.users[j].needPw=true;break}}saveDB();alert('새 비밀번호: '+pw+'\n(이 비밀번호는 다시 볼 수 없습니다)');renderUsers()})}
 export function toggleActive(id){if(!isSuper())return;for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===id){state.db.users[i].active=!state.db.users[i].active;break}}saveDB();renderUsers();toast('상태 변경')}
 export function delUser(id){if(!isSuper()||!confirm('삭제?'))return;state.db.users=state.db.users.filter(function(u){return u.id!==id});saveDB();renderUsers();toast('삭제됨')}
 export function changePassword(){
   var c=$('setPwCur').value,n=$('setPwNew').value;
   if(!c||!n){toast('비밀번호 입력','err');return}
-  var currentPw=null;
-  for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===state.user.id){currentPw=state.db.users[i].pw;break}}
-  if(currentPw!==c){toast('현재 비밀번호 틀림','err');return}
-  // 레거시 users 배열 업데이트 (항상)
-  for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===state.user.id){state.db.users[i].pw=n;break}}
-  saveDB();
-  // Firebase Auth 비밀번호도 업데이트 (로그인된 경우)
-  var currentUser=auth.currentUser;
-  if(currentUser){
-    currentUser.updatePassword(n).then(function(){
-      console.log('Firebase Auth 비밀번호 업데이트 완료');
-    }).catch(function(e){
-      console.warn('Firebase Auth 비밀번호 업데이트 실패:',e);
-      toast('비밀번호 변경됨 (일부 동기화 실패)','warn');
-    });
+  var userEntry=null;
+  for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===state.user.id){userEntry=state.db.users[i];break}}
+  if(!userEntry){toast('사용자를 찾을 수 없습니다','err');return}
+  // 비밀번호 검증 (해시/평문 모두 지원)
+  var verifyPromise;
+  if(userEntry.pwHash&&userEntry.pwSalt){
+    verifyPromise=verifyPassword(c,userEntry.pwSalt,userEntry.pwHash);
+  }else{
+    verifyPromise=Promise.resolve(userEntry.pw===c);
   }
-  $('setPwCur').value=$('setPwNew').value='';toast('변경됨');
+  verifyPromise.then(function(valid){
+    if(!valid){toast('현재 비밀번호 틀림','err');return}
+    var salt=generateSalt();
+    hashPassword(n,salt).then(function(hash){
+      for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===state.user.id){state.db.users[i].pwHash=hash;state.db.users[i].pwSalt=salt;delete state.db.users[i].pw;break}}
+      saveDB();
+      var currentUser=auth.currentUser;
+      if(currentUser){
+        currentUser.updatePassword(n).then(function(){
+          console.log('Firebase Auth 비밀번호 업데이트 완료');
+        }).catch(function(e){
+          console.warn('Firebase Auth 비밀번호 업데이트 실패:',e);
+          toast('비밀번호 변경됨 (일부 동기화 실패)','warn');
+        });
+      }
+      $('setPwCur').value=$('setPwNew').value='';toast('변경됨');
+    });
+  });
 }
 export function saveWorkspace(){state.db.settings.wsName=$('setWsName').value||'DocSpace';saveDB();$('wsName').textContent=state.db.settings.wsName;import('./sidebar.js').then(function(m){m.renderBreadcrumb()});toast('저장됨')}
 // 공지사항

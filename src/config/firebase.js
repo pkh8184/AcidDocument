@@ -6,7 +6,7 @@ export var firestore=firebase.firestore();
 export var storage=firebase.storage();
 export var auth=firebase.auth();
 
-export var SUPER='admin8184',MAX_VER=10;
+export var MAX_VER=10;
 // Storage 용량 제한 (bytes)
 export var STORAGE_LIMIT=5*1024*1024*1024; // 5GB
 export var MAX_FILE_SIZE=10*1024*1024; // 파일당 최대 10MB

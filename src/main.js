@@ -86,7 +86,7 @@ export function initApp(){
   });
 }
 
-// init — 앱 시작점 (Firebase Auth onAuthStateChanged + localStorage 폴백)
+// init — 앱 시작점 (Firebase Auth onAuthStateChanged 전용)
 function init(){
   initDB().then(function(){
     setupListeners();
@@ -114,14 +114,11 @@ function init(){
         // 레거시 배열에 없으면 Firebase Auth 정보로 임시 state.user
         state.user={
           id:legacyId,
-          pw:'',
-          role:'admin',
+          role:'viewer',
           active:true,
           nickname:firebaseUser.displayName||legacyId
         };
       }
-
-      localStorage.setItem('ad_session',legacyId);
 
       // Firestore에서 역할 확인 (비동기)
       checkFirestoreRole(firebaseUser.uid).then(function(){
@@ -134,7 +131,7 @@ function init(){
       });
     }
 
-    // 1. Firebase Auth onAuthStateChanged (우선)
+    // Firebase Auth onAuthStateChanged (세션 관리 유일한 경로)
     auth.onAuthStateChanged(function(firebaseUser){
       if(sessionHandled)return;
       if(state.loggingOut)return;
@@ -147,32 +144,14 @@ function init(){
         handleFirebaseUser(firebaseUser);
       }else{
         // null 수신 — Auth 상태가 아직 로딩 중일 수 있음 (IndexedDB 비동기)
-        // 짧은 시간 내 firebaseUser로 재호출되면 위 분기에서 처리
+        // 500ms 대기 후에도 Firebase Auth 세션 없으면 로그인 화면 유지
         if(!authFallbackTimer){
           authFallbackTimer=setTimeout(function(){
             if(sessionHandled)return;
             sessionHandled=true;
-            // localStorage 폴백
-            var localSession=localStorage.getItem('ad_session');
-            if(localSession){
-              var u=null;
-              for(var i=0;i<state.db.users.length;i++){
-                if(state.db.users[i].id===localSession&&state.db.users[i].active){u=state.db.users[i];break}
-              }
-              if(u){
-                state.user=u;
-                if(u.needPw){
-                  $('loginScreen').classList.add('hidden');
-                  openModal('pwChangeModal');
-                }else{
-                  initApp();
-                }
-              }else{
-                // 사용자를 찾을 수 없으면 세션 정리
-                localStorage.removeItem('ad_session');
-              }
-            }
-            // 둘 다 없으면 로그인 화면 유지 (기본 상태)
+            // localStorage 폴백 제거 — Firebase Auth만 세션 관리
+            // 기존 localStorage 데이터 정리
+            localStorage.removeItem('ad_session');
           },500);
         }
       }

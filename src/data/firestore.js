@@ -2,7 +2,8 @@
 
 import state from './store.js';
 import {firestore,storage,STORAGE_LIMIT,MAX_FILE_SIZE} from '../config/firebase.js';
-import {$,genId,toast,formatBytes} from '../utils/helpers.js';
+import {$,genId,toast,formatBytes,fetchIP} from '../utils/helpers.js';
+import {generateSalt,hashPassword} from '../auth/crypto.js';
 
 // 마이그레이션 전환 플래그
 // false: 기존 구조 (app/data 단일 문서)
@@ -145,42 +146,47 @@ function initDBLegacy(){
     return firestore.collection('app').doc('data').get().then(function(doc){
       if(doc.exists){state.db=convertRowsForLoad(doc.data())}
       else{
-        state.db={
-          users:[
-            {id:'admin8184',pw:'Kx7mR2pL9nQw',role:'super',needPw:true,active:true,nickname:''},
-            {id:'admin3926',pw:'Ht5vB8cN1jYf',role:'admin',needPw:true,active:true,nickname:''}
-          ],
-          pages:[{
-            id:'welcome',title:'시작하기',icon:'👋',parentId:null,
-            blocks:[
-              {id:genId(),type:'h1',content:'AcidDocument에 오신 것을 환영합니다!'},
-              {id:genId(),type:'text',content:'팀을 위한 문서 관리 시스템입니다.'},
-              {id:genId(),type:'callout',content:'<b>💡 사용법:</b> 빈 줄에서 <code>/</code>를 입력하여 다양한 블록을 추가하세요.',calloutType:'info'}
+        // 초기 비밀번호를 해싱하여 저장
+        var pw1='Kx7mR2pL9nQw',pw2='Ht5vB8cN1jYf';
+        var salt1=generateSalt(),salt2=generateSalt();
+        return Promise.all([hashPassword(pw1,salt1),hashPassword(pw2,salt2)]).then(function(hashes){
+          state.db={
+            users:[
+              {id:'admin8184',pwHash:hashes[0],pwSalt:salt1,role:'super',needPw:true,active:true,nickname:''},
+              {id:'admin3926',pwHash:hashes[1],pwSalt:salt2,role:'admin',needPw:true,active:true,nickname:''}
             ],
-            tags:['가이드'],author:'admin8184',created:Date.now(),updated:Date.now(),versions:[],comments:[],favorite:true,deleted:false
-          }],
-          templates:[
-            {id:'meeting',name:'회의록',icon:'📋',blocks:[
-              {id:genId(),type:'h1',content:'📋 회의록'},
-              {id:genId(),type:'table',rowsJson:'[["항목","내용"],["📅 회의 일시",""],["📍 회의 장소",""],["👥 참여 대상",""],["📌 회의 주제",""],["🎤 발언자",""]]'},
-              {id:genId(),type:'h2',content:'📝 회의 내용'},{id:genId(),type:'text',content:''},
-              {id:genId(),type:'h2',content:'✅ 회의 결론'},{id:genId(),type:'bullet',content:''},
-              {id:genId(),type:'h2',content:'📌 Action Items'},{id:genId(),type:'todo',content:'',checked:false},
-              {id:genId(),type:'h2',content:'📎 비고'},{id:genId(),type:'text',content:''}
-            ]},
-            {id:'note',name:'노트',icon:'📝',blocks:[{id:genId(),type:'h1',content:''},{id:genId(),type:'text',content:''}]},
-            {id:'project',name:'프로젝트',icon:'🚀',blocks:[
-              {id:genId(),type:'h1',content:'프로젝트명'},
-              {id:genId(),type:'callout',content:'프로젝트 개요',calloutType:'info'},
-              {id:genId(),type:'h2',content:'목표'},{id:genId(),type:'bullet',content:''},
-              {id:genId(),type:'h2',content:'일정'},
-              {id:genId(),type:'table',rowsJson:'[["단계","시작일","종료일","담당자"],["기획","","",""],["개발","","",""],["테스트","","",""]]'}
-            ]}
-          ],
-          settings:{wsName:'AcidDocument',theme:'dark',notice:''},
-          session:null,recent:[]
-        };
-        return saveDB();
+            pages:[{
+              id:'welcome',title:'시작하기',icon:'👋',parentId:null,
+              blocks:[
+                {id:genId(),type:'h1',content:'AcidDocument에 오신 것을 환영합니다!'},
+                {id:genId(),type:'text',content:'팀을 위한 문서 관리 시스템입니다.'},
+                {id:genId(),type:'callout',content:'<b>💡 사용법:</b> 빈 줄에서 <code>/</code>를 입력하여 다양한 블록을 추가하세요.',calloutType:'info'}
+              ],
+              tags:['가이드'],author:'admin8184',created:Date.now(),updated:Date.now(),versions:[],comments:[],favorite:true,deleted:false
+            }],
+            templates:[
+              {id:'meeting',name:'회의록',icon:'📋',blocks:[
+                {id:genId(),type:'h1',content:'📋 회의록'},
+                {id:genId(),type:'table',rowsJson:'[["항목","내용"],["📅 회의 일시",""],["📍 회의 장소",""],["👥 참여 대상",""],["📌 회의 주제",""],["🎤 발언자",""]]'},
+                {id:genId(),type:'h2',content:'📝 회의 내용'},{id:genId(),type:'text',content:''},
+                {id:genId(),type:'h2',content:'✅ 회의 결론'},{id:genId(),type:'bullet',content:''},
+                {id:genId(),type:'h2',content:'📌 Action Items'},{id:genId(),type:'todo',content:'',checked:false},
+                {id:genId(),type:'h2',content:'📎 비고'},{id:genId(),type:'text',content:''}
+              ]},
+              {id:'note',name:'노트',icon:'📝',blocks:[{id:genId(),type:'h1',content:''},{id:genId(),type:'text',content:''}]},
+              {id:'project',name:'프로젝트',icon:'🚀',blocks:[
+                {id:genId(),type:'h1',content:'프로젝트명'},
+                {id:genId(),type:'callout',content:'프로젝트 개요',calloutType:'info'},
+                {id:genId(),type:'h2',content:'목표'},{id:genId(),type:'bullet',content:''},
+                {id:genId(),type:'h2',content:'일정'},
+                {id:genId(),type:'table',rowsJson:'[["단계","시작일","종료일","담당자"],["기획","","",""],["개발","","",""],["테스트","","",""]]'}
+              ]}
+            ],
+            settings:{wsName:'AcidDocument',theme:'dark',notice:''},
+            session:null,recent:[]
+          };
+          return saveDB();
+        });
       }
     });
   },'DB 로드 실패');
@@ -410,7 +416,7 @@ export function uploadToStorage(file,folder,allowedTypes){
 // IP 로깅 (비핵심 작업: 실패해도 사용자에게 알리지 않음)
 export function logLoginAttempt(userId,success){
   try{
-    fetchIPLocal().then(function(ip){
+    fetchIP().then(function(ip){
       if(!state.db.ipLogs)state.db.ipLogs=[];
       state.db.ipLogs.unshift({
         ip:ip,
@@ -425,12 +431,6 @@ export function logLoginAttempt(userId,success){
     }).catch(function(e){console.warn('로그인 로그 저장 실패:',e)});
   }catch(e){console.warn('로그인 로그 기록 실패:',e)}
 }
-function fetchIPLocal(){
-  return fetch('https://api.ipify.org?format=json')
-    .then(function(r){return r.json()})
-    .then(function(d){return d.ip})
-    .catch(function(){return '(알 수 없음)'});
-}
 
 // --- 로그인 잠금 상태 (Firestore 서버사이드) ---
 // Firestore 경로: app/loginLocks/{loginId}
@@ -439,21 +439,30 @@ export function getLoginLockState(loginId){
   return firestore.collection('app').doc('loginLocks').collection('locks').doc(loginId).get().then(function(doc){
     if(doc.exists){
       var data=doc.data();
+      var needsWriteBack=false;
       // 자동 잠금 해제: lockUntil이 지났으면 잠금 해제 처리
       if(data.lockUntil&&data.lockUntil<=Date.now()&&!data.blocked){
         data.lockUntil=0;
+        needsWriteBack=true;
       }
       // blocked 상태도 30분 후 자동 해제
       if(data.blocked&&data.blockedAt&&(Date.now()-data.blockedAt>30*60*1000)){
         data.blocked=false;
         data.attempts=0;
         data.lockUntil=0;
+        needsWriteBack=true;
+      }
+      // 해제된 상태를 Firestore에 반영
+      if(needsWriteBack){
+        firestore.collection('app').doc('loginLocks').collection('locks').doc(loginId)
+          .set(data,{merge:true}).catch(function(e){
+            console.warn('잠금 해제 write-back 실패:',e);
+          });
       }
       return data;
     }
     return{attempts:0,lockUntil:0,blocked:false,lastAttempt:0,blockedAt:0};
   }).catch(function(e){
-    // 비핵심 작업: 잠금 상태 조회 실패 시 기본값 반환 (사용자에게 toast 없음)
     console.warn('잠금 상태 조회 실패:',e);
     return{attempts:0,lockUntil:0,blocked:false,lastAttempt:0,blockedAt:0};
   });
@@ -477,7 +486,7 @@ export function clearLoginLockState(loginId){
 // 삭제 로그 (비핵심 작업: 실패해도 사용자에게 알리지 않음)
 export function logDeleteAction(pageId,pageTitle,action){
   try{
-    fetchIPLocal().then(function(ip){
+    fetchIP().then(function(ip){
       if(!state.db.deleteLogs)state.db.deleteLogs=[];
       state.db.deleteLogs.unshift({
         pageId:pageId,

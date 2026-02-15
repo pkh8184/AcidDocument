@@ -1,20 +1,26 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 기존 app/data (원본 보존, super만 쓰기)
+    // app/data — 인증된 모든 사용자 read/write (saveDB 범용 저장)
     match /app/data {
+      allow read, write: if request.auth != null;
+    }
+    // 로그인 잠금 상태
+    match /app/loginLocks {
       allow read: if request.auth != null;
-      allow write: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super';
+    }
+    match /app/loginLocks/locks/{loginId} {
+      allow read, write: if request.auth != null;
     }
     // 사용자 프로필
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
-    // UID 매핑 (읽기 전용)
+    // UID 매핑 (progressive migration용 write 허용)
     match /app/userMapping {
       allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
     // 설정 (super만 쓰기)
     match /app/settings {
@@ -24,23 +30,19 @@ service cloud.firestore {
     }
     // 템플릿
     match /app/templates {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
     // 페이지 컬렉션
     match /pages/{pageId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
     // 페이지 버전 서브컬렉션
     match /pages/{pageId}/versions/{verId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
     // 페이지 댓글 서브컬렉션
     match /pages/{pageId}/comments/{cmtId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
   }
 }

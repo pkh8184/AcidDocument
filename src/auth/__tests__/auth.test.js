@@ -42,12 +42,18 @@ var { mockState } = vi.hoisted(function() {
 vi.mock('../../data/store.js', function() { return { default: mockState }; });
 vi.mock('../../config/firebase.js', function() {
   return {
-    SUPER: 'superadmin',
     auth: {
       signOut: vi.fn(function() { return Promise.resolve(); }),
       currentUser: null
     },
     firestore: { collection: vi.fn() }
+  };
+});
+vi.mock('../../auth/crypto.js', function() {
+  return {
+    generateSalt: vi.fn(function() { return 'abcdef0123456789'; }),
+    hashPassword: vi.fn(function() { return Promise.resolve('hashedpw'); }),
+    verifyPassword: vi.fn(function() { return Promise.resolve(true); })
   };
 });
 vi.mock('../../utils/helpers.js', function() {
