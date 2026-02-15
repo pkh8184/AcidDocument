@@ -273,6 +273,41 @@ export function updateNums(){
 export function genTOC(){var hs=[];for(var i=0;i<state.page.blocks.length;i++){var b=state.page.blocks[i];if(b.type==='h1'||b.type==='h2'||b.type==='h3')hs.push(b)}if(hs.length===0)return'<div class="block-toc-title">📑 목차</div><p style="color:var(--t4)">제목이 없습니다</p>';var html='<div class="block-toc-title">📑 목차</div><ul class="block-toc-list">',tmp=document.createElement('div');for(var j=0;j<hs.length;j++){var h=hs[j];tmp.innerHTML=h.content||'';var txt=tmp.textContent||'';var lv=h.type==='h1'?1:h.type==='h2'?2:3;html+='<li class="block-toc-item l'+lv+'"><a href="#" onclick="scrollToBlk(\''+h.id+'\');return false">'+esc(txt)+'</a></li>'}html+='</ul>';return html}
 export function scrollToBlk(id){var el=document.querySelector('[data-id="'+id+'"]');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.background='var(--accM)';setTimeout(function(){el.style.background=''},2000)}}
 
+// 플로팅 목차 네비게이션
+export function initTocNav(){
+  var btn=$('tocNavBtn');var closeBtn=$('tocNavClose');
+  if(!btn)return;
+  btn.addEventListener('click',function(){
+    var list=$('tocNavList');
+    if(list.classList.contains('open')){list.classList.remove('open')}
+    else{updateTocNav();list.classList.add('open')}
+  });
+  if(closeBtn)closeBtn.addEventListener('click',function(){$('tocNavList').classList.remove('open')});
+  document.addEventListener('click',function(e){var nav=$('tocNav');if(nav&&!nav.contains(e.target))$('tocNavList').classList.remove('open')});
+}
+export function updateTocNav(){
+  var ul=$('tocNavItems');if(!ul)return;
+  if(!state.page||!state.page.blocks){ul.innerHTML='<li class="toc-nav-item" style="color:var(--t4)">페이지를 선택해주세요</li>';return}
+  var html='',tmp=document.createElement('div');
+  for(var i=0;i<state.page.blocks.length;i++){
+    var b=state.page.blocks[i];
+    if(b.type==='h1'||b.type==='h2'||b.type==='h3'){
+      tmp.innerHTML=b.content||'';var txt=tmp.textContent||'';if(!txt)txt='(빈 제목)';
+      var lv=b.type==='h1'?'l1':b.type==='h2'?'l2':'l3';
+      html+='<li class="toc-nav-item '+lv+'" data-block-id="'+b.id+'">'+esc(txt)+'</li>';
+    }
+  }
+  if(!html)html='<li class="toc-nav-item" style="color:var(--t4)">제목이 없습니다</li>';
+  ul.innerHTML=html;
+  ul.onclick=function(e){var li=e.target.closest('.toc-nav-item');if(!li||!li.getAttribute('data-block-id'))return;scrollToBlk(li.getAttribute('data-block-id'));$('tocNavList').classList.remove('open')};
+}
+export function updateTocNavVisibility(){
+  var nav=$('tocNav');if(!nav)return;
+  if(!state.page||!state.page.blocks){nav.classList.remove('visible');return}
+  var has=false;for(var i=0;i<state.page.blocks.length;i++){var t=state.page.blocks[i].type;if(t==='h1'||t==='h2'||t==='h3'){has=true;break}}
+  if(has)nav.classList.add('visible');else nav.classList.remove('visible');
+}
+
 // 좌측 메뉴바용 함수
 export function getCurrentIdx(){return state.currentInsertIdx!==null?state.currentInsertIdx:(state.page&&state.page.blocks?state.page.blocks.length-1:0)}
 export function dupBlockCurrent(){var idx=state.currentInsertIdx;if(idx!==null&&idx>=0)dupBlock(idx);else toast('블록을 선택하세요','warn')}

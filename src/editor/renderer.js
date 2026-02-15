@@ -3,7 +3,7 @@
 import state from '../data/store.js';
 import {$,esc} from '../utils/helpers.js';
 import {sanitizeHTML} from '../utils/sanitize.js';
-import {updateNums,genTOC,triggerAutoSave,focusBlock,deleteBlock,addBlockBelow,scrollToBlk,findBlock,findBlockIndex,getChildren} from './blocks.js';
+import {updateNums,genTOC,triggerAutoSave,focusBlock,deleteBlock,addBlockBelow,scrollToBlk,findBlock,findBlockIndex,getChildren,updateTocNavVisibility} from './blocks.js';
 import {renderCalendar} from './calendar.js';
 import {renderChart} from './chart.js';
 import {renderSlideBlock,getYTId,openImageViewer,setupSlideAutoPlay} from './media.js';
@@ -69,7 +69,7 @@ export function renderBlocks(){
     ed.appendChild(el);
     blockElements.set(state.page.blocks[i].id,el);
   }
-  updateNums();setupSlideAutoPlay()
+  updateNums();setupSlideAutoPlay();updateTocNavVisibility()
 }
 
 export function updateBlock(blockId){
@@ -233,6 +233,8 @@ export function createBlockEl(b,idx){
           else if(b.colColors&&b.colColors[c])bgColor=b.colColors[c];
           else if(r===0&&b.headerColor)bgColor=b.headerColor;
           var cellStyle=bgColor?'background:'+bgColor+';':'';
+          if(b.tableAlign)cellStyle+='text-align:'+b.tableAlign+';';
+          if(b.tableVAlign)cellStyle+='vertical-align:'+b.tableVAlign+';';
           inner+='<'+tag+ce+' data-row="'+r+'" data-col="'+c+'"'+(cellStyle?' style="'+cellStyle+'"':'')+'>'+sanitizeHTML(rows[r][c]||'');
           if(state.editMode&&r===0){
             inner+='<div class="col-resizer" data-col="'+c+'" contenteditable="false"></div>';

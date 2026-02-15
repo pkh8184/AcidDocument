@@ -11,7 +11,7 @@ import {
   getPages,getPage,focusBlock,insertBlock,addBlockBelow,deleteBlock,dupBlock,
   moveBlockUp,moveBlockDown,changeBlockType,scrollToBlk,getCurrentIdx,
   dupBlockCurrent,deleteBlockCurrent,addBlockBelowCurrent,
-  moveBlockUpCurrent,moveBlockDownCurrent,onTitleChange
+  moveBlockUpCurrent,moveBlockDownCurrent,onTitleChange,initTocNav
 } from './editor/blocks.js';
 import {
   initTablePanel,closeTablePanel
@@ -304,5 +304,5 @@ window.selectPageLink=function(id,title){closeModal('pageLinkModal');insertPageL
 window.filterPageLinks=function(q){renderPageLinkList(q)};
 
 // DOMContentLoaded
-function onReady(){initTablePanel();init()}
+function onReady(){initTablePanel();initTocNav();init()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',onReady);else onReady();

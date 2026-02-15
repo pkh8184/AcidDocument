@@ -770,7 +770,7 @@ export function setupBlockEvents(div,b,idx){
   })(cells[j])}
   // 테이블 열 리사이즈
   if(b.type==='table'&&cells.length>0&&state.editMode){
-    setupTableResize(div,b);
+    setupTableResize(div);
   }
 
   // 컬럼 콘텐츠
@@ -1150,7 +1150,7 @@ export function setupListeners(){
       if(ci<state.page.blocks.length-1){moveBlockDown(ci);focusBlock(ci+1)}
       return;
     }
-    var COLOR_MAP={'1':'#FF0000','2':'#FF8C00','3':'#FFD700','4':'#00C853','5':'#2196F3','6':'#1A237E','7':'#9C27B0','8':'#E91E63','9':'#9E9E9E','0':null};
+    var COLOR_MAP={'1':'#e55b5b','2':'#e89a4a','3':'#d4b94e','4':'#4aba78','5':'#5b9fd4','6':'#5568a8','7':'#9b6bb5','8':'#d65d82','9':'#8a9bab','0':null};
     if((e.metaKey||e.ctrlKey)&&COLOR_MAP.hasOwnProperty(e.key)){
       var sel=window.getSelection();
       if(sel&&!sel.isCollapsed&&state.editMode){

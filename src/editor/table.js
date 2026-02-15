@@ -224,6 +224,26 @@ export function sortTable(id,colIdx,dir){
   toast(dir==='asc'?'오름차순 정렬':'내림차순 정렬');
 }
 
+// 수평 정렬 설정
+export function setTableAlign(id,align){
+  var b=findBlock(id);if(!b)return;
+  pushUndoImmediate();b=findBlock(id);
+  var rows=collectTableData(id);if(rows)b.rows=rows;
+  if(align&&align!=='left')b.tableAlign=align;
+  else delete b.tableAlign;
+  renderBlocks();triggerAutoSave();
+}
+
+// 수직 정렬 설정
+export function setTableVAlign(id,valign){
+  var b=findBlock(id);if(!b)return;
+  pushUndoImmediate();b=findBlock(id);
+  var rows=collectTableData(id);if(rows)b.rows=rows;
+  if(valign&&valign!=='top')b.tableVAlign=valign;
+  else delete b.tableVAlign;
+  renderBlocks();triggerAutoSave();
+}
+
 // 표 삭제
 export function deleteTable(id){
   state.deleteTableId=id;
@@ -250,6 +270,19 @@ export function showTablePanel(blockId,row,col){
   var size=b.rows?{rows:b.rows.length,cols:b.rows[0].length}:{rows:0,cols:0};
   var html='';
   html+='<div class="tbl-panel-info">셀 ('+(row+1)+', '+(col+1)+') · '+size.rows+'×'+size.cols+'</div>';
+  // 텍스트 맞춤
+  var curAlign=b.tableAlign||'left';
+  var curVAlign=b.tableVAlign||'top';
+  html+='<div class="tbl-panel-section"><div class="tbl-panel-title">텍스트 맞춤</div>';
+  html+='<div class="tbl-panel-align">';
+  html+='<button class="tbl-align-btn'+(curAlign==='left'?' active':'')+'" data-tbl-action="alignLeft" title="왼쪽">⫷</button>';
+  html+='<button class="tbl-align-btn'+(curAlign==='center'?' active':'')+'" data-tbl-action="alignCenter" title="가운데">☰</button>';
+  html+='<button class="tbl-align-btn'+(curAlign==='right'?' active':'')+'" data-tbl-action="alignRight" title="오른쪽">⫸</button>';
+  html+='<span class="tbl-align-sep"></span>';
+  html+='<button class="tbl-align-btn'+(curVAlign==='top'?' active':'')+'" data-tbl-action="valignTop" title="상단">⬆</button>';
+  html+='<button class="tbl-align-btn'+(curVAlign==='middle'?' active':'')+'" data-tbl-action="valignMiddle" title="중앙">⬌</button>';
+  html+='<button class="tbl-align-btn'+(curVAlign==='bottom'?' active':'')+'" data-tbl-action="valignBottom" title="하단">⬇</button>';
+  html+='</div></div>';
   // 행/열 추가
   html+='<div class="tbl-panel-section"><div class="tbl-panel-title">행/열 추가</div>';
   html+='<div class="tbl-panel-grid">';
@@ -329,6 +362,12 @@ export function initTablePanel(){
       case'clearColors':clearCellColors(bid,row,col);break;
       case'sortAsc':sortTable(bid,col,'asc');break;
       case'sortDesc':sortTable(bid,col,'desc');break;
+      case'alignLeft':setTableAlign(bid,'left');break;
+      case'alignCenter':setTableAlign(bid,'center');break;
+      case'alignRight':setTableAlign(bid,'right');break;
+      case'valignTop':setTableVAlign(bid,'top');break;
+      case'valignMiddle':setTableVAlign(bid,'middle');break;
+      case'valignBottom':setTableVAlign(bid,'bottom');break;
       case'deleteTable':deleteTable(bid);closeTablePanel();return;
     }
     // 패널 갱신 (크기 변경 반영)
@@ -342,7 +381,7 @@ export function initTablePanel(){
 }
 
 // 열 리사이즈 (기존 유지 + 개선)
-export function setupTableResize(div,b){
+export function setupTableResize(div){
   var resizers=div.querySelectorAll('.col-resizer');
   resizers.forEach(function(resizer){
     var colIdx=parseInt(resizer.getAttribute('data-col'));
@@ -353,6 +392,7 @@ export function setupTableResize(div,b){
       if(!th)return;
       startX=e.pageX;startW=th.offsetWidth;
       resizer.classList.add('active');
+      pushUndoImmediate();
       document.addEventListener('mousemove',onMouseMove);
       document.addEventListener('mouseup',onMouseUp);
     });
@@ -377,7 +417,7 @@ export function setupTableResize(div,b){
         var tbl=div.querySelector('table');
         cur.colWidths[colIdx]=tbl?Math.round(th.offsetWidth/tbl.offsetWidth*100):Math.floor(100/(cur.rows&&cur.rows[0]?cur.rows[0].length:3));
         normalizeColWidths(cur);
-        pushUndoImmediate();triggerAutoSave();
+        triggerAutoSave();
       }
     }
   });

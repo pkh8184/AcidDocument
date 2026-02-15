@@ -161,6 +161,13 @@
 <div class="panel-body" id="tablePanelBody"></div>
 </div>
 </div>
+<div id="tocNav" class="toc-nav">
+<div id="tocNavList" class="toc-nav-list">
+<div class="toc-nav-head">📑 목차<button class="btn btn-i btn-g toc-nav-close" id="tocNavClose">✕</button></div>
+<ul id="tocNavItems" class="toc-nav-items"></ul>
+</div>
+<button id="tocNavBtn" class="toc-nav-btn" title="목차">📑</button>
+</div>
 <div class="modal-bg" id="searchModal" role="dialog" aria-modal="true" aria-label="검색" onclick="if(event.target===this)closeModal('searchModal')"><div class="modal" style="max-width:560px"><div class="search-input-wrap"><input type="text" class="search-input" id="searchInput" placeholder="검색..." oninput="doSearch(this.value)"></div><div class="search-results" id="searchResults"></div></div></div>
 <div class="modal-bg" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsModal-title" onclick="if(event.target===this)closeModal('settingsModal')">
 <div class="modal lg">
