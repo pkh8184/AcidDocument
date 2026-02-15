@@ -76,8 +76,8 @@ export function handleKey(e,b,idx,el){
 
   /* ========== 텍스트 입력 규칙 ========== */
 
-  // 규칙 1: Enter - 새 블록 생성
-  if(e.key==='Enter'&&!e.shiftKey){
+  // 규칙 1: Enter / Shift+Enter - 새 블록 생성 (한 블록 = 한 문장)
+  if(e.key==='Enter'){
     // @태그 처리
     var txt=el.innerHTML;
     var tagMatch=txt.match(/@([^@<>\s]+)$/);
@@ -158,14 +158,6 @@ export function handleKey(e,b,idx,el){
     }
     insertBlock(insertIdx,newB);
     updateNums();
-    return;
-  }
-
-  // 규칙 2: Shift+Enter - 명시적 줄바꿈 (<br> 삽입)
-  if(e.key==='Enter'&&e.shiftKey){
-    e.preventDefault();
-    document.execCommand('insertLineBreak');
-    triggerAutoSave();
     return;
   }
 
@@ -628,7 +620,7 @@ export function setupBlockEvents(div,b,idx){
     el.addEventListener('mouseup',showFmtBar);
     el.addEventListener('keydown',function(e){
       e.stopPropagation();
-      if(e.key==='Enter'&&!e.shiftKey){
+      if(e.key==='Enter'){
         e.preventDefault();
         document.execCommand('insertLineBreak');
       }
@@ -738,6 +730,8 @@ export function setupBlockEvents(div,b,idx){
   if(mediaWrap){
     mediaWrap.addEventListener('keydown',function(e){
       if(!state.editMode)return;
+      // 캡션 등 자식 요소의 keydown은 무시 (버블링 방지)
+      if(e.target!==mediaWrap)return;
       // CLOSURE fix: data-id로 최신 idx 조회
       var blockEl=div.closest('.block')||div;
       var curIdx=idx;
@@ -830,7 +824,7 @@ export function setupBlockEvents(div,b,idx){
       bodyContent.addEventListener('keydown',function(e){
         e.stopPropagation();
         // Enter 시 줄바꿈만 (새 블록 생성 안함)
-        if(e.key==='Enter'&&!e.shiftKey){
+        if(e.key==='Enter'){
           e.preventDefault();
           document.execCommand('insertLineBreak');
         }

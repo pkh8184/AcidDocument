@@ -33,7 +33,7 @@ import {
   toggleMobile,closeMobile,
   createPage,loadPage,loadPageWithoutPush,saveDoc,toggleEdit,saveAndExit,cancelEdit,
   deleteCurrentPage,deletePage,confirmDelete,restorePage,permanentDelete,emptyTrash,
-  duplicatePage,toggleFavorite,movePage,
+  duplicatePage,toggleFavorite,movePage,movePageUp,movePageDown,
   renderTree,renderSidebar,
   showPageCtx,hideCtx,
   renderVersions,renderComments,
@@ -203,6 +203,8 @@ window.permanentDelete=permanentDelete;
 window.emptyTrash=emptyTrash;
 window.duplicatePage=duplicatePage;
 window.toggleFavorite=toggleFavorite;
+window.movePageUp=movePageUp;
+window.movePageDown=movePageDown;
 window.openTagModal=openTagModal;
 window.submitTag=submitTag;
 window.quickTag=quickTag;

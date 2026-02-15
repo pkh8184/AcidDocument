@@ -4,8 +4,8 @@ import DOMPurify from 'dompurify';
 
 export function sanitizeHTML(dirty) {
   return DOMPurify.sanitize(dirty, {
-    ALLOWED_TAGS: ['b', 'i', 'u', 's', 'a', 'br', 'span', 'code', 'mark', 'sub', 'sup'],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style', 'data-tag-color'],
+    ALLOWED_TAGS: ['b', 'i', 'u', 's', 'a', 'br', 'span', 'code', 'mark', 'sub', 'sup', 'font'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style', 'data-tag-color', 'color'],
     ALLOW_DATA_ATTR: false,
   });
 }

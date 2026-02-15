@@ -133,7 +133,7 @@ export function createPage(pid,tplId){
   var tpl=null;if(tplId){for(var i=0;i<state.db.templates.length;i++){if(state.db.templates[i].id===tplId){tpl=state.db.templates[i];break}}}
   var blks=tpl?JSON.parse(JSON.stringify(tpl.blocks)):[{id:genId(),type:'text',content:''}];
   for(var j=0;j<blks.length;j++)blks[j].id=genId();
-  var np={id:genId(),title:tpl?tpl.name:'새 페이지',icon:tpl?tpl.icon:'📄',parentId:pid||null,blocks:blks,tags:[],author:state.user.id,created:Date.now(),updated:Date.now(),versions:[],comments:[],favorite:false,deleted:false};
+  var np={id:genId(),title:tpl?tpl.name:'새 페이지',icon:tpl?tpl.icon:'📄',parentId:pid||null,blocks:blks,tags:[],author:state.user.id,created:Date.now(),updated:Date.now(),versions:[],comments:[],favorite:false,deleted:false,order:getPages(pid||null).length};
   state.db.pages.push(np);saveDB();renderTree();loadPage(np.id);closeModal('templatesModal');toast('페이지 생성됨');
   setTimeout(function(){toggleEdit();$('pageTitle').focus();$('pageTitle').select()},100)
 }
@@ -299,7 +299,7 @@ export function emptyTrash(){
     saveDB();showTrash();toast('휴지통 비움');
   }
 }
-export function duplicatePage(id){var o=getPage(id);if(!o)return;var c=JSON.parse(JSON.stringify(o));c.id=genId();c.title+=' (복사)';c.created=c.updated=Date.now();c.author=state.user.id;c.versions=[];c.comments=[];for(var i=0;i<c.blocks.length;i++)c.blocks[i].id=genId();state.db.pages.push(c);saveDB();renderTree();loadPage(c.id);toast('복제됨')}
+export function duplicatePage(id){var o=getPage(id);if(!o)return;var c=JSON.parse(JSON.stringify(o));c.id=genId();c.title+=' (복사)';c.created=c.updated=Date.now();c.author=state.user.id;c.versions=[];c.comments=[];for(var i=0;i<c.blocks.length;i++)c.blocks[i].id=genId();var siblings=getPages(o.parentId);var origIdx=0;for(var s=0;s<siblings.length;s++){if(siblings[s].id===id){origIdx=s;break}}c.order=origIdx+1;for(var s=0;s<siblings.length;s++){if(siblings[s].order>=c.order&&siblings[s].id!==id)siblings[s].order++}state.db.pages.push(c);saveDB();renderTree();loadPage(c.id);toast('복제됨')}
 export function toggleFavorite(id){var p=getPage(id);if(p){p.favorite=!p.favorite;saveDB();renderTree();toast(p.favorite?'즐겨찾기 추가':'즐겨찾기 해제')}}
 export function movePage(id,newParentId){
   if(id===newParentId)return;
@@ -307,7 +307,45 @@ export function movePage(id,newParentId){
   // 순환 참조 방지
   var check=newParentId?getPage(newParentId):null;
   while(check){if(check.id===id)return;check=check.parentId?getPage(check.parentId):null}
-  p.parentId=newParentId;saveDB();renderTree();toast('이동됨')
+  // 이전 부모의 형제 order 재정렬
+  var oldSiblings=getPages(p.parentId).filter(function(s){return s.id!==id});
+  for(var k=0;k<oldSiblings.length;k++)oldSiblings[k].order=k;
+  p.parentId=newParentId;
+  // 새 부모의 마지막에 배치
+  p.order=getPages(newParentId).filter(function(s){return s.id!==id}).length;
+  saveDB();renderTree();toast('이동됨')
+}
+export function reorderPage(id,targetParentId,newIndex){
+  var page=getPage(id);if(!page)return;
+  if(page.parentId!==targetParentId){
+    var check=targetParentId?getPage(targetParentId):null;
+    while(check){if(check.id===id)return;check=check.parentId?getPage(check.parentId):null}
+    var oldSiblings=getPages(page.parentId).filter(function(p){return p.id!==id});
+    for(var k=0;k<oldSiblings.length;k++)oldSiblings[k].order=k;
+    page.parentId=targetParentId;
+  }
+  var siblings=getPages(targetParentId).filter(function(p){return p.id!==id});
+  if(newIndex<0)newIndex=0;
+  if(newIndex>siblings.length)newIndex=siblings.length;
+  siblings.splice(newIndex,0,page);
+  for(var i=0;i<siblings.length;i++)siblings[i].order=i;
+  saveDB();renderTree();toast('이동됨')
+}
+export function movePageUp(id){
+  var page=getPage(id);if(!page)return;
+  var siblings=getPages(page.parentId);
+  var idx=-1;for(var i=0;i<siblings.length;i++){if(siblings[i].id===id){idx=i;break}}
+  if(idx<=0){toast('이미 맨 위입니다');return}
+  var prev=siblings[idx-1];var tmp=page.order;page.order=prev.order;prev.order=tmp;
+  saveDB();renderTree();toast('위로 이동됨')
+}
+export function movePageDown(id){
+  var page=getPage(id);if(!page)return;
+  var siblings=getPages(page.parentId);
+  var idx=-1;for(var i=0;i<siblings.length;i++){if(siblings[i].id===id){idx=i;break}}
+  if(idx<0||idx>=siblings.length-1){toast('이미 맨 아래입니다');return}
+  var next=siblings[idx+1];var tmp=page.order;page.order=next.order;next.order=tmp;
+  saveDB();renderTree();toast('아래로 이동됨')
 }
 
 // 트리 렌더링 (드래그앤드롭)
@@ -326,10 +364,51 @@ export function renderTreeLevel(pid,con){
       row.addEventListener('contextmenu',function(e){e.preventDefault();showPageCtx(e,p.id)});
       // 드래그
       row.addEventListener('dragstart',function(e){state.dragPageId=p.id;row.classList.add('dragging');e.dataTransfer.effectAllowed='move'});
-      row.addEventListener('dragend',function(){state.dragPageId=null;row.classList.remove('dragging')});
-      row.addEventListener('dragover',function(e){e.preventDefault();if(state.dragPageId&&state.dragPageId!==p.id)row.classList.add('drag-over')});
-      row.addEventListener('dragleave',function(){row.classList.remove('drag-over')});
-      row.addEventListener('drop',function(e){e.preventDefault();row.classList.remove('drag-over');if(state.dragPageId&&state.dragPageId!==p.id)movePage(state.dragPageId,p.id)});
+      row.addEventListener('dragend',function(){
+        state.dragPageId=null;state.dragDropMode=null;state.dragDropTarget=null;
+        row.classList.remove('dragging');
+        var inds=document.querySelectorAll('.tree-drop-indicator');for(var k=0;k<inds.length;k++)inds[k].remove();
+        var overs=document.querySelectorAll('.tree-row.drag-over');for(var k=0;k<overs.length;k++)overs[k].classList.remove('drag-over');
+      });
+      row.addEventListener('dragover',function(e){
+        e.preventDefault();
+        if(!state.dragPageId||state.dragPageId===p.id)return;
+        var rect=row.getBoundingClientRect();var y=e.clientY-rect.top;var h=rect.height;
+        var old=item.querySelector('.tree-drop-indicator');if(old)old.remove();
+        row.classList.remove('drag-over');
+        if(y<h*0.25){
+          var ind=document.createElement('div');ind.className='tree-drop-indicator';
+          item.insertBefore(ind,row);
+          state.dragDropMode='before';state.dragDropTarget=p.id;
+        }else if(y>h*0.75){
+          var ind=document.createElement('div');ind.className='tree-drop-indicator';
+          row.parentNode.insertBefore(ind,row.nextSibling);
+          state.dragDropMode='after';state.dragDropTarget=p.id;
+        }else{
+          row.classList.add('drag-over');
+          state.dragDropMode='into';state.dragDropTarget=p.id;
+        }
+      });
+      row.addEventListener('dragleave',function(e){
+        row.classList.remove('drag-over');
+        if(!item.contains(e.relatedTarget)){var ind=item.querySelector('.tree-drop-indicator');if(ind)ind.remove()}
+      });
+      row.addEventListener('drop',function(e){
+        e.preventDefault();e.stopPropagation();
+        row.classList.remove('drag-over');
+        var inds=document.querySelectorAll('.tree-drop-indicator');for(var k=0;k<inds.length;k++)inds[k].remove();
+        if(!state.dragPageId||state.dragPageId===p.id)return;
+        if(state.dragDropMode==='into'){
+          movePage(state.dragPageId,p.id);
+        }else{
+          var targetPage=getPage(p.id);
+          var siblings=getPages(targetPage.parentId);
+          var targetIdx=0;for(var k=0;k<siblings.length;k++){if(siblings[k].id===p.id){targetIdx=k;break}}
+          var insertIdx=state.dragDropMode==='after'?targetIdx+1:targetIdx;
+          reorderPage(state.dragPageId,targetPage.parentId,insertIdx);
+        }
+        state.dragPageId=null;state.dragDropMode=null;state.dragDropTarget=null;
+      });
       if(hasCh){
         var isOpen=expandedNodes.has(p.id);
         if(isOpen){tog.classList.add('open');tog.setAttribute('aria-expanded','true');ch.classList.remove('closed');renderTreeLevel(p.id,ch)}
@@ -356,7 +435,7 @@ export function setupTrashDrop(){
 export function renderSidebar(){renderTree()}
 
 // 컨텍스트 메뉴
-export function showPageCtx(e,id){var m=$('ctxMenu');m.innerHTML='<div class="ctx-item" onclick="loadPage(\''+id+'\');hideCtx()"><span class="ctx-icon">📄</span>열기</div><div class="ctx-item" onclick="openRenamePage(\''+id+'\');hideCtx()"><span class="ctx-icon">✏️</span>이름 변경</div><div class="ctx-item" onclick="createPage(\''+id+'\');hideCtx()"><span class="ctx-icon">➕</span>하위 페이지</div><div class="ctx-divider"></div><div class="ctx-item" onclick="toggleFavorite(\''+id+'\');hideCtx()"><span class="ctx-icon">⭐</span>즐겨찾기</div><div class="ctx-item" onclick="duplicatePage(\''+id+'\');hideCtx()"><span class="ctx-icon">📋</span>복제</div><div class="ctx-divider"></div><div class="ctx-item danger" onclick="deletePage(\''+id+'\');hideCtx()"><span class="ctx-icon">🗑️</span>삭제</div>';showCtxAt(e.pageX,e.pageY)}
+export function showPageCtx(e,id){var m=$('ctxMenu');m.innerHTML='<div class="ctx-item" onclick="loadPage(\''+id+'\');hideCtx()"><span class="ctx-icon">📄</span>열기</div><div class="ctx-item" onclick="openRenamePage(\''+id+'\');hideCtx()"><span class="ctx-icon">✏️</span>이름 변경</div><div class="ctx-item" onclick="createPage(\''+id+'\');hideCtx()"><span class="ctx-icon">➕</span>하위 페이지</div><div class="ctx-divider"></div><div class="ctx-item" onclick="toggleFavorite(\''+id+'\');hideCtx()"><span class="ctx-icon">⭐</span>즐겨찾기</div><div class="ctx-item" onclick="duplicatePage(\''+id+'\');hideCtx()"><span class="ctx-icon">📋</span>복제</div><div class="ctx-item" onclick="movePageUp(\''+id+'\');hideCtx()"><span class="ctx-icon">⬆️</span>위로 이동</div><div class="ctx-item" onclick="movePageDown(\''+id+'\');hideCtx()"><span class="ctx-icon">⬇️</span>아래로 이동</div><div class="ctx-divider"></div><div class="ctx-item danger" onclick="deletePage(\''+id+'\');hideCtx()"><span class="ctx-icon">🗑️</span>삭제</div>';showCtxAt(e.pageX,e.pageY)}
 export function showBlockCtx(e,idx){
   e.stopPropagation();
   var b=state.page.blocks[idx];

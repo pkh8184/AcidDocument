@@ -11,6 +11,8 @@ var state={
   autoSaveTimer:null,
   isComposing:false,
   dragPageId:null,
+  dragDropMode:null,
+  dragDropTarget:null,
   deleteTargetId:null,
   currentEditBlockId:null,
   currentInsertIdx:null,
