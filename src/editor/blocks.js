@@ -17,7 +17,7 @@ export function getPage(id){for(var i=0;i<state.db.pages.length;i++){if(state.db
 export function getPath(id){var path=[],p=getPage(id);while(p){path.unshift(p);p=p.parentId?getPage(p.parentId):null}return path}
 
 // 블록 ID 검색 헬퍼
-export function findBlock(id){if(!state.page)return null;for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id)return state.page.blocks[i]}return null}
+export function findBlock(id){if(!state.page||!state.page.blocks)return null;for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id)return state.page.blocks[i]}return null}
 export function findBlockIndex(id){if(!state.page)return -1;for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id)return i}return -1}
 
 // 블록 idx의 하위 항목 인덱스 배열 반환
@@ -210,8 +210,10 @@ export function collectBlocks(){
       for(var ri=0;ri<trs.length;ri++){
         var cls=[],tds=trs[ri].querySelectorAll('th,td');
         for(var ci=0;ci<tds.length;ci++){
-          var cellHtml=tds[ci].innerHTML.replace(/<div class="col-resizer"[^>]*><\/div>/g,'');
-          cls.push(sanitizeHTML(cellHtml));
+          var cellClone=tds[ci].cloneNode(true);
+          var cellResizers=cellClone.querySelectorAll('.col-resizer');
+          for(var cr=0;cr<cellResizers.length;cr++)cellResizers[cr].parentNode.removeChild(cellResizers[cr]);
+          cls.push(sanitizeHTML(cellClone.innerHTML));
           if(ri===0&&tds[ci].offsetWidth&&tblW)cws[ci]=Math.round(tds[ci].offsetWidth/tblW*100)
         }
         rows.push(cls)

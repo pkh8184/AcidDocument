@@ -3,17 +3,26 @@
 import state from '../data/store.js';
 import {$,toast} from '../utils/helpers.js';
 import {renderBlocks} from './renderer.js';
-import {triggerAutoSave} from './blocks.js';
+import {triggerAutoSave,findBlock} from './blocks.js';
 import {pushUndoImmediate} from './history.js';
 import {openModal} from '../ui/modals.js';
 import {COLORS} from '../config/firebase.js';
 
-// 블록 찾기 헬퍼
-function findBlock(id){
-  if(!state.page||!state.page.blocks)return null;
-  for(var i=0;i<state.page.blocks.length;i++){if(state.page.blocks[i].id===id)return state.page.blocks[i]}
-  return null;
+// colWidths 합계 100% 정규화
+function normalizeColWidths(b){
+  if(!b.colWidths||!b.colWidths.length)return;
+  var total=0;for(var k=0;k<b.colWidths.length;k++)total+=b.colWidths[k];
+  if(total>0&&total!==100){for(var k=0;k<b.colWidths.length;k++)b.colWidths[k]=Math.round(b.colWidths[k]/total*100)}
 }
+
+// col-resizer 제거 후 셀 HTML 반환
+function cleanCellHtml(td){
+  var clone=td.cloneNode(true);
+  var rs=clone.querySelectorAll('.col-resizer');
+  for(var i=0;i<rs.length;i++)rs[i].parentNode.removeChild(rs[i]);
+  return clone.innerHTML;
+}
+
 // DOM에서 현재 테이블 데이터 수집
 export function collectTableData(id){
   var el=document.querySelector('[data-id="'+id+'"]');
@@ -22,7 +31,7 @@ export function collectTableData(id){
   for(var ri=0;ri<trs.length;ri++){
     var cls=[],tds=trs[ri].querySelectorAll('th,td');
     for(var ci=0;ci<tds.length;ci++){
-      cls.push(tds[ci].innerHTML.replace(/<div class="col-resizer"[^>]*><\/div>/g,''));
+      cls.push(cleanCellHtml(tds[ci]));
     }
     rows.push(cls);
   }
@@ -66,7 +75,6 @@ export function getTableSize(blockId){
 
 // 행 추가 (마지막)
 export function addTblRow(id){
-  console.log('[TABLE] addTblRow called:',id);
   var b=findBlock(id);if(!b||!b.rows)return;
   pushUndoImmediate();
   var rows=collectTableData(id);if(rows)b.rows=rows;
@@ -85,31 +93,31 @@ export function addTblCol(id){
   renderBlocks();triggerAutoSave();
 }
 
-// 위치 지정 행 삽입 (afterRow 뒤에)
+// 위치 지정 행 삽입 (afterRow 뒤에, -1이면 맨 앞)
 export function insertRowAt(id,afterRow){
   var b=findBlock(id);if(!b||!b.rows)return;
   pushUndoImmediate();
   var rows=collectTableData(id);if(rows)b.rows=rows;
+  var insertIdx=Math.max(afterRow+1,0);
   var cols=b.rows[0]?b.rows[0].length:3;
   var nr=[];for(var j=0;j<cols;j++)nr.push('');
-  b.rows.splice(afterRow+1,0,nr);
+  b.rows.splice(insertIdx,0,nr);
   renderBlocks();triggerAutoSave();
-  setTimeout(function(){focusCell(id,afterRow+1,0)},50);
+  setTimeout(function(){focusCell(id,insertIdx,0)},50);
 }
 
-// 위치 지정 열 삽입 (afterCol 뒤에)
+// 위치 지정 열 삽입 (afterCol 뒤에, -1이면 맨 앞)
 export function insertColAt(id,afterCol){
   var b=findBlock(id);if(!b||!b.rows)return;
   pushUndoImmediate();
   var rows=collectTableData(id);if(rows)b.rows=rows;
-  for(var j=0;j<b.rows.length;j++)b.rows[j].splice(afterCol+1,0,'');
+  var insertIdx=Math.max(afterCol+1,0);
+  for(var j=0;j<b.rows.length;j++)b.rows[j].splice(insertIdx,0,'');
   // colWidths 조정
   if(b.colWidths&&b.colWidths.length){
     var avg=Math.floor(100/(b.rows[0].length));
-    b.colWidths.splice(afterCol+1,0,avg);
-    // 재정규화
-    var total=0;for(var k=0;k<b.colWidths.length;k++)total+=b.colWidths[k];
-    if(total!==100)for(var k=0;k<b.colWidths.length;k++)b.colWidths[k]=Math.round(b.colWidths[k]/total*100);
+    b.colWidths.splice(insertIdx,0,avg);
+    normalizeColWidths(b);
   }
   renderBlocks();triggerAutoSave();
 }
@@ -135,7 +143,7 @@ export function deleteCol(id,col){
   var rows=collectTableData(id);if(rows)b.rows=rows;
   for(var j=0;j<b.rows.length;j++)b.rows[j].splice(col,1);
   // colWidths 조정
-  if(b.colWidths&&b.colWidths.length>col){b.colWidths.splice(col,1)}
+  if(b.colWidths&&b.colWidths.length>col){b.colWidths.splice(col,1);normalizeColWidths(b)}
   // colColors/cellStyles 키 재조정
   if(b.colColors){var nc={};for(var k in b.colColors){var ci=parseInt(k);if(ci<col)nc[ci]=b.colColors[k];else if(ci>col)nc[ci-1]=b.colColors[k]}b.colColors=nc}
   if(b.cellStyles){var ns={};for(var k in b.cellStyles){var p=k.split('-');var ri=parseInt(p[0]),ci=parseInt(p[1]);if(ci<col)ns[k]=b.cellStyles[k];else if(ci>col)ns[ri+'-'+(ci-1)]=b.cellStyles[k]}b.cellStyles=ns}
@@ -194,6 +202,8 @@ export function sortTable(id,colIdx,dir){
   var rows=collectTableData(id);if(rows)b.rows=rows;
   var header=b.rows[0];
   var data=b.rows.slice(1);
+  // 정렬 전 원본 인덱스 기록 (1-based, 헤더=0은 고정)
+  for(var di=0;di<data.length;di++)data[di]._origIdx=di+1;
   data.sort(function(a,c){
     var va=(a[colIdx]||'').replace(/<[^>]*>/g,'').trim();
     var vc=(c[colIdx]||'').replace(/<[^>]*>/g,'').trim();
@@ -201,6 +211,13 @@ export function sortTable(id,colIdx,dir){
     if(!isNaN(na)&&!isNaN(nc))return dir==='asc'?na-nc:nc-na;
     return dir==='asc'?va.localeCompare(vc,'ko'):vc.localeCompare(va,'ko');
   });
+  // oldRow → newRow 매핑 (헤더 0은 불변)
+  var map={};map[0]=0;
+  for(var mi=0;mi<data.length;mi++){map[data[mi]._origIdx]=mi+1;delete data[mi]._origIdx}
+  // rowColors 재매핑
+  if(b.rowColors){var nr={};for(var k in b.rowColors){var oi=parseInt(k);if(map.hasOwnProperty(oi))nr[map[oi]]=b.rowColors[k]}b.rowColors=nr}
+  // cellStyles 재매핑 (key: "row-col")
+  if(b.cellStyles){var ns={};for(var k in b.cellStyles){var p=k.split('-');var ri=parseInt(p[0]),ci=parseInt(p[1]);if(map.hasOwnProperty(ri))ns[map[ri]+'-'+ci]=b.cellStyles[k]}b.cellStyles=ns}
   b.rows=[header].concat(data);
   b.sortCol=colIdx;b.sortDir=dir;
   renderBlocks();triggerAutoSave();
@@ -225,13 +242,10 @@ var panelState={blockId:null,row:0,col:0};
 
 // 패널 열기
 export function showTablePanel(blockId,row,col){
-  console.log('[TABLE] showTablePanel called:',blockId,row,col);
   panelState.blockId=blockId;panelState.row=row;panelState.col=col;
   var panel=$('tablePanel');
   var body=$('tablePanelBody');
-  console.log('[TABLE] panel:',panel,'body:',body);
   var b=findBlock(blockId);
-  console.log('[TABLE] block found:',!!b);
   if(!b)return;
   var size=b.rows?{rows:b.rows.length,cols:b.rows[0].length}:{rows:0,cols:0};
   var html='';
@@ -284,20 +298,23 @@ export function closeTablePanel(){
   panelState.blockId=null;
 }
 
+// 패널 상태 초기화 (로그아웃 시 호출)
+export function resetTablePanel(){
+  panelState.blockId=null;panelState.row=0;panelState.col=0;
+  var panel=$('tablePanel');
+  if(panel)panel.classList.remove('open');
+}
+
 // 패널 이벤트 위임 초기화 (한 번만 호출)
 export function initTablePanel(){
   var panel=$('tablePanel');
-  console.log('[TABLE] initTablePanel called, panel:',panel);
   if(!panel)return;
   panel.addEventListener('click',function(e){
-    console.log('[TABLE] panel click, target:',e.target.tagName,e.target.className);
     var btn=e.target.closest('[data-tbl-action]');
-    console.log('[TABLE] btn found:',btn,btn?btn.getAttribute('data-tbl-action'):'none');
     if(!btn)return;
     var action=btn.getAttribute('data-tbl-action');
     var color=btn.hasAttribute('data-color')?btn.getAttribute('data-color'):null;
     var bid=panelState.blockId,row=panelState.row,col=panelState.col;
-    console.log('[TABLE] action:',action,'bid:',bid,'row:',row,'col:',col);
     if(!bid)return;
     switch(action){
       case'insertRowBefore':insertRowAt(bid,row-1);break;
@@ -354,6 +371,7 @@ export function setupTableResize(div,b){
         if(!b.colWidths)b.colWidths=[];
         var tbl=div.querySelector('table');
         b.colWidths[colIdx]=tbl?Math.round(th.offsetWidth/tbl.offsetWidth*100):Math.floor(100/(b.rows&&b.rows[0]?b.rows[0].length:3));
+        normalizeColWidths(b);
         pushUndoImmediate();triggerAutoSave();
       }
     }
