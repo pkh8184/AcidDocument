@@ -76,7 +76,7 @@ export function getTableSize(blockId){
 // 행 추가 (마지막)
 export function addTblRow(id){
   var b=findBlock(id);if(!b||!b.rows)return;
-  pushUndoImmediate();
+  pushUndoImmediate();b=findBlock(id);
   var rows=collectTableData(id);if(rows)b.rows=rows;
   var cols=b.rows[0]?b.rows[0].length:3;
   var nr=[];for(var j=0;j<cols;j++)nr.push('');
@@ -87,7 +87,7 @@ export function addTblRow(id){
 // 열 추가 (마지막)
 export function addTblCol(id){
   var b=findBlock(id);if(!b||!b.rows)return;
-  pushUndoImmediate();
+  pushUndoImmediate();b=findBlock(id);
   var rows=collectTableData(id);if(rows)b.rows=rows;
   for(var j=0;j<b.rows.length;j++)b.rows[j].push('');
   renderBlocks();triggerAutoSave();
@@ -96,7 +96,7 @@ export function addTblCol(id){
 // 위치 지정 행 삽입 (afterRow 뒤에, -1이면 맨 앞)
 export function insertRowAt(id,afterRow){
   var b=findBlock(id);if(!b||!b.rows)return;
-  pushUndoImmediate();
+  pushUndoImmediate();b=findBlock(id);
   var rows=collectTableData(id);if(rows)b.rows=rows;
   var insertIdx=Math.max(afterRow+1,0);
   var cols=b.rows[0]?b.rows[0].length:3;
@@ -109,7 +109,7 @@ export function insertRowAt(id,afterRow){
 // 위치 지정 열 삽입 (afterCol 뒤에, -1이면 맨 앞)
 export function insertColAt(id,afterCol){
   var b=findBlock(id);if(!b||!b.rows)return;
-  pushUndoImmediate();
+  pushUndoImmediate();b=findBlock(id);
   var rows=collectTableData(id);if(rows)b.rows=rows;
   var insertIdx=Math.max(afterCol+1,0);
   for(var j=0;j<b.rows.length;j++)b.rows[j].splice(insertIdx,0,'');
@@ -126,7 +126,7 @@ export function insertColAt(id,afterCol){
 export function deleteRow(id,row){
   var b=findBlock(id);if(!b||!b.rows)return;
   if(b.rows.length<=1){toast('최소 1개 행이 필요합니다','warn');return}
-  pushUndoImmediate();
+  pushUndoImmediate();b=findBlock(id);
   var rows=collectTableData(id);if(rows)b.rows=rows;
   b.rows.splice(row,1);
   // rowColors/cellStyles 키 재조정
@@ -139,7 +139,7 @@ export function deleteRow(id,row){
 export function deleteCol(id,col){
   var b=findBlock(id);if(!b||!b.rows)return;
   if(b.rows[0].length<=1){toast('최소 1개 열이 필요합니다','warn');return}
-  pushUndoImmediate();
+  pushUndoImmediate();b=findBlock(id);
   var rows=collectTableData(id);if(rows)b.rows=rows;
   for(var j=0;j<b.rows.length;j++)b.rows[j].splice(col,1);
   // colWidths 조정
@@ -153,7 +153,7 @@ export function deleteCol(id,col){
 // 셀 배경색 설정
 export function setCellColor(id,row,col,color){
   var b=findBlock(id);if(!b)return;
-  pushUndoImmediate();
+  pushUndoImmediate();b=findBlock(id);
   var rows=collectTableData(id);if(rows)b.rows=rows;
   if(!b.cellStyles)b.cellStyles={};
   if(color)b.cellStyles[row+'-'+col]={bg:color};
@@ -164,7 +164,7 @@ export function setCellColor(id,row,col,color){
 // 행 배경색 설정
 export function setRowColor(id,row,color){
   var b=findBlock(id);if(!b)return;
-  pushUndoImmediate();
+  pushUndoImmediate();b=findBlock(id);
   var rows=collectTableData(id);if(rows)b.rows=rows;
   if(!b.rowColors)b.rowColors={};
   if(color)b.rowColors[row]=color;
@@ -175,7 +175,7 @@ export function setRowColor(id,row,color){
 // 열 배경색 설정
 export function setColColor(id,col,color){
   var b=findBlock(id);if(!b)return;
-  pushUndoImmediate();
+  pushUndoImmediate();b=findBlock(id);
   var rows=collectTableData(id);if(rows)b.rows=rows;
   if(!b.colColors)b.colColors={};
   if(color)b.colColors[col]=color;
@@ -186,7 +186,7 @@ export function setColColor(id,col,color){
 // 색상 초기화
 export function clearCellColors(id,row,col){
   var b=findBlock(id);if(!b)return;
-  pushUndoImmediate();
+  pushUndoImmediate();b=findBlock(id);
   var rows=collectTableData(id);if(rows)b.rows=rows;
   if(b.cellStyles)delete b.cellStyles[row+'-'+col];
   if(b.rowColors)delete b.rowColors[row];
@@ -198,7 +198,7 @@ export function clearCellColors(id,row,col){
 export function sortTable(id,colIdx,dir){
   var b=findBlock(id);
   if(!b||!b.rows||b.rows.length<2)return;
-  pushUndoImmediate();
+  pushUndoImmediate();b=findBlock(id);
   var rows=collectTableData(id);if(rows)b.rows=rows;
   var header=b.rows[0];
   var data=b.rows.slice(1);
@@ -368,10 +368,12 @@ export function setupTableResize(div,b){
       document.removeEventListener('mousemove',onMouseMove);
       document.removeEventListener('mouseup',onMouseUp);
       if(th){
-        if(!b.colWidths)b.colWidths=[];
+        var bid=div.getAttribute('data-id');
+        var cur=findBlock(bid);if(!cur)return;
+        if(!cur.colWidths)cur.colWidths=[];
         var tbl=div.querySelector('table');
-        b.colWidths[colIdx]=tbl?Math.round(th.offsetWidth/tbl.offsetWidth*100):Math.floor(100/(b.rows&&b.rows[0]?b.rows[0].length:3));
-        normalizeColWidths(b);
+        cur.colWidths[colIdx]=tbl?Math.round(th.offsetWidth/tbl.offsetWidth*100):Math.floor(100/(cur.rows&&cur.rows[0]?cur.rows[0].length:3));
+        normalizeColWidths(cur);
         pushUndoImmediate();triggerAutoSave();
       }
     }

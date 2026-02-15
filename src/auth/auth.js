@@ -7,7 +7,6 @@ import {saveDB,logLoginAttempt,getLoginLockState,updateLoginLockState,clearLogin
 import {initApp} from '../main.js';
 import {openModal,closeModal,closeAllModals,closeAllPanels} from '../ui/modals.js';
 import {generateSalt,hashPassword,verifyPassword} from './crypto.js';
-import {resetTablePanel} from '../editor/table.js';
 
 // AUTH_DOMAIN: Firebase Auth용 이메일 도메인
 var AUTH_DOMAIN='@aciddocument.local';
@@ -407,7 +406,7 @@ export function resetAppState(){
   state.selectedEventColor='#3b82f6';
   state.loginInProgress=false;
   state.appInitialized=false;
-  resetTablePanel();
+  import('../editor/table.js').then(function(m){m.resetTablePanel()});
 }
 
 // === logout: Firebase Auth + localStorage 모두 정리 ===
