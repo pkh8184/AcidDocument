@@ -290,11 +290,14 @@ export function initTablePanel(){
   console.log('[TABLE] initTablePanel called, panel:',panel);
   if(!panel)return;
   panel.addEventListener('click',function(e){
+    console.log('[TABLE] panel click, target:',e.target.tagName,e.target.className);
     var btn=e.target.closest('[data-tbl-action]');
+    console.log('[TABLE] btn found:',btn,btn?btn.getAttribute('data-tbl-action'):'none');
     if(!btn)return;
     var action=btn.getAttribute('data-tbl-action');
     var color=btn.hasAttribute('data-color')?btn.getAttribute('data-color'):null;
     var bid=panelState.blockId,row=panelState.row,col=panelState.col;
+    console.log('[TABLE] action:',action,'bid:',bid,'row:',row,'col:',col);
     if(!bid)return;
     switch(action){
       case'insertRowBefore':insertRowAt(bid,row-1);break;
