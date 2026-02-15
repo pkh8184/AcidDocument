@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx -y @modelcontextprotocol/server-sequential-thinking:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm install:*)",
+      "Bash(timeout 10 npx vite:*)",
+      "Bash(git -C \"c:\\\\Users\\\\rk454\\\\Desktop\\\\Project\\\\HomePage\\\\AcidDocument\\\\AcidDocument\" branch --show-current)",
+      "Bash(python:*)",
+      "Bash(where:*)",
+      "Bash(curl:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(taskkill:*)",
+      "Bash(git -C \"c:\\\\Users\\\\rk454\\\\Desktop\\\\Project\\\\HomePage\\\\AcidDocument\\\\AcidDocument\" status)",
+      "Bash(git -C \"c:\\\\Users\\\\rk454\\\\Desktop\\\\Project\\\\HomePage\\\\AcidDocument\\\\AcidDocument\" diff --stat)",
+      "Bash(powershell -Command \"$lines = Get-Content ''c:\\\\Users\\\\rk454\\\\Desktop\\\\Project\\\\HomePage\\\\AcidDocument\\\\AcidDocument\\\\index.html'' -Encoding UTF8; $newLines = $lines[0..303] + $lines[3106..3107]; $newLines | Set-Content ''c:\\\\Users\\\\rk454\\\\Desktop\\\\Project\\\\HomePage\\\\AcidDocument\\\\AcidDocument\\\\index.html'' -Encoding UTF8\")",
+      "Bash(powershell -File - <<'PSEOF'\n$lines = Get-Content 'c:\\\\Users\\\\rk454\\\\Desktop\\\\Project\\\\HomePage\\\\AcidDocument\\\\AcidDocument\\\\index.html' -Encoding UTF8\n$newLines = $lines[0..303] + $lines[3106..3107]\n$newLines | Set-Content 'c:\\\\Users\\\\rk454\\\\Desktop\\\\Project\\\\HomePage\\\\AcidDocument\\\\AcidDocument\\\\index.html' -Encoding UTF8\nPSEOF)",
+      "Bash(npx vite build)",
+      "Bash(wc:*)",
+      "Bash(npx vitest run)",
+      "Bash(git log:*)",
+      "Bash(npx vitest:*)",
+      "Bash(git stash:*)",
+      "Bash(git merge:*)",
+      "Bash(git status:*)",
+      "Bash(cd:*)",
+      "Bash(npx firebase-tools:*)",
+      "Bash(npx firebase deploy:*)",
+      "Bash(git pull:*)"
+    ]
+  }
+}

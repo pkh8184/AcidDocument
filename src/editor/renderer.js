@@ -213,12 +213,10 @@ export function createBlockEl(b,idx){
       if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;
     case'table':
-      var rows=b.rows||[['','',''],['','','']],thc=b.headerColor||'',tdc=b.cellColor||'',tAlign=b.align||'left';
-      var colWidths=b.colWidths||[];
+      var rows=b.rows||[['','',''],['','','']];
       var numCols=rows[0]?rows[0].length:3;
-      inner='<div class="block-table-wrap"><table style="width:100%;border-collapse:collapse;table-layout:fixed">';
-      // colgroup으로 열 너비 설정
-      inner+='<colgroup>';
+      var colWidths=b.colWidths||[];
+      inner='<div class="block-table-wrap"><table><colgroup>';
       for(var cw=0;cw<numCols;cw++){
         var w=colWidths[cw]||Math.floor(100/numCols);
         inner+='<col style="width:'+w+'%">';
@@ -227,35 +225,28 @@ export function createBlockEl(b,idx){
       for(var r=0;r<rows.length;r++){
         inner+='<tr>';
         for(var c=0;c<rows[r].length;c++){
-          var cs=(r===0&&thc?'background:'+thc+';':'')+(r>0&&tdc?'background:'+tdc+';':'')+'padding:10px;border:1px solid var(--bdr);text-align:'+tAlign+';';
-          if(r===0){
-            inner+='<th'+ce+' style="'+cs+'">'+sanitizeHTML(rows[r][c]||'');
-            if(state.editMode){var sortIcon=(b.sortCol===c)?(b.sortDir==='asc'?'\u2191':'\u2193'):'\u21C5';inner+='<span class="sort-btn" contenteditable="false" data-action="sortTable" data-block-id="'+b.id+'" data-col="'+c+'">'+sortIcon+'</span>'}
-            inner+='</th>';
-          }else{
-            inner+='<td'+ce+' style="'+cs+'">'+sanitizeHTML(rows[r][c]||'')+'</td>';
+          var tag=r===0?'th':'td';
+          // 셀 배경색 우선순위: cellStyles > rowColors > colColors > headerColor(행0)
+          var bgColor='';
+          if(b.cellStyles&&b.cellStyles[r+'-'+c]&&b.cellStyles[r+'-'+c].bg)bgColor=b.cellStyles[r+'-'+c].bg;
+          else if(b.rowColors&&b.rowColors[r])bgColor=b.rowColors[r];
+          else if(b.colColors&&b.colColors[c])bgColor=b.colColors[c];
+          else if(r===0&&b.headerColor)bgColor=b.headerColor;
+          var cellStyle=bgColor?'background:'+bgColor+';':'';
+          inner+='<'+tag+ce+' data-row="'+r+'" data-col="'+c+'"'+(cellStyle?' style="'+cellStyle+'"':'')+'>'+sanitizeHTML(rows[r][c]||'');
+          if(state.editMode&&r===0){
+            inner+='<div class="col-resizer" data-col="'+c+'" contenteditable="false"></div>';
           }
+          inner+='</'+tag+'>';
         }
         inner+='</tr>';
       }
-      inner+='</table></div>';
+      inner+='</table>';
       if(state.editMode){
-        inner+='<div class="block-table-tools" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">';
-        inner+='<button class="btn btn-sm btn-s" data-action="addTblRow" data-block-id="'+b.id+'">+행</button>';
-        inner+='<button class="btn btn-sm btn-s" data-action="addTblCol" data-block-id="'+b.id+'">+열</button>';
-        inner+='<button class="btn btn-sm btn-s" data-action="delTblRow" data-block-id="'+b.id+'">-행</button>';
-        inner+='<button class="btn btn-sm btn-s" data-action="delTblCol" data-block-id="'+b.id+'">-열</button>';
-        inner+='<select class="btn btn-sm btn-s" data-action="setTblAlign" data-block-id="'+b.id+'"><option value="">정렬</option><option value="left"'+(tAlign==='left'?' selected':'')+'>왼쪽</option><option value="center"'+(tAlign==='center'?' selected':'')+'>가운데</option><option value="right"'+(tAlign==='right'?' selected':'')+'>오른쪽</option></select>';
-        inner+='<button class="btn btn-sm btn-s" data-action="openColWidthModal" data-block-id="'+b.id+'">열 너비</button>';
-        inner+='<button class="btn btn-sm" style="color:var(--err)" data-action="deleteTable" data-block-id="'+b.id+'">삭제</button>';
-        inner+='<span style="margin-left:4px;color:var(--bdr)">|</span>';
-        inner+='<select class="btn btn-sm btn-s table-filter-col" style="min-width:60px">';
-        for(var fc=0;fc<numCols;fc++){inner+='<option value="'+fc+'">열 '+(fc+1)+'</option>';}
-        inner+='</select>';
-        inner+='<input type="text" class="table-filter-input" placeholder="필터..." style="padding:4px 8px;font-size:13px;width:120px;border-radius:var(--rad);border:1px solid var(--bdr);background:var(--bg3);color:var(--t1)">';
-        inner+='</div>';
-        inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
+        inner+='<div class="tbl-add-row" data-action="addTblRow" data-block-id="'+b.id+'">+ 행 추가</div>';
       }
+      inner+='</div>';
+      if(state.editMode)inner+='<button class="block-add-below" data-action="addBlockBelow" data-idx="'+idx+'">+ 블록 추가</button>';
       break;
     case'toc':
       inner='<div class="block-toc-wrap">'+genTOC()+'</div>';

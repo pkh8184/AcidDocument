@@ -14,7 +14,7 @@ import {
   moveBlockUpCurrent,moveBlockDownCurrent,onTitleChange
 } from './editor/blocks.js';
 import {
-  setTblColor,applyColWidths
+  initTablePanel,closeTablePanel
 } from './editor/table.js';
 import {
   insertImage,submitImage,insertVideo,submitVideo,insertPdf,submitPdf,
@@ -219,8 +219,7 @@ window.moveBlockDownCurrent=moveBlockDownCurrent;
 window.getCurrentIdx=getCurrentIdx;
 window.genId=genId;
 window.insertBlock=insertBlock;
-window.setTblColor=setTblColor;
-window.applyColWidths=applyColWidths;
+window.closeTablePanel=closeTablePanel;
 window.addBlockBelow=addBlockBelow;
 window.hideCtx=hideCtx;
 window.dupBlock=dupBlock;
@@ -326,4 +325,5 @@ window.selectPageLink=function(id,title){closeModal('pageLinkModal');insertPageL
 window.filterPageLinks=function(q){renderPageLinkList(q)};
 
 // DOMContentLoaded
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+function onReady(){initTablePanel();init()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',onReady);else onReady();

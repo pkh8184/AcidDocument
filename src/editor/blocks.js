@@ -210,7 +210,7 @@ export function collectBlocks(){
       for(var ri=0;ri<trs.length;ri++){
         var cls=[],tds=trs[ri].querySelectorAll('th,td');
         for(var ci=0;ci<tds.length;ci++){
-          var cellHtml=tds[ci].innerHTML.replace(/<div class="col-resizer"[^>]*><\/div>/g,'').replace(/<span class="sort-btn"[^>]*>[^<]*<\/span>/g,'');
+          var cellHtml=tds[ci].innerHTML.replace(/<div class="col-resizer"[^>]*><\/div>/g,'');
           cls.push(sanitizeHTML(cellHtml));
           if(ri===0&&tds[ci].offsetWidth&&tblW)cws[ci]=Math.round(tds[ci].offsetWidth/tblW*100)
         }

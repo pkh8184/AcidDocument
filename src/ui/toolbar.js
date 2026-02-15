@@ -71,7 +71,7 @@ export function execSlash(type){
   var b=state.page.blocks[idx];b.type=type;b.content='';
   switch(type){
     case'bullet':b.indent=0;break;
-    case'table':b.rows=[['','',''],['','','']];break;
+    case'table':showTableGrid(idx);return;
     case'callout':b.calloutType='info';break;
     case'number':b.num=1;b.indent=0;break;
     case'toggle':b.open=false;b.innerContent='';break;
@@ -152,6 +152,69 @@ export function insertMention(userId,userName){
     renderBlocks();focusBlock(idx,'end');triggerAutoSave();
   }
   state.slashMenuState.idx=null;
+}
+
+// 테이블 그리드 셀렉터
+export function showTableGrid(idx){
+  // 기존 그리드 있으면 제거
+  var old=document.querySelector('.table-grid-selector');
+  if(old)old.remove();
+  var wrap=document.createElement('div');
+  wrap.className='table-grid-selector';
+  // 위치: 슬래시 메뉴 위치 근처
+  var menu=$('slashMenu');
+  var menuRect=menu.getBoundingClientRect();
+  wrap.style.left=menuRect.left+'px';
+  wrap.style.top=menuRect.top+'px';
+  var grid=document.createElement('div');
+  grid.className='table-grid';
+  var label=document.createElement('div');
+  label.className='table-grid-label';
+  label.textContent='1 × 1';
+  var hoverR=1,hoverC=1;
+  for(var r=0;r<10;r++){for(var c=0;c<10;c++){
+    var cell=document.createElement('div');
+    cell.className='table-grid-cell';
+    cell.setAttribute('data-r',r);cell.setAttribute('data-c',c);
+    (function(cr,cc){
+      cell.addEventListener('mouseenter',function(){
+        hoverR=cr+1;hoverC=cc+1;
+        label.textContent=hoverR+' × '+hoverC;
+        var cells=grid.querySelectorAll('.table-grid-cell');
+        for(var i=0;i<cells.length;i++){
+          var ir=parseInt(cells[i].getAttribute('data-r'));
+          var ic=parseInt(cells[i].getAttribute('data-c'));
+          cells[i].classList.toggle('active',ir<hoverR&&ic<hoverC);
+        }
+      });
+      cell.addEventListener('click',function(){
+        wrap.remove();
+        import('../editor/table.js').then(function(m){m.createTable(idx,hoverR,hoverC)});
+      });
+    })(r,c);
+    grid.appendChild(cell);
+  }}
+  wrap.appendChild(grid);
+  wrap.appendChild(label);
+  document.body.appendChild(wrap);
+  // ESC 또는 외부 클릭으로 닫기
+  function closeGrid(e){
+    if(e.type==='keydown'&&e.key!=='Escape')return;
+    wrap.remove();
+    document.removeEventListener('keydown',closeGrid);
+    document.removeEventListener('mousedown',clickOutside);
+  }
+  function clickOutside(e){
+    if(!wrap.contains(e.target)){
+      wrap.remove();
+      document.removeEventListener('keydown',closeGrid);
+      document.removeEventListener('mousedown',clickOutside);
+    }
+  }
+  setTimeout(function(){
+    document.addEventListener('keydown',closeGrid);
+    document.addEventListener('mousedown',clickOutside);
+  },0);
 }
 
 // 인라인 태그
