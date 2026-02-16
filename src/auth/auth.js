@@ -156,6 +156,7 @@ function progressiveMigrate(id,pw,legacyUser){
 // === handleLogin: Firebase Auth 우선, 레거시 폴백 + Firestore 잠금 ===
 export function handleLogin(e){
   e.preventDefault();
+  logFlow('로그인 버튼 클릭');
   // db 로드 전이면 대기
   if(!state.db||!state.db.users){
     logError('DB 미로드 — 로그인 불가',{db:!!state.db,users:!!(state.db&&state.db.users)});
