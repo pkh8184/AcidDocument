@@ -1,3 +1,4 @@
+@import 'pretendard/dist/web/variable/pretendardvariable.css';
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg1:#0d1117;--bg2:#161b22;--bg3:#21262d;--bg4:#30363d;--t1:#f0f6fc;--t2:#c9d1d9;--t3:#8b949e;--t4:#6e7681;--acc:#58a6ff;--accH:#79b8ff;--accM:rgba(88,166,255,.15);--ok:#3fb950;--warn:#d29922;--err:#f85149;--bdr:#30363d;--rad:6px}
 [data-theme=light]{--bg1:#fff;--bg2:#f6f8fa;--bg3:#eee;--bg4:#d0d7de;--t1:#1f2328;--t2:#424a53;--t3:#656d76;--t4:#8c959f;--acc:#0969da;--accH:#0550ae;--accM:rgba(9,105,218,.12);--bdr:#d0d7de}

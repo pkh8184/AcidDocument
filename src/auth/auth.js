@@ -7,6 +7,7 @@ import {saveDB,logLoginAttempt,getLoginLockState,updateLoginLockState,clearLogin
 import {initApp} from '../main.js';
 import {openModal,closeModal,closeAllModals,closeAllPanels} from '../ui/modals.js';
 import {generateSalt,hashPassword,verifyPassword,isLegacyHash,validatePassword} from './crypto.js';
+import {logFlow,logHash,logLock,logFB,logSession,logError} from './loginDebug.js';
 
 // AUTH_DOMAIN: Firebase Auth용 이메일 도메인
 var AUTH_DOMAIN='@aciddocument.local';
@@ -26,18 +27,25 @@ export function getAuthErrorMessage(code){
 
 // --- 유틸: 레거시 users 배열에서 사용자 찾기 (async — 해시/평문 모두 지원) ---
 function findLegacyUser(id,pw){
-  if(!state.db||!state.db.users)return Promise.resolve(null);
+  if(!state.db||!state.db.users){logHash('DB/users 없음 — 레거시 검증 불가');return Promise.resolve(null)}
   for(var i=0;i<state.db.users.length;i++){
     var u=state.db.users[i];
     if(u.id===id&&u.active){
       // 해시된 비밀번호 우선 체크
       if(u.pwHash&&u.pwSalt){
-        return verifyPassword(pw,u.pwSalt,u.pwHash).then(function(match){return match?u:null}).catch(function(){return null});
+        var hashType=u.pwHash.startsWith('pbkdf2:')?'PBKDF2':'SHA-256(legacy)';
+        logHash('해시 검증 시작',{id:id,type:hashType,saltLen:u.pwSalt.length});
+        return verifyPassword(pw,u.pwSalt,u.pwHash).then(function(match){
+          logHash('해시 검증 결과',{id:id,match:match});
+          return match?u:null;
+        }).catch(function(err){logError('해시 검증 실패',{id:id,err:err.message});return null});
       }
       // 레거시 평문 폴백
+      logHash('평문 비밀번호 비교',{id:id});
       if(u.pw===pw)return Promise.resolve(u);
     }
   }
+  logHash('사용자 미발견 또는 비활성',{id:id});
   return Promise.resolve(null);
 }
 function findLegacyUserById(id){
@@ -51,7 +59,8 @@ function findLegacyUserById(id){
 // --- 유틸: 비밀번호 해시 마이그레이션 (평문→PBKDF2, 레거시SHA256→PBKDF2) ---
 function migrateUserPassword(user,plaintextPw){
   // 이미 PBKDF2로 해싱됨 → 스킵
-  if(user.pwHash&&!isLegacyHash(user.pwHash))return;
+  if(user.pwHash&&!isLegacyHash(user.pwHash)){logHash('마이그레이션 불필요 (이미 PBKDF2)',{id:user.id});return}
+  logHash('PBKDF2 마이그레이션 시작',{id:user.id,hadHash:!!user.pwHash,hadPw:!!user.pw});
   var salt=generateSalt();
   hashPassword(plaintextPw,salt).then(function(hash){
     var backupPw=null;
@@ -173,8 +182,9 @@ export function handleLogin(e){
   }
 
   // Firestore 잠금 상태 확인 후 로그인 진행
+  logFlow('로그인 시작',{id:id});
   getLoginLockState(id).then(function(serverSt){
-    console.log('로그인 시도 - 서버 잠금 상태:', serverSt);
+    logLock('서버 잠금 상태 조회',serverSt);
 
     // 서버 잠금 상태가 권위 (Firestore가 source of truth)
     if(serverSt.blocked){
@@ -196,9 +206,10 @@ export function handleLogin(e){
 
     // .then(onSuccess, onFailure) 패턴 사용:
     // onSuccess 내부 에러가 onFailure(레거시 폴백)로 빠지는 것을 방지
+    logFB('Firebase Auth 로그인 시도',{email:email});
     auth.signInWithEmailAndPassword(email,pw).then(function(cred){
       // Firebase Auth 로그인 성공
-      console.log('Firebase Auth 로그인 성공:',id);
+      logFB('Firebase Auth 로그인 성공',{id:id,uid:cred.user.uid});
       logLoginAttempt(id,true);
       clearLoginLockState(id);
       saveLoginState({attempts:0,lockUntil:0,blocked:false});
@@ -227,7 +238,7 @@ export function handleLogin(e){
       resetLoginBtn();
     }, function(authErr){
       // 2. Firebase Auth 실패 -> 레거시 폴백
-      console.log('Firebase Auth 실패:',authErr.code,'- 레거시 폴백 시도');
+      logFB('Firebase Auth 실패 → 레거시 폴백',{code:authErr.code,message:authErr.message});
 
       // findLegacyUser는 이제 Promise 반환 (해시/평문 모두 지원)
       findLegacyUser(id,pw).then(function(u){
@@ -235,7 +246,7 @@ export function handleLogin(e){
           // 둘 다 실패 — 잠금 카운터 증가
           logLoginAttempt(id,false);
           serverSt.attempts=(serverSt.attempts||0)+1;
-          console.log('로그인 실패 - 시도 횟수:', serverSt.attempts);
+          logLock('로그인 실패 — 시도 횟수 증가',{id:id,attempts:serverSt.attempts});
 
           var idExists=false;
           for(var j=0;j<state.db.users.length;j++){if(state.db.users[j].id===id){idExists=true;break}}
@@ -271,7 +282,7 @@ export function handleLogin(e){
         }
 
         // 레거시 로그인 성공
-        console.log('레거시 로그인 성공:',id);
+        logFlow('레거시 로그인 성공',{id:id,needPw:!!u.needPw,hasHash:!!u.pwHash});
         logLoginAttempt(id,true);
         clearLoginLockState(id);
         saveLoginState({attempts:0,lockUntil:0,blocked:false});

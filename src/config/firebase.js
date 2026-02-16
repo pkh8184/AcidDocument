@@ -3,6 +3,8 @@
 var firebaseConfig={apiKey:"AIzaSyBqHTIoLGKnCnR8n8jFGS3a4LGhIJe5xQI",authDomain:"aciddocument.firebaseapp.com",projectId:"aciddocument",storageBucket:"aciddocument.firebasestorage.app",messagingSenderId:"834603817632",appId:"1:834603817632:web:5bd935f6805e05582307c5"};
 firebase.initializeApp(firebaseConfig);
 export var firestore=firebase.firestore();
+// Edge Tracking Prevention 등으로 WebChannel 연결 실패 시 Long Polling 자동 전환
+firestore.settings({experimentalAutoDetectLongPolling:true});
 export var storage=firebase.storage();
 export var auth=firebase.auth();
 

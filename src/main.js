@@ -55,6 +55,7 @@ import {openExport,exportDoc,exportPdf} from './features/export.js';
 import {doSearch} from './features/search.js';
 import {openPageLinkPicker,renderPageLinkList,insertPageLink,renderBacklinks} from './features/pagelink.js';
 import {undo,redo} from './editor/history.js';
+import {logFlow,logFB,logSession,logError} from './auth/loginDebug.js';
 
 // initApp — 로그인 성공 후 앱 초기화
 export function initApp(){
@@ -105,7 +106,7 @@ function init(){
     // Firebase Auth 사용자 처리 헬퍼
     function handleFirebaseUser(firebaseUser){
       sessionHandled=true;
-      console.log('Firebase Auth 세션 복원:',firebaseUser.email);
+      logSession('Firebase Auth 세션 복원',{email:firebaseUser.email,uid:firebaseUser.uid});
       var legacyId=firebaseUser.email.replace(/@aciddocument\.local$/,'');
 
       // 레거시 users 배열에서 사용자 찾기
@@ -139,6 +140,7 @@ function init(){
 
     // Firebase Auth onAuthStateChanged (세션 관리 유일한 경로)
     auth.onAuthStateChanged(function(firebaseUser){
+      logSession('onAuthStateChanged',{user:firebaseUser?firebaseUser.email:'null',sessionHandled:sessionHandled,loggingOut:state.loggingOut,loginInProgress:state.loginInProgress});
       if(sessionHandled)return;
       if(state.loggingOut)return;
       // handleLogin이 진행 중이면 무시 (handleLogin이 직접 initApp 호출)
@@ -151,10 +153,12 @@ function init(){
       }else{
         // null 수신 — Auth 상태가 아직 로딩 중일 수 있음 (IndexedDB 비동기)
         // 500ms 대기 후에도 Firebase Auth 세션 없으면 로그인 화면 유지
+        logSession('세션 없음 — 500ms 대기 후 로그인 화면 유지');
         if(!authFallbackTimer){
           authFallbackTimer=setTimeout(function(){
             if(sessionHandled)return;
             sessionHandled=true;
+            logSession('세션 타임아웃 — 로그인 화면 표시');
             // localStorage 폴백 제거 — Firebase Auth만 세션 관리
             // 기존 localStorage 데이터 정리
             localStorage.removeItem('ad_session');
