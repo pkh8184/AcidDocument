@@ -178,6 +178,7 @@ function initDBLegacy(){
     ]).then(function(results){
       var doc=results[0];
       var pagesSnap=results[1];
+      console.log('[initDB] app/data exists:',doc.exists,'pages컬렉션:',pagesSnap.size,'empty:',pagesSnap.empty);
 
       if(!doc.exists){
         // 최초 실행: 초기 데이터 생성
@@ -249,6 +250,8 @@ function initDBLegacy(){
           pages.push(p);
         });
         state.db.pages=pages;
+        console.log('[initDB] 페이지 로드 완료:',pages.length,'개');
+        if(pages.length>0)console.log('[initDB] 첫페이지:',pages[0].id,pages[0].title,'blocks:',typeof pages[0].blocks,Array.isArray(pages[0].blocks));
       }else if(state.db.pages.length>0){
         // pages 컬렉션이 비어있고 app/data에 pages가 있으면 → 자동 마이그레이션
         console.log('페이지 마이그레이션 시작:',state.db.pages.length,'개');
