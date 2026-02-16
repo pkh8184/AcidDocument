@@ -113,6 +113,16 @@ export function convertRowsForLoad(obj){
       }else if(key==='userTagsJson'){
         try{newObj.userTags=JSON.parse(val)}catch(e){newObj.userTags=[]}
       }
+      // 개별 페이지 문서에서 로드 시 JSON 문자열→배열 복원
+      else if(key==='blocks'&&typeof val==='string'){
+        try{newObj.blocks=JSON.parse(val)}catch(e){newObj.blocks=[]}
+      }else if(key==='versions'&&typeof val==='string'){
+        try{newObj.versions=JSON.parse(val)}catch(e){newObj.versions=[]}
+      }else if(key==='comments'&&typeof val==='string'){
+        try{newObj.comments=JSON.parse(val)}catch(e){newObj.comments=[]}
+      }else if(key==='tags'&&typeof val==='string'){
+        try{newObj.tags=JSON.parse(val)}catch(e){newObj.tags=[]}
+      }
       // users, pages가 문자열이면 파싱 (기존 데이터 호환)
       else if(key==='users'&&typeof val==='string'){
         try{newObj.users=JSON.parse(val)}catch(e){newObj.users=[]}
