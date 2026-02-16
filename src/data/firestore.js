@@ -146,8 +146,10 @@ function initDBLegacy(){
     return firestore.collection('app').doc('data').get().then(function(doc){
       if(doc.exists){state.db=convertRowsForLoad(doc.data())}
       else{
-        // 초기 비밀번호를 해싱하여 저장
-        var pw1='Kx7mR2pL9nQw',pw2='Ht5vB8cN1jYf';
+        // 초기 비밀번호를 랜덤 생성하여 해싱 저장 (콘솔에 1회 출력)
+        var chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        function randPw(){var p='';for(var k=0;k<12;k++)p+=chars[Math.floor(Math.random()*chars.length)];return p}
+        var pw1=randPw(),pw2=randPw();
         var salt1=generateSalt(),salt2=generateSalt();
         return Promise.all([hashPassword(pw1,salt1),hashPassword(pw2,salt2)]).then(function(hashes){
           state.db={
@@ -185,7 +187,13 @@ function initDBLegacy(){
             settings:{wsName:'AcidDocument',theme:'dark',notice:''},
             session:null,recent:[]
           };
-          return saveDB();
+          return saveDB().then(function(){
+            console.warn('=== 초기 계정 생성 완료 ===');
+            console.warn('admin8184 비밀번호:',pw1);
+            console.warn('admin3926 비밀번호:',pw2);
+            console.warn('첫 로그인 후 반드시 비밀번호를 변경하세요.');
+            console.warn('============================');
+          });
         });
       }
     });
@@ -476,10 +484,12 @@ export function updateLoginLockState(loginId,lockData){
 }
 
 export function clearLoginLockState(loginId){
-  return firestore.collection('app').doc('loginLocks').collection('locks').doc(loginId).set({
-    attempts:0,lockUntil:0,blocked:false,lastAttempt:Date.now(),blockedAt:0
-  }).catch(function(e){
-    console.warn('잠금 상태 초기화 실패:',e);
+  var data={attempts:0,lockUntil:0,blocked:false,lastAttempt:Date.now(),blockedAt:0};
+  return firestore.collection('app').doc('loginLocks').collection('locks').doc(loginId).set(data).catch(function(e){
+    console.warn('잠금 상태 초기화 실패, 1회 재시도:',e);
+    return firestore.collection('app').doc('loginLocks').collection('locks').doc(loginId).set(data).catch(function(e2){
+      console.error('잠금 상태 초기화 재시도 실패:',e2);
+    });
   });
 }
 

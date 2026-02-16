@@ -142,7 +142,9 @@ export function loadPage(id){
   var p=getPage(id);if(!p)return;
   // 편집 중 페이지 이탈 확인
   if(state.editMode&&hasChanges()){
-    if(confirm('작성한 내용을 저장하시겠습니까?')){saveDoc()}
+    var doSave=confirm('작성한 내용을 저장하시겠습니까?\n(취소를 누르면 현재 페이지에 머무릅니다)');
+    if(doSave){saveDoc()}
+    else{return}
   }
   clearTimeout(state.autoSaveTimer);state.autoSaveTimer=null;
   state.editMode=false;state.editBackup=null;
@@ -162,7 +164,7 @@ export function loadPage(id){
 }
 export function loadPageWithoutPush(id){
   var p=getPage(id);if(!p)return;
-  if(state.editMode&&hasChanges()){if(confirm('작성한 내용을 저장하시겠습니까?')){saveDoc()}}
+  if(state.editMode&&hasChanges()){var doSave=confirm('작성한 내용을 저장하시겠습니까?\n(취소를 누르면 현재 페이지에 머무릅니다)');if(doSave){saveDoc()}else{return}}
   clearTimeout(state.autoSaveTimer);state.autoSaveTimer=null;
   state.editMode=false;state.editBackup=null;clearHistory();state.page=p;
   $('pageIcon').textContent=p.icon;$('pageTitle').value=p.title;$('pageTitle').setAttribute('readonly','readonly');

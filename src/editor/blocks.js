@@ -304,8 +304,7 @@ export function updateTocNav(){
 export function updateTocNavVisibility(){
   var nav=$('tocNav');if(!nav)return;
   if(!state.page||!state.page.blocks){nav.classList.remove('visible');return}
-  var has=false;for(var i=0;i<state.page.blocks.length;i++){var t=state.page.blocks[i].type;if(t==='h1'||t==='h2'||t==='h3'){has=true;break}}
-  if(has)nav.classList.add('visible');else nav.classList.remove('visible');
+  nav.classList.add('visible');
 }
 
 // 좌측 메뉴바용 함수

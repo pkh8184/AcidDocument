@@ -6,7 +6,7 @@ import {$,toast,getLoginState,saveLoginState} from '../utils/helpers.js';
 import {saveDB,logLoginAttempt,getLoginLockState,updateLoginLockState,clearLoginLockState} from '../data/firestore.js';
 import {initApp} from '../main.js';
 import {openModal,closeModal,closeAllModals,closeAllPanels} from '../ui/modals.js';
-import {generateSalt,hashPassword,verifyPassword} from './crypto.js';
+import {generateSalt,hashPassword,verifyPassword,isLegacyHash,validatePassword} from './crypto.js';
 
 // AUTH_DOMAIN: Firebase Auth용 이메일 도메인
 var AUTH_DOMAIN='@aciddocument.local';
@@ -32,7 +32,7 @@ function findLegacyUser(id,pw){
     if(u.id===id&&u.active){
       // 해시된 비밀번호 우선 체크
       if(u.pwHash&&u.pwSalt){
-        return verifyPassword(pw,u.pwSalt,u.pwHash).then(function(match){return match?u:null});
+        return verifyPassword(pw,u.pwSalt,u.pwHash).then(function(match){return match?u:null}).catch(function(){return null});
       }
       // 레거시 평문 폴백
       if(u.pw===pw)return Promise.resolve(u);
@@ -48,21 +48,44 @@ function findLegacyUserById(id){
   return null;
 }
 
-// --- 유틸: 평문 비밀번호 → 해시 자동 마이그레이션 ---
+// --- 유틸: 비밀번호 해시 마이그레이션 (평문→PBKDF2, 레거시SHA256→PBKDF2) ---
 function migrateUserPassword(user,plaintextPw){
-  if(user.pwHash)return; // 이미 마이그레이션됨
+  // 이미 PBKDF2로 해싱됨 → 스킵
+  if(user.pwHash&&!isLegacyHash(user.pwHash))return;
   var salt=generateSalt();
   hashPassword(plaintextPw,salt).then(function(hash){
+    var backupPw=null;
+    var backupHash=null;
+    var backupSalt=null;
     for(var i=0;i<state.db.users.length;i++){
       if(state.db.users[i].id===user.id){
+        backupPw=state.db.users[i].pw||null;
+        backupHash=state.db.users[i].pwHash||null;
+        backupSalt=state.db.users[i].pwSalt||null;
         state.db.users[i].pwHash=hash;
         state.db.users[i].pwSalt=salt;
         delete state.db.users[i].pw;
         break;
       }
     }
-    saveDB();
-    console.log('비밀번호 해시 마이그레이션 완료:',user.id);
+    return saveDB().then(function(){
+      console.log('비밀번호 PBKDF2 마이그레이션 완료:',user.id);
+    }).catch(function(err){
+      // saveDB 실패 시 이전 상태로 복원
+      console.error('비밀번호 마이그레이션 저장 실패, 원래 상태로 복원:',err);
+      for(var i=0;i<state.db.users.length;i++){
+        if(state.db.users[i].id===user.id){
+          if(backupPw)state.db.users[i].pw=backupPw;
+          if(backupHash)state.db.users[i].pwHash=backupHash;
+          else delete state.db.users[i].pwHash;
+          if(backupSalt)state.db.users[i].pwSalt=backupSalt;
+          else delete state.db.users[i].pwSalt;
+          break;
+        }
+      }
+    });
+  }).catch(function(err){
+    console.error('비밀번호 해싱 실패:',err);
   });
 }
 
@@ -113,7 +136,7 @@ function progressiveMigrate(id,pw,legacyUser){
       return auth.signInWithEmailAndPassword(email,pw).then(function(cred){
         return saveUidMapping(id,cred.user.uid);
       }).catch(function(e2){
-        console.warn('Progressive migration 재로그인 실패:',e2);
+        console.error('Progressive migration 재로그인 실패 (UID 매핑 누락 가능):',e2);
       });
     }
     console.warn('Progressive migration 실패:',e);
@@ -131,6 +154,7 @@ export function handleLogin(e){
 
   var id=$('loginId').value.trim(),pw=$('loginPw').value;
   if(!id){toast('아이디를 입력하세요','warn');return}
+  localStorage.setItem('ad_last_login_id',id);
 
   // 로그인 진행 중 표시 (onAuthStateChanged 충돌 방지 + 사용자 피드백)
   state.loginInProgress=true;
@@ -301,12 +325,29 @@ export function resetLoginState(){
   $('loginError').style.display='none';
 }
 
-// 서버 잠금 상태 확인 (init에서 사용 — localStorage 캐시 기반 빠른 체크)
+// 서버 잠금 상태 확인 (init에서 사용 — localStorage 캐시 기반 빠른 체크 + Firestore 동기화)
 export function checkServerLockOnInit(){
   var localSt=getLoginState();
   if(localSt.blocked){
+    // localStorage가 blocked이면 Firestore에서 실제 상태 확인 후 동기화
     $('loginBlocked').style.display='block';
     $('loginForm').style.display='none';
+    // 비동기로 Firestore 확인 (UI는 먼저 잠금 표시)
+    var lastId=localStorage.getItem('ad_last_login_id');
+    if(lastId){
+      getLoginLockState(lastId).then(function(serverSt){
+        if(!serverSt.blocked){
+          // 서버에서는 해제됨 → localStorage 동기화
+          saveLoginState({attempts:serverSt.attempts||0,lockUntil:serverSt.lockUntil||0,blocked:false});
+          $('loginBlocked').style.display='none';
+          if(serverSt.lockUntil>Date.now()){
+            showLockTimer(serverSt.lockUntil);
+          }else{
+            $('loginForm').style.display='block';
+          }
+        }
+      });
+    }
     return true;
   }
   if(localSt.lockUntil>Date.now()){
@@ -322,6 +363,8 @@ export function submitPwChange(){
   var nick=$('pwNickname').value.trim(),c=$('pwCur').value,n=$('pwNew').value,cf=$('pwConfirm').value;
   if(!c||!n||!cf){toast('비밀번호를 입력하세요','err');return}
   if(n!==cf){toast('비밀번호가 일치하지 않습니다','err');return}
+  var pwErr=validatePassword(n);
+  if(pwErr){toast(pwErr,'err');return}
 
   var userEntry=null;
   for(var i=0;i<state.db.users.length;i++){
@@ -360,8 +403,8 @@ export function submitPwChange(){
         currentUser.updatePassword(n).then(function(){
           console.log('Firebase Auth 비밀번호 업데이트 완료');
         }).catch(function(e){
-          console.warn('Firebase Auth 비밀번호 업데이트 실패:',e);
-          toast('비밀번호 변경됨 (일부 동기화 실패, 다음 로그인에 영향 없음)','warn');
+          console.error('Firebase Auth 비밀번호 업데이트 실패:',e);
+          toast('비밀번호 변경됨 (Firebase 동기화 실패, 레거시 인증으로 로그인 가능)','warn');
         });
       }
 
@@ -413,12 +456,7 @@ export function resetAppState(){
 export function logout(){
   resetAppState();
   state.loggingOut=true;
-  auth.signOut().catch(function(e){
-    console.warn('Firebase Auth 로그아웃 실패:',e);
-  }).then(function(){
-    state.loggingOut=false;
-  });
-  // 기존 localStorage 정리 (하위 호환)
+  // 먼저 state/UI 정리 (loggingOut 플래그가 onAuthStateChanged 차단)
   localStorage.removeItem('ad_session');
   state.user=null;
   state.page=null;
@@ -432,6 +470,13 @@ export function logout(){
   closeAllModals();
   closeAllPanels();
   location.hash='';
+  // signOut 완료 후 loggingOut 해제 (onAuthStateChanged(null) 무시 보장)
+  auth.signOut().catch(function(e){
+    console.warn('Firebase Auth 로그아웃 실패:',e);
+  }).then(function(){
+    // signOut 후 onAuthStateChanged(null)이 비동기로 발동할 수 있으므로 약간 지연
+    setTimeout(function(){state.loggingOut=false},500);
+  });
 }
 
 // === isSuper: Firestore 역할 + 레거시 users 배열 role 확인 ===

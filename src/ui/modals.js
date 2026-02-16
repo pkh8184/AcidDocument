@@ -5,7 +5,7 @@ import {ICONS,STORAGE_LIMIT,auth} from '../config/firebase.js';
 import {$,$$,esc,toast,formatDate,formatBytes} from '../utils/helpers.js';
 import {saveDB,uploadToStorage,updateStorageUsage} from '../data/firestore.js';
 import {isSuper} from '../auth/auth.js';
-import {generateSalt,hashPassword,verifyPassword} from '../auth/crypto.js';
+import {generateSalt,hashPassword,verifyPassword,validatePassword} from '../auth/crypto.js';
 import {renderTree} from './sidebar.js';
 import {getPage} from '../editor/blocks.js';
 import {renderBlocks} from '../editor/renderer.js';
@@ -270,6 +270,8 @@ export function delUser(id){if(!isSuper()||!confirm('삭제?'))return;state.db.u
 export function changePassword(){
   var c=$('setPwCur').value,n=$('setPwNew').value;
   if(!c||!n){toast('비밀번호 입력','err');return}
+  var pwErr=validatePassword(n);
+  if(pwErr){toast(pwErr,'err');return}
   var userEntry=null;
   for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===state.user.id){userEntry=state.db.users[i];break}}
   if(!userEntry){toast('사용자를 찾을 수 없습니다','err');return}
@@ -291,8 +293,8 @@ export function changePassword(){
         currentUser.updatePassword(n).then(function(){
           console.log('Firebase Auth 비밀번호 업데이트 완료');
         }).catch(function(e){
-          console.warn('Firebase Auth 비밀번호 업데이트 실패:',e);
-          toast('비밀번호 변경됨 (일부 동기화 실패)','warn');
+          console.error('Firebase Auth 비밀번호 업데이트 실패:',e);
+          toast('비밀번호 변경됨 (Firebase 동기화 실패, 레거시 인증으로 로그인 가능)','warn');
         });
       }
       $('setPwCur').value=$('setPwNew').value='';toast('변경됨');

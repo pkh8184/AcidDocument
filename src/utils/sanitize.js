@@ -5,7 +5,7 @@ import DOMPurify from 'dompurify';
 export function sanitizeHTML(dirty) {
   return DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: ['b', 'i', 'u', 's', 'a', 'br', 'span', 'code', 'mark', 'sub', 'sup', 'font'],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style', 'data-tag-color', 'color'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style', 'data-tag-color', 'data-user', 'data-page-id', 'color'],
     ALLOW_DATA_ATTR: false,
   });
 }

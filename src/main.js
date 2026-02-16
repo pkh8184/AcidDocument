@@ -59,31 +59,37 @@ import {undo,redo} from './editor/history.js';
 // initApp — 로그인 성공 후 앱 초기화
 export function initApp(){
   if(state.appInitialized)return;
-  state.appInitialized=true;
-  $('loginScreen').classList.add('hidden');
-  $('appWrap').style.display='flex';
-  $('userName').textContent=state.user.nickname||state.user.id;
-  $('userAvatar').textContent=(state.user.nickname||state.user.id).slice(-2).toUpperCase();
-  $('userAvatar').className='user-avatar '+(isSuper()?'super':'admin');
-  $('userRole').textContent=isSuper()?'최고관리자':'관리자';
-  $('wsName').textContent=state.db.settings.wsName;
-  setTheme(state.db.settings.theme);
-  updateNoticeBar();
-  renderTree();
-  // 해시 라우팅: URL에서 페이지 ID 읽기
-  var hashId=location.hash.slice(1);
-  var targetPage=hashId?getPage(hashId):null;
-  if(targetPage&&!targetPage.deleted){
-    loadPage(targetPage.id);
-  }else{
-    var pgs=getPages(null);
-    if(pgs.length>0)loadPage(pgs[0].id);else createPage()
+  try{
+    state.appInitialized=true;
+    $('loginScreen').classList.add('hidden');
+    $('appWrap').style.display='flex';
+    $('userName').textContent=state.user.nickname||state.user.id;
+    $('userAvatar').textContent=(state.user.nickname||state.user.id).slice(-2).toUpperCase();
+    $('userAvatar').className='user-avatar '+(isSuper()?'super':'admin');
+    $('userRole').textContent=isSuper()?'최고관리자':'관리자';
+    $('wsName').textContent=state.db.settings.wsName;
+    setTheme(state.db.settings.theme);
+    updateNoticeBar();
+    renderTree();
+    // 해시 라우팅: URL에서 페이지 ID 읽기
+    var hashId=location.hash.slice(1);
+    var targetPage=hashId?getPage(hashId):null;
+    if(targetPage&&!targetPage.deleted){
+      loadPage(targetPage.id);
+    }else{
+      var pgs=getPages(null);
+      if(pgs.length>0)loadPage(pgs[0].id);else createPage()
+    }
+    // 브라우저 뒤로가기/앞으로가기 지원
+    window.addEventListener('popstate',function(){
+      var hid=location.hash.slice(1);
+      if(hid){var pg=getPage(hid);if(pg&&!pg.deleted)loadPageWithoutPush(hid)}
+    });
+  }catch(err){
+    console.error('앱 초기화 실패:',err);
+    state.appInitialized=false;
+    toast('앱 초기화에 실패했습니다. 새로고침하세요.','err');
   }
-  // 브라우저 뒤로가기/앞으로가기 지원
-  window.addEventListener('popstate',function(){
-    var hid=location.hash.slice(1);
-    if(hid){var pg=getPage(hid);if(pg&&!pg.deleted)loadPageWithoutPush(hid)}
-  });
 }
 
 // init — 앱 시작점 (Firebase Auth onAuthStateChanged 전용)
