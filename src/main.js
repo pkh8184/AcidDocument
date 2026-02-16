@@ -42,7 +42,9 @@ import {
 import {
   openModal,closeModal,closePanel,closeAllModals,closeAllPanels,
   openSettings,showSettingsTab,saveNickname,createUser,resetPw,togglePwView,
-  exportUsers,toggleActive,delUser,changePassword,saveWorkspace,
+  exportUsers,toggleActive,delUser,changePassword,
+  changeUserIdSelf,adminChangeUserId,showChangeIdInput,toggleChangeIdSelf,
+  saveWorkspace,
   saveNotice,clearNotice,updateNoticeBar,closeNoticeBar,showNotice,
   openShortcutHelp,openSearch,openIconPicker,selectIcon,
   migrateImages,setImageStorageMode,
@@ -97,48 +99,64 @@ export function initApp(){
 
 // init — 앱 시작점 (Firebase Auth onAuthStateChanged 전용)
 function init(){
-  logSession('initDB 시작');
-  initDB().then(function(){
-    logSession('initDB 완료 — listeners 설정');
+  logSession('init 시작');
+  // initDB 시도 — 실패해도 로그인 화면은 표시
+  initDB().catch(function(err){
+    console.warn('[init] initDB 실패 (인증 세션 없음), 로그인 후 재로드:',err.message);
+    if(!state.db)state.db={users:[],pages:[],templates:[],settings:{wsName:'AcidDocument',theme:'dark',notice:''},session:null,recent:[]};
+  }).then(function(){
+    logSession('init — listeners 설정');
     setupListeners();
     // localStorage 캐시 기반 빠른 잠금 체크 (서버 체크는 handleLogin에서 수행)
     if(checkServerLockOnInit())return;
 
     var sessionHandled=false;
     var authFallbackTimer=null;
+    var dbLoaded=!!(state.db&&state.db.users&&state.db.users.length>0);
 
     // Firebase Auth 사용자 처리 헬퍼
     function handleFirebaseUser(firebaseUser){
       sessionHandled=true;
-      logSession('Firebase Auth 세션 복원',{email:firebaseUser.email,uid:firebaseUser.uid});
-      var legacyId=firebaseUser.email.replace(/@aciddocument\.local$/,'');
+      logSession('Firebase Auth 세션 복원',{email:firebaseUser.email,uid:firebaseUser.uid,dbLoaded:dbLoaded});
 
-      // 레거시 users 배열에서 사용자 찾기
-      var u=null;
-      for(var i=0;i<state.db.users.length;i++){
-        if(state.db.users[i].id===legacyId&&state.db.users[i].active){u=state.db.users[i];break}
-      }
+      // DB가 로드되지 않았으면 인증 후 재시도
+      var dbReady=dbLoaded?Promise.resolve():initDB().catch(function(e){
+        console.error('[init] 인증 후 initDB 재시도 실패:',e.message);
+        toast('데이터 로드 실패','err');
+      });
 
-      if(u){
-        state.user=u;
-      }else{
-        // 레거시 배열에 없으면 Firebase Auth 정보로 임시 state.user
-        state.user={
-          id:legacyId,
-          role:'viewer',
-          active:true,
-          nickname:firebaseUser.displayName||legacyId
-        };
-      }
+      dbReady.then(function(){
+        var legacyId=firebaseUser.email.replace(/@aciddocument\.local$/,'');
 
-      // Firestore에서 역할 확인 (비동기)
-      checkFirestoreRole(firebaseUser.uid).then(function(){
-        if(state.user.needPw){
-          $('loginScreen').classList.add('hidden');
-          openModal('pwChangeModal');
-        }else{
-          initApp();
+        // 레거시 users 배열에서 사용자 찾기
+        var u=null;
+        if(state.db&&state.db.users){
+          for(var i=0;i<state.db.users.length;i++){
+            if(state.db.users[i].id===legacyId&&state.db.users[i].active){u=state.db.users[i];break}
+          }
         }
+
+        if(u){
+          state.user=u;
+        }else{
+          // 레거시 배열에 없으면 Firebase Auth 정보로 임시 state.user
+          state.user={
+            id:legacyId,
+            role:'viewer',
+            active:true,
+            nickname:firebaseUser.displayName||legacyId
+          };
+        }
+
+        // Firestore에서 역할 확인 (비동기)
+        checkFirestoreRole(firebaseUser.uid).then(function(){
+          if(state.user.needPw){
+            $('loginScreen').classList.add('hidden');
+            openModal('pwChangeModal');
+          }else{
+            initApp();
+          }
+        });
       });
     }
 
@@ -238,6 +256,10 @@ window.exportUsers=exportUsers;
 window.toggleActive=toggleActive;
 window.delUser=delUser;
 window.changePassword=changePassword;
+window.changeUserIdSelf=changeUserIdSelf;
+window.adminChangeUserId=adminChangeUserId;
+window.showChangeIdInput=showChangeIdInput;
+window.toggleChangeIdSelf=toggleChangeIdSelf;
 window.saveWorkspace=saveWorkspace;
 window.saveNotice=saveNotice;
 window.clearNotice=clearNotice;

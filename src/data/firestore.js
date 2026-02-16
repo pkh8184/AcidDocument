@@ -42,6 +42,40 @@ export async function batchDeletePages(pageIds){
   }
 }
 
+// ── 사용자 ID 일괄 변경 ──────────────────────────────
+// pages 내 모든 author/deletedBy/versions/comments/userTags 참조를 새 ID로 업데이트
+export function batchUpdateUserIdInPages(oldId,newId){
+  var modified=[];
+  for(var i=0;i<state.db.pages.length;i++){
+    var pg=state.db.pages[i],changed=false;
+    if(pg.author===oldId){pg.author=newId;changed=true}
+    if(pg.deletedBy===oldId){pg.deletedBy=newId;changed=true}
+    if(pg.versions&&pg.versions.length>0){
+      for(var v=0;v<pg.versions.length;v++){
+        if(pg.versions[v].author===oldId){pg.versions[v].author=newId;changed=true}
+      }
+    }
+    if(pg.comments&&pg.comments.length>0){
+      for(var c=0;c<pg.comments.length;c++){
+        if(pg.comments[c].author===oldId){pg.comments[c].author=newId;changed=true}
+      }
+    }
+    if(pg.userTags&&pg.userTags.length>0){
+      for(var t=0;t<pg.userTags.length;t++){
+        if(pg.userTags[t].id===oldId){pg.userTags[t].id=newId;changed=true}
+      }
+    }
+    if(changed)modified.push(pg);
+  }
+  if(modified.length>0)return savePages(modified);
+  return Promise.resolve();
+}
+// ipLogs/deleteLogs 내 userId 업데이트 (메모리만 — saveDB에서 저장)
+export function updateUserIdInLogs(oldId,newId){
+  if(state.db.ipLogs){for(var i=0;i<state.db.ipLogs.length;i++){if(state.db.ipLogs[i].userId===oldId)state.db.ipLogs[i].userId=newId}}
+  if(state.db.deleteLogs){for(var i=0;i<state.db.deleteLogs.length;i++){if(state.db.deleteLogs[i].userId===oldId)state.db.deleteLogs[i].userId=newId}}
+}
+
 // rows/columns 배열을 JSON 문자열로 변환 (저장용)
 // Firebase는 배열 안에 배열(2D 배열)을 지원하지 않음
 export function isNestedArray(arr){

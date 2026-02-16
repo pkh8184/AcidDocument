@@ -3,8 +3,8 @@
 import state from '../data/store.js';
 import {ICONS,STORAGE_LIMIT,auth} from '../config/firebase.js';
 import {$,$$,esc,toast,formatDate,formatBytes} from '../utils/helpers.js';
-import {saveDB,savePage,savePages,uploadToStorage,updateStorageUsage} from '../data/firestore.js';
-import {isSuper} from '../auth/auth.js';
+import {saveDB,savePage,savePages,uploadToStorage,updateStorageUsage,batchUpdateUserIdInPages,updateUserIdInLogs} from '../data/firestore.js';
+import {isSuper,updateUidMapping} from '../auth/auth.js';
 import {generateSalt,hashPassword,verifyPassword,validatePassword} from '../auth/crypto.js';
 import {renderTree} from './sidebar.js';
 import {getPage} from '../editor/blocks.js';
@@ -236,7 +236,35 @@ export function clearDeleteLog(){
   toast('로그 삭제됨');
 }
 export function saveNickname(){var nick=$('setNickname').value.trim();for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===state.user.id){state.db.users[i].nickname=nick;break}}state.user.nickname=nick;saveDB();$('userName').textContent=nick||state.user.id;import('./sidebar.js').then(function(m){m.renderMeta()});toast('닉네임 저장')}
-export function renderUsers(){if(!isSuper()){$('usersTable').innerHTML='<tr><td style="text-align:center;padding:20px;color:var(--t4)">권한 없음</td></tr>';return}var html='<tr><th>아이디</th><th>닉네임</th><th>비밀번호</th><th>상태</th><th></th></tr>';for(var i=0;i<state.db.users.length;i++){var u=state.db.users[i];html+='<tr><td>'+esc(u.id)+'</td><td>'+esc(u.nickname||'-')+'</td><td><code id="pw_'+u.id+'" style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px">••••••</code> <button class="btn btn-sm btn-s" onclick="togglePwView(\''+u.id+'\')">👁</button></td><td><span class="badge '+(u.active?'badge-p':'badge-w')+'">'+(u.active?'활성':'비활성')+'</span></td><td>'+(u.role!=='super'?'<button class="btn btn-sm btn-s" onclick="resetPw(\''+u.id+'\')">초기화</button> <button class="btn btn-sm btn-s" onclick="toggleActive(\''+u.id+'\')">'+(u.active?'비활성':'활성')+'</button> <button class="btn btn-sm btn-d" onclick="delUser(\''+u.id+'\')">삭제</button>':'<span class="badge badge-w">최고관리자</span>')+'</td></tr>'}$('usersTable').innerHTML=html}
+export function renderUsers(){
+  if(!isSuper()){$('usersTable').innerHTML='<tr><td style="text-align:center;padding:20px;color:var(--t4)">권한 없음</td></tr>';return}
+  var html='<tr><th>아이디</th><th>닉네임</th><th>비밀번호</th><th>상태</th><th></th></tr>';
+  for(var i=0;i<state.db.users.length;i++){
+    var u=state.db.users[i];
+    // 아이디 칸: 변경 버튼 + 인라인 입력 (super 제외)
+    html+='<tr><td>'+esc(u.id);
+    if(u.role!=='super'){
+      html+=' <button class="btn btn-sm btn-s" onclick="showChangeIdInput(\''+u.id+'\')" title="아이디 변경">✏️</button>';
+      html+='<div id="changeId_'+u.id+'" style="display:none;margin-top:6px">';
+      html+='<input id="adminNewId_'+u.id+'" style="width:120px;font-size:12px" placeholder="새 아이디">';
+      html+=' <button class="btn btn-sm btn-p" onclick="adminChangeUserId(\''+u.id+'\')">변경</button></div>';
+    }
+    html+='</td>';
+    html+='<td>'+esc(u.nickname||'-')+'</td>';
+    html+='<td><code id="pw_'+u.id+'" style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px">••••••</code> <button class="btn btn-sm btn-s" onclick="togglePwView(\''+u.id+'\')">👁</button></td>';
+    html+='<td><span class="badge '+(u.active?'badge-p':'badge-w')+'">'+(u.active?'활성':'비활성')+'</span></td>';
+    html+='<td>';
+    if(u.role!=='super'){
+      html+='<button class="btn btn-sm btn-s" onclick="resetPw(\''+u.id+'\')">초기화</button> ';
+      html+='<button class="btn btn-sm btn-s" onclick="toggleActive(\''+u.id+'\')">'+(u.active?'비활성':'활성')+'</button> ';
+      html+='<button class="btn btn-sm btn-d" onclick="delUser(\''+u.id+'\')">삭제</button>';
+    }else{
+      html+='<span class="badge badge-w">최고관리자</span>';
+    }
+    html+='</td></tr>';
+  }
+  $('usersTable').innerHTML=html;
+}
 export function togglePwView(userId){
   var el=$('pw_'+userId);
   if(!el)return;
@@ -305,6 +333,92 @@ export function changePassword(){
       $('setPwCur').value=$('setPwNew').value='';toast('변경됨');
     });
   });
+}
+// ── 아이디 변경 ──────────────────────────────────────
+function validateUserId(newId,currentId){
+  if(!newId||!newId.trim())return '아이디를 입력하세요';
+  newId=newId.trim();
+  if(newId===currentId)return '현재 아이디와 동일합니다';
+  if(newId.length<3)return '아이디는 3자 이상이어야 합니다';
+  if(newId.length>30)return '아이디는 30자 이하여야 합니다';
+  if(!/^[a-zA-Z0-9_]+$/.test(newId))return '아이디는 영문, 숫자, 밑줄(_)만 사용 가능합니다';
+  for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===newId)return '이미 사용 중인 아이디입니다'}
+  return null;
+}
+function changeUserId(oldId,newId,isSelf){
+  var err=validateUserId(newId,oldId);
+  if(err){toast(err,'err');return}
+  var msg='아이디를 "'+oldId+'" → "'+newId+'"(으)로 변경하시겠습니까?\n\n모든 기록(작성자, 버전, 댓글, 로그)이 업데이트됩니다.';
+  if(isSelf)msg+='\n\n변경 후 다시 로그인해야 합니다.';
+  if(!confirm(msg))return;
+  toast('아이디 변경 중...','warn');
+  // 1. state.db.users[].id 변경
+  var userEntry=null;
+  for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===oldId){userEntry=state.db.users[i];state.db.users[i].id=newId;break}}
+  if(!userEntry){toast('사용자를 찾을 수 없습니다','err');return}
+  // 2. state.user 업데이트
+  if(isSelf)state.user.id=newId;
+  // 3. 로그 업데이트 (메모리)
+  updateUserIdInLogs(oldId,newId);
+  // 4. 페이지 참조 일괄 업데이트 + Firestore 저장
+  batchUpdateUserIdInPages(oldId,newId).then(function(){
+    return saveDB();
+  }).then(function(){
+    return updateUidMapping(oldId,newId);
+  }).then(function(){
+    // Firebase Auth 이메일 업데이트 (본인만)
+    if(isSelf&&auth.currentUser){
+      var newEmail=newId+'@aciddocument.local';
+      return auth.currentUser.updateEmail(newEmail).then(function(){
+        console.log('Firebase Auth 이메일 업데이트 완료');
+      }).catch(function(e){
+        console.warn('Firebase Auth 이메일 업데이트 실패 (다음 로그인 시 자동 처리):',e);
+      });
+    }
+  }).then(function(){
+    // UI 갱신
+    if(isSelf){
+      $('setUserId').value=newId;
+      $('userName').textContent=userEntry.nickname||newId;
+      $('userAvatar').textContent=(userEntry.nickname||newId).slice(-2).toUpperCase();
+      if(state.page)import('./sidebar.js').then(function(m){m.renderMeta()});
+    }
+    renderUsers();
+    toast('아이디 변경 완료');
+    if(isSelf){
+      setTimeout(function(){
+        alert('아이디가 변경되었습니다. 새 아이디로 다시 로그인하세요.');
+        import('../auth/auth.js').then(function(m){m.logout()});
+      },1000);
+    }
+  }).catch(function(e){
+    console.error('아이디 변경 실패:',e);
+    userEntry.id=oldId;
+    if(isSelf)state.user.id=oldId;
+    updateUserIdInLogs(newId,oldId);
+    toast('아이디 변경 실패. 새로고침하세요.','err');
+  });
+}
+export function changeUserIdSelf(){
+  var newId=$('setNewUserId').value.trim();
+  changeUserId(state.user.id,newId,true);
+}
+export function adminChangeUserId(oldId){
+  var input=$('adminNewId_'+oldId);
+  if(!input)return;
+  changeUserId(oldId,input.value.trim(),false);
+}
+export function showChangeIdInput(userId){
+  var el=$('changeId_'+userId);
+  if(!el)return;
+  el.style.display=el.style.display==='none'?'block':'none';
+  if(el.style.display==='block'){var inp=$('adminNewId_'+userId);if(inp){inp.value='';inp.focus()}}
+}
+export function toggleChangeIdSelf(){
+  var wrap=$('changeIdSelfWrap');
+  if(!wrap)return;
+  wrap.style.display=wrap.style.display==='none'?'block':'none';
+  if(wrap.style.display==='block'){$('setNewUserId').value='';$('setNewUserId').focus()}
 }
 export function saveWorkspace(){state.db.settings.wsName=$('setWsName').value||'DocSpace';saveDB();$('wsName').textContent=state.db.settings.wsName;import('./sidebar.js').then(function(m){m.renderBreadcrumb()});toast('저장됨')}
 // 공지사항

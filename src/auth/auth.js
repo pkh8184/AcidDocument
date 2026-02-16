@@ -3,7 +3,7 @@
 import state from '../data/store.js';
 import {auth,firestore} from '../config/firebase.js';
 import {$,toast,getLoginState,saveLoginState} from '../utils/helpers.js';
-import {saveDB,logLoginAttempt,getLoginLockState,updateLoginLockState,clearLoginLockState} from '../data/firestore.js';
+import {initDB,saveDB,logLoginAttempt,getLoginLockState,updateLoginLockState,clearLoginLockState} from '../data/firestore.js';
 import {initApp} from '../main.js';
 import {openModal,closeModal,closeAllModals,closeAllPanels} from '../ui/modals.js';
 import {generateSalt,hashPassword,verifyPassword,isLegacyHash,validatePassword} from './crypto.js';
@@ -112,12 +112,27 @@ function copyUserProfile(uid,legacyUser){
 }
 
 // --- 유틸: UID 매핑 저장 ---
-function saveUidMapping(legacyId,uid){
+export function saveUidMapping(legacyId,uid){
   return firestore.collection('app').doc('userMapping').set(
     (function(){var obj={};obj[legacyId]=uid;return obj})(),
     {merge:true}
   ).catch(function(e){
     console.warn('UID 매핑 저장 실패:',e);
+  });
+}
+// --- 유틸: UID 매핑 키 변경 (아이디 변경 시) ---
+export function updateUidMapping(oldId,newId){
+  return firestore.collection('app').doc('userMapping').get().then(function(doc){
+    if(!doc.exists)return;
+    var data=doc.data();
+    if(!data[oldId])return;
+    var uid=data[oldId];
+    var update={};
+    update[newId]=uid;
+    update[oldId]=firebase.firestore.FieldValue.delete();
+    return firestore.collection('app').doc('userMapping').update(update);
+  }).catch(function(e){
+    console.warn('UID 매핑 업데이트 실패:',e);
   });
 }
 
@@ -157,16 +172,39 @@ function progressiveMigrate(id,pw,legacyUser){
 export function handleLogin(e){
   e.preventDefault();
   logFlow('로그인 버튼 클릭');
-  // db 로드 전이면 대기
-  if(!state.db||!state.db.users){
-    logError('DB 미로드 — 로그인 불가',{db:!!state.db,users:!!(state.db&&state.db.users)});
-    toast('데이터 로딩 중...','warn');
-    return;
-  }
 
   var id=$('loginId').value.trim(),pw=$('loginPw').value;
   logFlow('입력값',{id:id,pwLen:pw.length});
   if(!id){toast('아이디를 입력하세요','warn');return}
+
+  // db 로드 전이면 Firebase Auth 직접 시도
+  if(!state.db||!state.db.users||state.db.users.length===0){
+    logFlow('DB 미로드 — Firebase Auth 직접 로그인 시도');
+    var email0=id+AUTH_DOMAIN;
+    state.loginInProgress=true;
+    var btn0=$('loginForm').querySelector('button[type="submit"]');
+    if(btn0){btn0.disabled=true;btn0.textContent='로그인 중...';}
+    auth.signInWithEmailAndPassword(email0,pw).then(function(cred){
+      logFB('Firebase Auth 로그인 성공 (DB 미로드 경로)',{uid:cred.user.uid});
+      return initDB().then(function(){
+        var legacyUser=findLegacyUserById(id);
+        if(legacyUser)setStateUser(legacyUser);
+        else state.user={id:id,role:'viewer',active:true,nickname:cred.user.displayName||id};
+        return checkFirestoreRole(cred.user.uid).then(function(){
+          if(state.user.needPw){$('loginScreen').classList.add('hidden');openModal('pwChangeModal')}
+          else initApp();
+        });
+      });
+    }).catch(function(err){
+      logError('Firebase Auth 직접 로그인 실패',{code:err.code,message:err.message});
+      toast(getAuthErrorMessage(err.code),'err');
+      $('loginPw').value='';
+    }).then(function(){
+      state.loginInProgress=false;
+      if(btn0){btn0.disabled=false;btn0.textContent='로그인';}
+    });
+    return;
+  }
   localStorage.setItem('ad_last_login_id',id);
 
   // 로그인 진행 중 표시 (onAuthStateChanged 충돌 방지 + 사용자 피드백)
