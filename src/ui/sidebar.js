@@ -3,7 +3,7 @@
 import state from '../data/store.js';
 import {MAX_VER} from '../config/firebase.js';
 import {$,$$,genId,esc,formatDate,formatDateTime,toast} from '../utils/helpers.js';
-import {saveDB,logDeleteAction,USE_NEW_STRUCTURE,batchDeletePages} from '../data/firestore.js';
+import {saveDB,savePage,savePages,deletePageDoc,logDeleteAction,batchDeletePages} from '../data/firestore.js';
 import {isSuper} from '../auth/auth.js';
 import {getPages,getPage,getPath,collectBlocks,triggerAutoSave} from '../editor/blocks.js';
 import {renderBlocks} from '../editor/renderer.js';
@@ -55,10 +55,10 @@ export function renderTags(){
   $('pageTags').innerHTML=html;
 }
 export function openTagModal(){$('tagInput').value='';openModal('tagModal');setTimeout(function(){$('tagInput').focus()},100)}
-function addTag(t){if(state.page.tags.indexOf(t)!==-1){toast('이미 존재하는 태그','err');return false}state.page.tags.push(t);saveDB();renderTags();closeModal('tagModal');toast('태그 추가');return true}
+function addTag(t){if(state.page.tags.indexOf(t)!==-1){toast('이미 존재하는 태그','err');return false}state.page.tags.push(t);saveDB();savePage(state.page);renderTags();closeModal('tagModal');toast('태그 추가');return true}
 export function submitTag(){var t=$('tagInput').value.trim();if(!t){toast('태그를 입력하세요','err');return}addTag(t)}
 export function quickTag(t){addTag(t)}
-export function removeTag(t){state.page.tags=state.page.tags.filter(function(x){return x!==t});saveDB();renderTags()}
+export function removeTag(t){state.page.tags=state.page.tags.filter(function(x){return x!==t});saveDB();savePage(state.page);renderTags()}
 
 // 사용자(작업자) 태그
 export function openUserTagModal(){
@@ -119,7 +119,8 @@ export function submitRenamePage(){
     state.page.title=newName;
     $('pageTitle').value=newName;
   }
-  saveDB();renderTree();
+  var rp=getPage(state.renamePageId);
+  saveDB();if(rp)savePage(rp);renderTree();
   closeModal('renamePageModal');
   toast('이름 변경됨');
   state.renamePageId=null;
@@ -134,7 +135,7 @@ export function createPage(pid,tplId){
   var blks=tpl?JSON.parse(JSON.stringify(tpl.blocks)):[{id:genId(),type:'text',content:''}];
   for(var j=0;j<blks.length;j++)blks[j].id=genId();
   var np={id:genId(),title:tpl?tpl.name:'새 페이지',icon:tpl?tpl.icon:'📄',parentId:pid||null,blocks:blks,tags:[],author:state.user.id,created:Date.now(),updated:Date.now(),versions:[],comments:[],favorite:false,deleted:false,order:getPages(pid||null).length};
-  state.db.pages.push(np);saveDB();renderTree();loadPage(np.id);closeModal('templatesModal');toast('페이지 생성됨');
+  state.db.pages.push(np);saveDB();savePage(np);renderTree();loadPage(np.id);closeModal('templatesModal');toast('페이지 생성됨');
   setTimeout(function(){toggleEdit();$('pageTitle').focus();$('pageTitle').select()},100)
 }
 export function loadPage(id){
@@ -188,7 +189,7 @@ export function saveDoc(){
     p.versions.push({id:genId(),date:Date.now(),author:state.user.id,blocks:JSON.parse(newSnap)});
     if(p.versions.length>MAX_VER)p.versions.shift();
   }
-  saveDB();state.page=p;renderMeta();renderTree();renderVersions();toast('저장됨')
+  saveDB();savePage(p);state.page=p;renderMeta();renderTree();renderVersions();toast('저장됨')
 }
 export function toggleEdit(){
   if(!state.editMode){
@@ -247,7 +248,7 @@ export function confirmDelete(){
   p.deletedBy=state.user.id;
   // 삭제 로그 기록
   logDeleteAction(p.id,p.title,'trash');
-  saveDB();
+  saveDB();savePage(p);
   if(state.page&&state.page.id===id){var pgs=getPages(null);pgs.length>0?loadPage(pgs[0].id):createPage()}
   renderTree();toast('휴지통으로 이동')
 }
@@ -257,7 +258,7 @@ export function restorePage(id){
     p.deleted=false;
     delete p.deletedAt;
     delete p.deletedBy;
-    saveDB();showTrash();renderTree();toast('복원됨')
+    saveDB();savePage(p);showTrash();renderTree();toast('복원됨')
   }
 }
 export function permanentDelete(id){
@@ -267,16 +268,8 @@ export function permanentDelete(id){
     logDeleteAction(p.id,p.title,'permanent');
   }
   state.db.pages=state.db.pages.filter(function(pg){return pg.id!==id});
-  if(USE_NEW_STRUCTURE){
-    batchDeletePages([id]).then(function(){
-      saveDB();showTrash();toast('삭제됨');
-    }).catch(function(e){
-      console.error('영구 삭제 실패:',e);
-      toast('삭제 실패','err');
-    });
-  }else{
-    saveDB();showTrash();toast('삭제됨');
-  }
+  deletePageDoc(id);
+  saveDB();showTrash();toast('삭제됨');
 }
 export function emptyTrash(){
   if(!isSuper()){toast('권한 없음','err');return}
@@ -287,22 +280,12 @@ export function emptyTrash(){
   for(var i=0;i<trashed.length;i++){logDeleteAction(trashed[i].id,trashed[i].title,'permanent')}
   // 메모리에서 삭제
   state.db.pages=state.db.pages.filter(function(p){return!p.deleted});
-  if(USE_NEW_STRUCTURE){
-    // 새 구조: Firestore batch write로 일괄 삭제
-    var ids=trashed.map(function(p){return p.id});
-    batchDeletePages(ids).then(function(){
-      saveDB();showTrash();toast('휴지통 비움');
-    }).catch(function(e){
-      console.error('휴지통 비우기 실패:',e);
-      toast('휴지통 비우기 실패','err');
-    });
-  }else{
-    // 기존 구조: app/data에서 삭제 (이미 메모리에서 제거 후 saveDB)
-    saveDB();showTrash();toast('휴지통 비움');
-  }
+  var ids=trashed.map(function(p){return p.id});
+  batchDeletePages(ids);
+  saveDB();showTrash();toast('휴지통 비움');
 }
-export function duplicatePage(id){var o=getPage(id);if(!o)return;var c=JSON.parse(JSON.stringify(o));c.id=genId();c.title+=' (복사)';c.created=c.updated=Date.now();c.author=state.user.id;c.versions=[];c.comments=[];for(var i=0;i<c.blocks.length;i++)c.blocks[i].id=genId();var siblings=getPages(o.parentId);var origIdx=0;for(var s=0;s<siblings.length;s++){if(siblings[s].id===id){origIdx=s;break}}c.order=origIdx+1;for(var s=0;s<siblings.length;s++){if(siblings[s].order>=c.order&&siblings[s].id!==id)siblings[s].order++}state.db.pages.push(c);saveDB();renderTree();loadPage(c.id);toast('복제됨')}
-export function toggleFavorite(id){var p=getPage(id);if(p){p.favorite=!p.favorite;saveDB();renderTree();toast(p.favorite?'즐겨찾기 추가':'즐겨찾기 해제')}}
+export function duplicatePage(id){var o=getPage(id);if(!o)return;var c=JSON.parse(JSON.stringify(o));c.id=genId();c.title+=' (복사)';c.created=c.updated=Date.now();c.author=state.user.id;c.versions=[];c.comments=[];for(var i=0;i<c.blocks.length;i++)c.blocks[i].id=genId();var siblings=getPages(o.parentId);var origIdx=0;for(var s=0;s<siblings.length;s++){if(siblings[s].id===id){origIdx=s;break}}c.order=origIdx+1;var reordered=[];for(var s=0;s<siblings.length;s++){if(siblings[s].order>=c.order&&siblings[s].id!==id){siblings[s].order++;reordered.push(siblings[s])}}state.db.pages.push(c);saveDB();savePage(c);savePages(reordered);renderTree();loadPage(c.id);toast('복제됨')}
+export function toggleFavorite(id){var p=getPage(id);if(p){p.favorite=!p.favorite;saveDB();savePage(p);renderTree();toast(p.favorite?'즐겨찾기 추가':'즐겨찾기 해제')}}
 export function movePage(id,newParentId){
   if(id===newParentId)return;
   var p=getPage(id);if(!p)return;
@@ -315,7 +298,8 @@ export function movePage(id,newParentId){
   p.parentId=newParentId;
   // 새 부모의 마지막에 배치
   p.order=getPages(newParentId).filter(function(s){return s.id!==id}).length;
-  saveDB();renderTree();toast('이동됨')
+  var affected=oldSiblings.concat([p]);
+  saveDB();savePages(affected);renderTree();toast('이동됨')
 }
 export function reorderPage(id,targetParentId,newIndex){
   var page=getPage(id);if(!page)return;
@@ -331,7 +315,7 @@ export function reorderPage(id,targetParentId,newIndex){
   if(newIndex>siblings.length)newIndex=siblings.length;
   siblings.splice(newIndex,0,page);
   for(var i=0;i<siblings.length;i++)siblings[i].order=i;
-  saveDB();renderTree();toast('이동됨')
+  saveDB();savePages(siblings);renderTree();toast('이동됨')
 }
 export function movePageUp(id){
   var page=getPage(id);if(!page)return;
@@ -339,7 +323,7 @@ export function movePageUp(id){
   var idx=-1;for(var i=0;i<siblings.length;i++){if(siblings[i].id===id){idx=i;break}}
   if(idx<=0){toast('이미 맨 위입니다');return}
   var prev=siblings[idx-1];var tmp=page.order;page.order=prev.order;prev.order=tmp;
-  saveDB();renderTree();toast('위로 이동됨')
+  saveDB();savePages([page,prev]);renderTree();toast('위로 이동됨')
 }
 export function movePageDown(id){
   var page=getPage(id);if(!page)return;
@@ -347,7 +331,7 @@ export function movePageDown(id){
   var idx=-1;for(var i=0;i<siblings.length;i++){if(siblings[i].id===id){idx=i;break}}
   if(idx<0||idx>=siblings.length-1){toast('이미 맨 아래입니다');return}
   var next=siblings[idx+1];var tmp=page.order;page.order=next.order;next.order=tmp;
-  saveDB();renderTree();toast('아래로 이동됨')
+  saveDB();savePages([page,next]);renderTree();toast('아래로 이동됨')
 }
 
 // 트리 렌더링 (드래그앤드롭)

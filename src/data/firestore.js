@@ -140,32 +140,57 @@ export function initDB(){
   }
   return initDBLegacy();
 }
-// 기존 구조: app/data 단일 문서에서 로드
+// 마이그레이션: app/data.pages → pages 컬렉션으로 복사
+function migratePagesTocollection(pages){
+  if(!pages||pages.length===0)return Promise.resolve();
+  var BATCH_LIMIT=450;
+  var promise=Promise.resolve();
+  for(var i=0;i<pages.length;i+=BATCH_LIMIT){
+    (function(chunk){
+      promise=promise.then(function(){
+        var batch=firestore.batch();
+        for(var j=0;j<chunk.length;j++){
+          var ref=firestore.collection('pages').doc(chunk[j].id);
+          batch.set(ref,convertRowsForSave(chunk[j]));
+        }
+        return batch.commit();
+      });
+    })(pages.slice(i,i+BATCH_LIMIT));
+  }
+  return promise;
+}
+// 기존 구조: app/data + pages 컬렉션에서 로드 (자동 마이그레이션 포함)
 function initDBLegacy(){
   return firestoreCall(function(){
-    return firestore.collection('app').doc('data').get().then(function(doc){
-      if(doc.exists){state.db=convertRowsForLoad(doc.data())}
-      else{
-        // 초기 비밀번호를 랜덤 생성하여 해싱 저장 (콘솔에 1회 출력)
+    return Promise.all([
+      firestore.collection('app').doc('data').get(),
+      firestore.collection('pages').get()
+    ]).then(function(results){
+      var doc=results[0];
+      var pagesSnap=results[1];
+
+      if(!doc.exists){
+        // 최초 실행: 초기 데이터 생성
         var chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
         function randPw(){var p='';for(var k=0;k<12;k++)p+=chars[Math.floor(Math.random()*chars.length)];return p}
         var pw1=randPw(),pw2=randPw();
         var salt1=generateSalt(),salt2=generateSalt();
         return Promise.all([hashPassword(pw1,salt1),hashPassword(pw2,salt2)]).then(function(hashes){
+          var welcomePage={
+            id:'welcome',title:'시작하기',icon:'👋',parentId:null,
+            blocks:[
+              {id:genId(),type:'h1',content:'AcidDocument에 오신 것을 환영합니다!'},
+              {id:genId(),type:'text',content:'팀을 위한 문서 관리 시스템입니다.'},
+              {id:genId(),type:'callout',content:'<b>💡 사용법:</b> 빈 줄에서 <code>/</code>를 입력하여 다양한 블록을 추가하세요.',calloutType:'info'}
+            ],
+            tags:['가이드'],author:'admin8184',created:Date.now(),updated:Date.now(),versions:[],comments:[],favorite:true,deleted:false
+          };
           state.db={
             users:[
               {id:'admin8184',pwHash:hashes[0],pwSalt:salt1,role:'super',needPw:true,active:true,nickname:''},
               {id:'admin3926',pwHash:hashes[1],pwSalt:salt2,role:'admin',needPw:true,active:true,nickname:''}
             ],
-            pages:[{
-              id:'welcome',title:'시작하기',icon:'👋',parentId:null,
-              blocks:[
-                {id:genId(),type:'h1',content:'AcidDocument에 오신 것을 환영합니다!'},
-                {id:genId(),type:'text',content:'팀을 위한 문서 관리 시스템입니다.'},
-                {id:genId(),type:'callout',content:'<b>💡 사용법:</b> 빈 줄에서 <code>/</code>를 입력하여 다양한 블록을 추가하세요.',calloutType:'info'}
-              ],
-              tags:['가이드'],author:'admin8184',created:Date.now(),updated:Date.now(),versions:[],comments:[],favorite:true,deleted:false
-            }],
+            pages:[welcomePage],
             templates:[
               {id:'meeting',name:'회의록',icon:'📋',blocks:[
                 {id:genId(),type:'h1',content:'📋 회의록'},
@@ -187,13 +212,48 @@ function initDBLegacy(){
             settings:{wsName:'AcidDocument',theme:'dark',notice:''},
             session:null,recent:[]
           };
-          return saveDB().then(function(){
+          // 초기 페이지를 pages 컬렉션에 저장 + 비페이지 데이터를 app/data에 저장
+          return Promise.all([
+            savePage(welcomePage),
+            saveDB()
+          ]).then(function(){
             console.warn('=== 초기 계정 생성 완료 ===');
             console.warn('admin8184 비밀번호:',pw1);
             console.warn('admin3926 비밀번호:',pw2);
             console.warn('첫 로그인 후 반드시 비밀번호를 변경하세요.');
             console.warn('============================');
           });
+        });
+      }
+
+      // 기존 데이터 로드
+      state.db=convertRowsForLoad(doc.data());
+      if(!state.db.pages)state.db.pages=[];
+
+      if(!pagesSnap.empty){
+        // pages 컬렉션에 데이터가 있으면 사용 (마이그레이션 완료된 상태)
+        var pages=[];
+        pagesSnap.forEach(function(pdoc){
+          var p=convertRowsForLoad(pdoc.data());
+          if(!p.id)p.id=pdoc.id;
+          pages.push(p);
+        });
+        state.db.pages=pages;
+      }else if(state.db.pages.length>0){
+        // pages 컬렉션이 비어있고 app/data에 pages가 있으면 → 자동 마이그레이션
+        console.log('페이지 마이그레이션 시작:',state.db.pages.length,'개');
+        return migratePagesTocollection(state.db.pages).then(function(){
+          console.log('페이지 마이그레이션 완료');
+          // app/data에서 pages 필드 제거 (1MB 초과 방지)
+          var nonPageData={};
+          for(var k in state.db){
+            if(!state.db.hasOwnProperty(k))continue;
+            if(k==='pages')continue;
+            nonPageData[k]=state.db[k];
+          }
+          return firestore.collection('app').doc('data').set(convertRowsForSave(nonPageData));
+        }).catch(function(err){
+          console.error('마이그레이션 오류 (기존 메모리 데이터 사용):',err);
         });
       }
     });
@@ -261,9 +321,39 @@ export function saveDB(){
   }
   return saveDBLegacy();
 }
-// 기존 구조: app/data 단일 문서에 저장
+// 개별 페이지를 pages/{pageId} 컬렉션에 저장
+export function savePage(page){
+  if(!page||!page.id)return Promise.resolve();
+  var pageData=convertRowsForSave(page);
+  return firestore.collection('pages').doc(page.id).set(pageData).catch(function(err){
+    console.error('페이지 저장 실패 ('+page.id+'):',err);
+    toast('페이지 저장 실패','err');
+  });
+}
+// 여러 페이지 일괄 저장 (reorder/move 등)
+export function savePages(pages){
+  if(!pages||pages.length===0)return Promise.resolve();
+  var promises=[];
+  for(var i=0;i<pages.length;i++){
+    if(pages[i]&&pages[i].id)promises.push(savePage(pages[i]));
+  }
+  return Promise.all(promises);
+}
+// pages 컬렉션에서 단일 페이지 삭제
+export function deletePageDoc(pageId){
+  return firestore.collection('pages').doc(pageId).delete().catch(function(err){
+    console.error('페이지 문서 삭제 실패 ('+pageId+'):',err);
+  });
+}
+// 기존 구조: app/data에 비페이지 데이터만 저장 (pages는 savePage로 개별 저장)
 function saveDBLegacy(){
-  var dataToSave=convertRowsForSave(state.db);
+  var nonPageData={};
+  for(var k in state.db){
+    if(!state.db.hasOwnProperty(k))continue;
+    if(k==='pages')continue;
+    nonPageData[k]=state.db[k];
+  }
+  var dataToSave=convertRowsForSave(nonPageData);
   return firestoreCall(function(){
     return firestore.collection('app').doc('data').set(dataToSave);
   },'저장 실패');

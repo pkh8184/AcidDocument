@@ -3,7 +3,7 @@
 import state from '../data/store.js';
 import {ICONS,STORAGE_LIMIT,auth} from '../config/firebase.js';
 import {$,$$,esc,toast,formatDate,formatBytes} from '../utils/helpers.js';
-import {saveDB,uploadToStorage,updateStorageUsage} from '../data/firestore.js';
+import {saveDB,savePage,savePages,uploadToStorage,updateStorageUsage} from '../data/firestore.js';
 import {isSuper} from '../auth/auth.js';
 import {generateSalt,hashPassword,verifyPassword,validatePassword} from '../auth/crypto.js';
 import {renderTree} from './sidebar.js';
@@ -105,7 +105,12 @@ export function migrateImages(){
     if(idx>=targets.length){
       status.innerHTML='✅ 완료! 성공: '+completed+', 실패: '+failed;
       if(completed>0){
-        saveDB().then(function(){
+        saveDB();
+        // 변경된 페이지들 개별 저장
+        var modifiedPages={};
+        for(var k=0;k<targets.length;k++){modifiedPages[state.db.pages[targets[k].pageIdx].id]=state.db.pages[targets[k].pageIdx]}
+        var pArr=[];for(var pid in modifiedPages){if(modifiedPages.hasOwnProperty(pid))pArr.push(modifiedPages[pid])}
+        savePages(pArr).then(function(){
           toast('마이그레이션 완료');
           renderStorageUsage();
         });
@@ -214,7 +219,7 @@ export function restoreFromLog(pageId){
     p.deleted=false;
     delete p.deletedAt;
     delete p.deletedBy;
-    saveDB();
+    saveDB();savePage(p);
     renderDeleteLog();
     renderTree();
     toast('복원됨');
@@ -317,4 +322,4 @@ export function openSearch(){openModal('searchModal');$('searchInput').value='';
 
 // 아이콘 피커
 export function openIconPicker(){var html='';for(var i=0;i<ICONS.length;i++)html+='<div class="icon-item" onclick="selectIcon(\''+ICONS[i]+'\')">'+ICONS[i]+'</div>';$('iconGrid').innerHTML=html;openModal('iconModal')}
-export function selectIcon(ic){state.page.icon=ic;$('pageIcon').textContent=ic;saveDB();renderTree();closeModal('iconModal')}
+export function selectIcon(ic){state.page.icon=ic;$('pageIcon').textContent=ic;saveDB();savePage(state.page);renderTree();closeModal('iconModal')}

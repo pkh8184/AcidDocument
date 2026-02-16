@@ -59,8 +59,9 @@ import {logFlow,logFB,logSession,logError} from './auth/loginDebug.js';
 
 // initApp — 로그인 성공 후 앱 초기화
 export function initApp(){
-  if(state.appInitialized)return;
+  if(state.appInitialized){logFlow('initApp 스킵 — 이미 초기화됨');return}
   try{
+    logFlow('initApp 시작');
     state.appInitialized=true;
     $('loginScreen').classList.add('hidden');
     $('appWrap').style.display='flex';
@@ -87,6 +88,7 @@ export function initApp(){
       if(hid){var pg=getPage(hid);if(pg&&!pg.deleted)loadPageWithoutPush(hid)}
     });
   }catch(err){
+    logError('initApp 실패',{message:err.message,stack:err.stack});
     console.error('앱 초기화 실패:',err);
     state.appInitialized=false;
     toast('앱 초기화에 실패했습니다. 새로고침하세요.','err');
@@ -95,7 +97,9 @@ export function initApp(){
 
 // init — 앱 시작점 (Firebase Auth onAuthStateChanged 전용)
 function init(){
+  logSession('initDB 시작');
   initDB().then(function(){
+    logSession('initDB 완료 — listeners 설정');
     setupListeners();
     // localStorage 캐시 기반 빠른 잠금 체크 (서버 체크는 handleLogin에서 수행)
     if(checkServerLockOnInit())return;
@@ -144,7 +148,7 @@ function init(){
       if(sessionHandled)return;
       if(state.loggingOut)return;
       // handleLogin이 진행 중이면 무시 (handleLogin이 직접 initApp 호출)
-      if(state.loginInProgress){sessionHandled=true;return;}
+      if(state.loginInProgress){logSession('loginInProgress — onAuthStateChanged 무시');sessionHandled=true;return;}
 
       if(firebaseUser){
         // Firebase Auth로 로그인된 사용자
@@ -312,6 +316,9 @@ window.undo=undo;
 window.redo=redo;
 window.selectPageLink=function(id,title){closeModal('pageLinkModal');insertPageLink(id,title)};
 window.filterPageLinks=function(q){renderPageLinkList(q)};
+
+// 디버그 상태 덤프 (loginDebug.dump()에서 사용)
+window.__debugState=function(){return{user:state.user?{id:state.user.id,role:state.user.role}:null,appInitialized:state.appInitialized,loginInProgress:state.loginInProgress,loggingOut:state.loggingOut,editMode:state.editMode,pageId:state.page?state.page.id:null,pagesCount:state.db?state.db.pages.length:0}};
 
 // DOMContentLoaded
 function onReady(){initTablePanel();initTocNav();init()}

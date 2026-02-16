@@ -78,10 +78,10 @@ function migrateUserPassword(user,plaintextPw){
       }
     }
     return saveDB().then(function(){
-      console.log('비밀번호 PBKDF2 마이그레이션 완료:',user.id);
+      logHash('PBKDF2 마이그레이션 완료',{id:user.id});
     }).catch(function(err){
       // saveDB 실패 시 이전 상태로 복원
-      console.error('비밀번호 마이그레이션 저장 실패, 원래 상태로 복원:',err);
+      logError('마이그레이션 저장 실패 — 원래 상태로 복원',{id:user.id,err:err.message});
       for(var i=0;i<state.db.users.length;i++){
         if(state.db.users[i].id===user.id){
           if(backupPw)state.db.users[i].pw=backupPw;
@@ -94,7 +94,7 @@ function migrateUserPassword(user,plaintextPw){
       }
     });
   }).catch(function(err){
-    console.error('비밀번호 해싱 실패:',err);
+    logError('비밀번호 해싱 실패',{id:user.id,err:err.message});
   });
 }
 
@@ -129,9 +129,10 @@ function setStateUser(legacyUser){
 // --- Progressive Migration: 레거시 로그인 성공 시 Firebase Auth에 자동 등록 ---
 function progressiveMigrate(id,pw,legacyUser){
   var email=id+AUTH_DOMAIN;
+  logFB('Progressive migration 시작',{id:id,email:email});
   return auth.createUserWithEmailAndPassword(email,pw).then(function(cred){
     var uid=cred.user.uid;
-    console.log('Progressive migration 성공:',id,'-> UID:',uid);
+    logFB('Progressive migration 성공',{id:id,uid:uid});
     // 프로필 복사 + 매핑 저장
     return Promise.all([
       copyUserProfile(uid,legacyUser),
@@ -140,15 +141,15 @@ function progressiveMigrate(id,pw,legacyUser){
   }).catch(function(e){
     // 이미 존재하면 무시 (이전에 등록된 경우)
     if(e.code==='auth/email-already-in-use'){
-      console.log('이미 Firebase Auth에 등록됨:',id);
+      logFB('이미 Firebase Auth에 등록됨 — 재로그인 시도',{id:id});
       // 로그인해서 UID 가져오기
       return auth.signInWithEmailAndPassword(email,pw).then(function(cred){
         return saveUidMapping(id,cred.user.uid);
       }).catch(function(e2){
-        console.error('Progressive migration 재로그인 실패 (UID 매핑 누락 가능):',e2);
+        logError('Progressive migration 재로그인 실패',{id:id,code:e2.code,message:e2.message});
       });
     }
-    console.warn('Progressive migration 실패:',e);
+    logError('Progressive migration 실패',{id:id,code:e.code,message:e.message});
   });
 }
 
@@ -157,11 +158,13 @@ export function handleLogin(e){
   e.preventDefault();
   // db 로드 전이면 대기
   if(!state.db||!state.db.users){
+    logError('DB 미로드 — 로그인 불가',{db:!!state.db,users:!!(state.db&&state.db.users)});
     toast('데이터 로딩 중...','warn');
     return;
   }
 
   var id=$('loginId').value.trim(),pw=$('loginPw').value;
+  logFlow('입력값',{id:id,pwLen:pw.length});
   if(!id){toast('아이디를 입력하세요','warn');return}
   localStorage.setItem('ad_last_login_id',id);
 
@@ -304,12 +307,14 @@ export function handleLogin(e){
         resetLoginBtn();
       });
     }).catch(function(err){
+      logError('로그인 후 앱 초기화 실패',{code:err&&err.code,message:err&&err.message});
       console.error('로그인 후 앱 초기화 실패:', err);
       toast(getAuthErrorMessage(err&&err.code),'err');
       $('loginPw').value='';
       resetLoginBtn();
     });
   }).catch(function(err){
+    logError('로그인 처리 중 오류',{code:err&&err.code,message:err&&err.message});
     console.error('로그인 처리 중 오류:', err);
     toast(getAuthErrorMessage(err&&err.code),'err');
     $('loginPw').value='';
@@ -465,6 +470,7 @@ export function resetAppState(){
 
 // === logout: Firebase Auth + localStorage 모두 정리 ===
 export function logout(){
+  logFlow('로그아웃 시작');
   resetAppState();
   state.loggingOut=true;
   // 먼저 state/UI 정리 (loggingOut 플래그가 onAuthStateChanged 차단)
@@ -483,8 +489,9 @@ export function logout(){
   location.hash='';
   // signOut 완료 후 loggingOut 해제 (onAuthStateChanged(null) 무시 보장)
   auth.signOut().catch(function(e){
-    console.warn('Firebase Auth 로그아웃 실패:',e);
+    logError('Firebase signOut 실패',{message:e.message});
   }).then(function(){
+    logFB('signOut 완료');
     // signOut 후 onAuthStateChanged(null)이 비동기로 발동할 수 있으므로 약간 지연
     setTimeout(function(){state.loggingOut=false},500);
   });
