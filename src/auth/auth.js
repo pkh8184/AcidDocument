@@ -326,8 +326,6 @@ export function handleLogin(e){
 
         // 레거시 로그인 성공
         logFlow('레거시 로그인 성공',{id:id,needPw:!!u.needPw,hasHash:!!u.pwHash});
-        logLoginAttempt(id,true);
-        clearLoginLockState(id);
         saveLoginState({attempts:0,lockUntil:0,blocked:false});
         setStateUser(u);
         $('loginError').style.display='none';
@@ -335,16 +333,30 @@ export function handleLogin(e){
         // 평문 비밀번호 → 해시 자동 마이그레이션
         migrateUserPassword(u,pw);
 
-        // Progressive migration: Firebase Auth에 자동 등록
-        progressiveMigrate(id,pw,u);
-
-        if(u.needPw){
-          $('loginScreen').classList.add('hidden');
-          openModal('pwChangeModal');
-        }else{
-          initApp();
-        }
-        resetLoginBtn();
+        // Progressive migration: Firebase Auth에 자동 등록 — 완료 후 앱 시작
+        progressiveMigrate(id,pw,u).then(function(){
+          logFlow('progressiveMigrate 완료, 앱 시작');
+          // Firebase Auth 인증 완료 후 로그인 기록 저장
+          logLoginAttempt(id,true);
+          clearLoginLockState(id);
+          if(u.needPw){
+            $('loginScreen').classList.add('hidden');
+            openModal('pwChangeModal');
+          }else{
+            initApp();
+          }
+          resetLoginBtn();
+        }).catch(function(migErr){
+          logError('progressiveMigrate 실패, 앱 시작 시도',{message:migErr&&migErr.message});
+          // migration 실패해도 앱은 시작 (일부 기능 제한될 수 있음)
+          if(u.needPw){
+            $('loginScreen').classList.add('hidden');
+            openModal('pwChangeModal');
+          }else{
+            initApp();
+          }
+          resetLoginBtn();
+        });
       });
     }).catch(function(err){
       logError('로그인 후 앱 초기화 실패',{code:err&&err.code,message:err&&err.message});
