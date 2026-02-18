@@ -237,13 +237,14 @@ function migratePagesTocollection(pages){
 // 기존 구조: app/data + pages 컬렉션에서 로드 (자동 마이그레이션 포함)
 function initDBLegacy(){
   return firestoreCall(function(){
-    return Promise.all([
-      firestore.collection('app').doc('data').get(),
-      firestore.collection('pages').get()
-    ]).then(function(results){
-      var doc=results[0];
-      var pagesSnap=results[1];
-      console.log('[initDB] app/data exists:',doc.exists,'pages컬렉션:',pagesSnap.size,'empty:',pagesSnap.empty);
+    return firestore.collection('app').doc('data').get().then(function(doc){
+      // pages 컬렉션 읽기 시도 (인증 없으면 실패할 수 있음)
+      var pagesPromise=firestore.collection('pages').get().catch(function(err){
+        console.warn('[initDB] pages 읽기 실패 (인증 없음), 로그인 후 로드:',err.code);
+        return null;
+      });
+      return pagesPromise.then(function(pagesSnap){
+      console.log('[initDB] app/data exists:',doc.exists,'pages컬렉션:',pagesSnap?pagesSnap.size:0,'empty:',pagesSnap?pagesSnap.empty:true);
 
       if(!doc.exists){
         // 최초 실행: 초기 데이터 생성
@@ -306,7 +307,7 @@ function initDBLegacy(){
       state.db=convertRowsForLoad(doc.data());
       if(!state.db.pages)state.db.pages=[];
 
-      if(!pagesSnap.empty){
+      if(pagesSnap&&!pagesSnap.empty){
         // pages 컬렉션에 데이터가 있으면 사용 (마이그레이션 완료된 상태)
         var pages=[];
         pagesSnap.forEach(function(pdoc){
@@ -317,6 +318,9 @@ function initDBLegacy(){
         state.db.pages=pages;
         console.log('[initDB] 페이지 로드 완료:',pages.length,'개');
         if(pages.length>0)console.log('[initDB] 첫페이지:',pages[0].id,pages[0].title,'blocks:',typeof pages[0].blocks,Array.isArray(pages[0].blocks));
+      }else if(!pagesSnap){
+        // pages 읽기 실패 (인증 없음) — 로그인 후 loadPages()로 로드
+        console.log('[initDB] pages 미로드 (인증 전), 로그인 후 로드 예정');
       }else if(state.db.pages.length>0){
         // pages 컬렉션이 비어있고 app/data에 pages가 있으면 → 자동 마이그레이션
         console.log('페이지 마이그레이션 시작:',state.db.pages.length,'개');
@@ -334,6 +338,7 @@ function initDBLegacy(){
           console.error('마이그레이션 오류 (기존 메모리 데이터 사용):',err);
         });
       }
+      });
     });
   },'DB 로드 실패');
 }
@@ -406,6 +411,23 @@ export function savePage(page){
   return firestore.collection('pages').doc(page.id).set(pageData).catch(function(err){
     console.error('페이지 저장 실패 ('+page.id+'):',err);
     toast('페이지 저장 실패','err');
+  });
+}
+// 로그인 후 pages 컬렉션 로드 (initDB에서 인증 없어서 못 읽은 경우)
+export function loadPages(){
+  if(state.db.pages&&state.db.pages.length>0)return Promise.resolve();
+  return firestore.collection('pages').get().then(function(snap){
+    if(snap.empty)return;
+    var pages=[];
+    snap.forEach(function(pdoc){
+      var p=convertRowsForLoad(pdoc.data());
+      if(!p.id)p.id=pdoc.id;
+      pages.push(p);
+    });
+    state.db.pages=pages;
+    console.log('[loadPages] 페이지 로드 완료:',pages.length,'개');
+  }).catch(function(err){
+    console.error('[loadPages] 실패:',err);
   });
 }
 // 여러 페이지 일괄 저장 (reorder/move 등)

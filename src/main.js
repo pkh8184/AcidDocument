@@ -2,7 +2,7 @@
 
 import state from './data/store.js';
 import {$,genId,toast,setTheme,toggleTheme,highlightText} from './utils/helpers.js';
-import {initDB,saveDB,logClientError} from './data/firestore.js';
+import {initDB,saveDB,loadPages,logClientError} from './data/firestore.js';
 import {handleLogin,showLockTimer,resetLoginState,checkServerLockOnInit,skipPwChange,submitPwChange,logout,isSuper,checkFirestoreRole} from './auth/auth.js';
 import {auth} from './config/firebase.js';
 import {setupListeners} from './editor/listeners.js';
@@ -63,6 +63,15 @@ import {logFlow,logFB,logSession,logError} from './auth/loginDebug.js';
 // initApp — 로그인 성공 후 앱 초기화
 export function initApp(){
   if(state.appInitialized){logFlow('initApp 스킵 — 이미 초기화됨');return}
+  // pages가 비어있으면 (initDB에서 인증 전 못 읽은 경우) 먼저 로드
+  if(!state.db.pages||state.db.pages.length===0){
+    loadPages().then(function(){_doInitApp()}).catch(function(){_doInitApp()});
+  }else{
+    _doInitApp();
+  }
+}
+function _doInitApp(){
+  if(state.appInitialized)return;
   try{
     logFlow('initApp 시작');
     state.appInitialized=true;
