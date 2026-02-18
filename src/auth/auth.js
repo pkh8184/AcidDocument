@@ -3,7 +3,7 @@
 import state from '../data/store.js';
 import {auth,firestore} from '../config/firebase.js';
 import {$,toast,getLoginState,saveLoginState} from '../utils/helpers.js';
-import {initDB,saveDB,logLoginAttempt,getLoginLockState,updateLoginLockState,clearLoginLockState} from '../data/firestore.js';
+import {initDB,saveDB,logLoginAttempt,getLoginLockState,updateLoginLockState,clearLoginLockState,logClientError} from '../data/firestore.js';
 import {initApp} from '../main.js';
 import {openModal,closeModal,closeAllModals,closeAllPanels} from '../ui/modals.js';
 import {generateSalt,hashPassword,verifyPassword,isLegacyHash,validatePassword} from './crypto.js';
@@ -197,6 +197,7 @@ export function handleLogin(e){
       });
     }).catch(function(err){
       logError('Firebase Auth 직접 로그인 실패',{code:err.code,message:err.message});
+      logClientError('auth_direct',{message:err.message,code:err.code||''});
       toast(getAuthErrorMessage(err.code),'err');
       $('loginPw').value='';
     }).then(function(){
@@ -347,6 +348,7 @@ export function handleLogin(e){
       });
     }).catch(function(err){
       logError('로그인 후 앱 초기화 실패',{code:err&&err.code,message:err&&err.message});
+      logClientError('auth_init',{message:err&&err.message,code:err&&err.code||''});
       console.error('로그인 후 앱 초기화 실패:', err);
       toast(getAuthErrorMessage(err&&err.code),'err');
       $('loginPw').value='';
@@ -354,6 +356,7 @@ export function handleLogin(e){
     });
   }).catch(function(err){
     logError('로그인 처리 중 오류',{code:err&&err.code,message:err&&err.message});
+    logClientError('auth_general',{message:err&&err.message,code:err&&err.code||''});
     console.error('로그인 처리 중 오류:', err);
     toast(getAuthErrorMessage(err&&err.code),'err');
     $('loginPw').value='';

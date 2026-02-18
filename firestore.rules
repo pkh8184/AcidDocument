@@ -45,5 +45,10 @@ service cloud.firestore {
     match /pages/{pageId}/comments/{cmtId} {
       allow read, write: if request.auth != null;
     }
+    // 클라이언트 오류 로그 — 인증 전 에러도 기록해야 하므로 create 공개
+    match /errorLogs/{logId} {
+      allow create;
+      allow read, delete: if request.auth != null;
+    }
   }
 }

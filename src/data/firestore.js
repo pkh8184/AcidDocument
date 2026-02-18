@@ -11,6 +11,37 @@ import {generateSalt,hashPassword} from '../auth/crypto.js';
 // 검증 완료 후 true로 변경
 export var USE_NEW_STRUCTURE=false;
 
+// ── 클라이언트 오류 로그 (Firestore errorLogs 컬렉션) ──
+export function logClientError(type,details){
+  try{
+    firestore.collection('errorLogs').add({
+      type:type,
+      message:details&&details.message||'',
+      code:details&&details.code||'',
+      userId:(state.user&&state.user.id)||null,
+      url:location.href,
+      userAgent:navigator.userAgent,
+      timestamp:new Date().toISOString()
+    }).catch(function(){});
+  }catch(e){}
+}
+// 오류 로그 조회 (관리자용)
+export function getErrorLogs(limit){
+  return firestore.collection('errorLogs').orderBy('timestamp','desc').limit(limit||50).get().then(function(snap){
+    var logs=[];
+    snap.forEach(function(doc){var d=doc.data();d._id=doc.id;logs.push(d)});
+    return logs;
+  });
+}
+// 오류 로그 전체 삭제
+export function clearErrorLogs(){
+  return firestore.collection('errorLogs').get().then(function(snap){
+    var batch=firestore.batch();
+    snap.forEach(function(doc){batch.delete(doc.ref)});
+    return batch.commit();
+  });
+}
+
 // ── 에러 처리 래퍼 ──────────────────────────────────
 // 모든 Firestore 호출에 일관된 에러 처리를 적용
 export async function firestoreCall(operation,errorMessage){

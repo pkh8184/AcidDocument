@@ -3,7 +3,7 @@
 import state from '../data/store.js';
 import {ICONS,STORAGE_LIMIT,auth} from '../config/firebase.js';
 import {$,$$,esc,toast,formatDate,formatBytes} from '../utils/helpers.js';
-import {saveDB,savePage,savePages,uploadToStorage,updateStorageUsage,batchUpdateUserIdInPages,updateUserIdInLogs} from '../data/firestore.js';
+import {saveDB,savePage,savePages,uploadToStorage,updateStorageUsage,batchUpdateUserIdInPages,updateUserIdInLogs,getErrorLogs,clearErrorLogs} from '../data/firestore.js';
 import {isSuper,updateUidMapping} from '../auth/auth.js';
 import {generateSalt,hashPassword,verifyPassword,validatePassword} from '../auth/crypto.js';
 import {renderTree} from './sidebar.js';
@@ -56,7 +56,7 @@ export function openSettings(){
   renderUsers();genNewUser();
   showSettingsTab('profile',document.querySelector('.tab-btn.on'))
 }
-export function showSettingsTab(tab,btn){$$('.tab-btn').forEach(function(b){b.classList.remove('on')});$$('.tab-panel').forEach(function(p){p.classList.remove('on')});btn.classList.add('on');$('tab'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('on');if(tab==='iplog')renderIpLog();if(tab==='storage')renderStorageUsage();if(tab==='deletelog')renderDeleteLog()}
+export function showSettingsTab(tab,btn){$$('.tab-btn').forEach(function(b){b.classList.remove('on')});$$('.tab-panel').forEach(function(p){p.classList.remove('on')});btn.classList.add('on');$('tab'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('on');if(tab==='iplog')renderIpLog();if(tab==='storage')renderStorageUsage();if(tab==='deletelog')renderDeleteLog();if(tab==='errorlog')loadErrorLogs()}
 
 export function renderStorageUsage(){
   var used=state.db.storageUsage||0;
@@ -234,6 +234,43 @@ export function clearDeleteLog(){
   saveDB();
   renderDeleteLog();
   toast('로그 삭제됨');
+}
+export function loadErrorLogs(){
+  var list=$('errorLogList');
+  if(!isSuper()){list.innerHTML='<p style="color:var(--t4);text-align:center;padding:20px">최고관리자만 볼 수 있습니다.</p>';return}
+  list.innerHTML='<p style="color:var(--t4);text-align:center;padding:20px">로딩 중...</p>';
+  getErrorLogs(100).then(function(logs){
+    if(!logs||logs.length===0){list.innerHTML='<p style="color:var(--t4);text-align:center;padding:20px">오류 기록이 없습니다.</p>';return}
+    var html='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)"><th style="padding:8px;text-align:left;border-bottom:1px solid var(--bdr)">시간</th><th style="padding:8px;text-align:left;border-bottom:1px solid var(--bdr)">유형</th><th style="padding:8px;text-align:left;border-bottom:1px solid var(--bdr)">메시지</th><th style="padding:8px;text-align:left;border-bottom:1px solid var(--bdr)">사용자</th><th style="padding:8px;text-align:left;border-bottom:1px solid var(--bdr)">UA</th></tr></thead><tbody>';
+    for(var i=0;i<logs.length;i++){
+      var log=logs[i];
+      var d=new Date(log.timestamp);
+      var time=d.getFullYear()+'-'+(d.getMonth()+1).toString().padStart(2,'0')+'-'+d.getDate().toString().padStart(2,'0')+' '+d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+      var ua=log.userAgent||'';
+      var shortUa=ua.length>40?ua.substring(0,40)+'...':ua;
+      html+='<tr style="border-bottom:1px solid var(--bdr)">';
+      html+='<td style="padding:8px;white-space:nowrap">'+esc(time)+'</td>';
+      html+='<td style="padding:8px"><span style="background:var(--err);color:#fff;padding:2px 6px;border-radius:4px;font-size:11px">'+esc(log.type||'')+'</span></td>';
+      html+='<td style="padding:8px;max-width:200px;overflow:hidden;text-overflow:ellipsis" title="'+esc(log.message||'')+'">'+esc(log.message||'')+(log.code?'<br><span style="color:var(--t4);font-size:11px">'+esc(log.code)+'</span>':'')+'</td>';
+      html+='<td style="padding:8px">'+esc(log.userId||'-')+'</td>';
+      html+='<td style="padding:8px;font-size:11px;color:var(--t4)" title="'+esc(ua)+'">'+esc(shortUa)+'</td>';
+      html+='</tr>';
+    }
+    html+='</tbody></table>';
+    list.innerHTML=html;
+  }).catch(function(err){
+    list.innerHTML='<p style="color:var(--err);text-align:center;padding:20px">로그 로드 실패: '+esc(err.message)+'</p>';
+  });
+}
+export function clearErrorLogsUI(){
+  if(!isSuper()){toast('권한이 없습니다','err');return}
+  if(!confirm('모든 오류 로그를 삭제하시겠습니까?'))return;
+  clearErrorLogs().then(function(){
+    loadErrorLogs();
+    toast('오류 로그 삭제됨');
+  }).catch(function(err){
+    toast('삭제 실패: '+err.message,'err');
+  });
 }
 export function saveNickname(){var nick=$('setNickname').value.trim();for(var i=0;i<state.db.users.length;i++){if(state.db.users[i].id===state.user.id){state.db.users[i].nickname=nick;break}}state.user.nickname=nick;saveDB();$('userName').textContent=nick||state.user.id;import('./sidebar.js').then(function(m){m.renderMeta()});toast('닉네임 저장')}
 export function renderUsers(){

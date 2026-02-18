@@ -2,7 +2,7 @@
 
 import state from './data/store.js';
 import {$,genId,toast,setTheme,toggleTheme,highlightText} from './utils/helpers.js';
-import {initDB,saveDB} from './data/firestore.js';
+import {initDB,saveDB,logClientError} from './data/firestore.js';
 import {handleLogin,showLockTimer,resetLoginState,checkServerLockOnInit,skipPwChange,submitPwChange,logout,isSuper,checkFirestoreRole} from './auth/auth.js';
 import {auth} from './config/firebase.js';
 import {setupListeners} from './editor/listeners.js';
@@ -48,7 +48,8 @@ import {
   saveNotice,clearNotice,updateNoticeBar,closeNoticeBar,showNotice,
   openShortcutHelp,openSearch,openIconPicker,selectIcon,
   migrateImages,setImageStorageMode,
-  clearIpLog,clearDeleteLog,restoreFromLog,renderUsers
+  clearIpLog,clearDeleteLog,restoreFromLog,renderUsers,
+  loadErrorLogs,clearErrorLogsUI
 } from './ui/modals.js';
 import {fmtCmd,openColorPicker,applyColor,changeTagColor,removeInlineTag,openEmojiPicker,filterEmoji,insertEmoji,openMentionPicker,insertMention} from './ui/toolbar.js';
 import {openVersions,restoreVer,deleteVer} from './features/versions.js';
@@ -91,6 +92,7 @@ export function initApp(){
     });
   }catch(err){
     logError('initApp 실패',{message:err.message,stack:err.stack});
+    logClientError('initApp',{message:err.message,code:err.code||''});
     console.error('앱 초기화 실패:',err);
     state.appInitialized=false;
     toast('앱 초기화에 실패했습니다. 새로고침하세요.','err');
@@ -103,6 +105,7 @@ function init(){
   // initDB 시도 — 실패해도 로그인 화면은 표시
   initDB().catch(function(err){
     console.warn('[init] initDB 실패 (인증 세션 없음), 로그인 후 재로드:',err.message);
+    logClientError('initDB',{message:err.message,code:err.code||''});
     if(!state.db)state.db={users:[],pages:[],templates:[],settings:{wsName:'AcidDocument',theme:'dark',notice:''},session:null,recent:[]};
   }).then(function(){
     logSession('init — listeners 설정');
@@ -122,6 +125,7 @@ function init(){
       // DB가 로드되지 않았으면 인증 후 재시도
       var dbReady=dbLoaded?Promise.resolve():initDB().catch(function(e){
         console.error('[init] 인증 후 initDB 재시도 실패:',e.message);
+        logClientError('initDB_retry',{message:e.message,code:e.code||''});
         toast('데이터 로드 실패','err');
       });
 
@@ -266,6 +270,8 @@ window.clearNotice=clearNotice;
 window.clearIpLog=clearIpLog;
 window.clearDeleteLog=clearDeleteLog;
 window.restoreFromLog=restoreFromLog;
+window.loadErrorLogs=loadErrorLogs;
+window.clearErrorLogsUI=clearErrorLogsUI;
 window.migrateImages=migrateImages;
 window.setImageStorageMode=setImageStorageMode;
 window.showNotice=showNotice;
