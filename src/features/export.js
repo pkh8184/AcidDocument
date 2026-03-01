@@ -77,15 +77,12 @@ export function exportPdfTemplate(tpl){
   html+='.toc-title{font-size:24px;font-weight:700;margin-bottom:32px;padding-bottom:12px;border-bottom:2px solid #333}';
   // 본문
   html+='.doc-body{padding-top:20px}';
-  // 헤더/푸터 (position:fixed로 인쇄 시 모든 페이지에 반복)
-  html+='.print-header{position:fixed;top:0;left:0;right:0;font-size:10px;color:#aaa;border-bottom:0.5px solid #ddd;padding-bottom:4px}';
-  html+='.print-footer{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:10px;color:#aaa}';
+  html+='.doc-body-header{font-size:10px;color:#aaa;border-bottom:0.5px solid #ddd;padding-bottom:6px;margin-bottom:24px}';
   // 본문 내 블록 스타일
   html+='.block-handle,.block-add-below,.block-toggle-arrow,.block-code-head button,.ctx-menu{display:none!important}';
   html+='.block{position:relative;padding:2px 0;margin:0}';
   html+='.block-content{outline:none}';
-  html+='.block-h1 .block-content{font-size:26px;font-weight:700;line-height:1.3;margin:32px 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0;page-break-before:always}';
-  html+='.block-h1:first-child .block-content{page-break-before:auto}';
+  html+='.block-h1 .block-content{font-size:26px;font-weight:700;line-height:1.3;margin:32px 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0}';
   html+='.block-h2 .block-content{font-size:21px;font-weight:600;line-height:1.35;margin:24px 0 10px;color:#222}';
   html+='.block-h3 .block-content{font-size:18px;font-weight:600;line-height:1.4;margin:20px 0 8px;color:#333}';
   html+='.block-h4 .block-content{font-size:16px;font-weight:600;line-height:1.4;margin:16px 0 6px;color:#444}';
@@ -102,12 +99,11 @@ export function exportPdfTemplate(tpl){
   html+='.block-divider hr{border:none;border-top:1px solid #ddd;margin:24px 0}';
   html+='.block-toc,.block-toc-wrap{display:none}';
   html+='code{background:#f0f0f0;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:13px}';
-  html+='img{max-width:100%;height:auto}';
+  html+='img{max-width:100%;height:auto;page-break-inside:avoid}';
+  html+='.block{page-break-inside:avoid}';
+  html+='.block-h1,.block-h2,.block-h3,.block-h4,.block-h5{page-break-after:avoid}';
   html+='</style>';
   html+='</head><body>';
-  // 헤더 (2페이지부터)
-  html+='<div class="print-header">'+esc(title)+'</div>';
-  html+='<div class="print-footer"></div>';
   // 커버 페이지
   html+='<div class="cover">';
   html+='<div class="cover-ws">'+esc(wsName)+'</div>';
@@ -122,13 +118,12 @@ export function exportPdfTemplate(tpl){
   html+='</div>';
   // 본문
   html+='<div class="doc-body">';
+  html+='<div class="doc-body-header">'+esc(title)+'</div>';
   html+=editorContent;
   html+='</div>';
   // 인쇄
   html+='<script>';
   html+='window.onload=function(){';
-  // 페이지 번호 (CSS counter 대안: 직접 표시)
-  html+='document.querySelector(".print-footer").textContent="";';
   html+='window.print();';
   html+='window.onafterprint=function(){window.close()}';
   html+='};';
