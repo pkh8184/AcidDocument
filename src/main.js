@@ -54,7 +54,7 @@ import {
 import {fmtCmd,openColorPicker,applyColor,changeTagColor,removeInlineTag,openEmojiPicker,filterEmoji,insertEmoji,openMentionPicker,insertMention} from './ui/toolbar.js';
 import {openVersions,restoreVer,deleteVer} from './features/versions.js';
 import {openComments,addComment,editComment,submitEditComment,deleteComment} from './features/comments.js';
-import {openExport,exportDoc,exportPdf} from './features/export.js';
+import {openExport,exportDoc,exportPdf,showPdfOptions,exportPdfTemplate} from './features/export.js';
 import {doSearch} from './features/search.js';
 import {openPageLinkPicker,renderPageLinkList,insertPageLink,renderBacklinks} from './features/pagelink.js';
 import {undo,redo} from './editor/history.js';
@@ -294,6 +294,8 @@ window.selectIcon=selectIcon;
 window.openExport=openExport;
 window.exportDoc=exportDoc;
 window.exportPdf=exportPdf;
+window.showPdfOptions=showPdfOptions;
+window.exportPdfTemplate=exportPdfTemplate;
 window.insertImage=insertImage;
 window.submitImage=submitImage;
 window.insertVideo=insertVideo;
