@@ -80,6 +80,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .block-h1 .block-content{font-size:30px;font-weight:700;line-height:1.3;margin:28px 0 12px}
 .block-h2 .block-content{font-size:24px;font-weight:600;line-height:1.35;margin:24px 0 10px}
 .block-h3 .block-content{font-size:20px;font-weight:600;line-height:1.4;margin:20px 0 8px}
+.block-h4 .block-content{font-size:17px;font-weight:600;line-height:1.4;margin:16px 0 6px}
+.block-h5 .block-content{font-size:15px;font-weight:600;line-height:1.45;margin:12px 0 4px}
 .block-quote{border-left:4px solid var(--acc);padding-left:56px;margin:12px 0}.block-quote .block-content{color:var(--t2);font-style:italic}
 .block-bullet{padding-left:58px}.block-bullet::before{content:'•';position:absolute;left:42px;top:3px;color:var(--t3);font-size:18px;line-height:1.7}
 .block-number{padding-left:58px}.block-number::before{content:attr(data-num)'.';position:absolute;left:40px;top:3px;color:var(--t3);font-size:15px;line-height:1.7}
@@ -216,7 +218,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .block-add-below{text-align:center;padding:8px;margin-top:8px;color:var(--t4);font-size:13px;cursor:pointer;border:1px dashed var(--bdr);border-radius:var(--rad);transition:all .15s}.block-add-below:hover{color:var(--acc);border-color:var(--acc);background:var(--accM)}
 .block-toc-title{font-weight:600;margin-bottom:14px}
 .block-toc-list{list-style:none}.block-toc-item{padding:6px 0}.block-toc-item a{color:var(--t2);font-size:14px;text-decoration:none}.block-toc-item a:hover{color:var(--acc)}
-.block-toc-item.l2{padding-left:20px}.block-toc-item.l3{padding-left:40px}
+.block-toc-item.l2{padding-left:20px}.block-toc-item.l3{padding-left:40px}.block-toc-item.l4{padding-left:60px}.block-toc-item.l5{padding-left:80px}
 /* 플로팅 목차 네비게이션 */
 .toc-nav{position:fixed;bottom:24px;right:24px;z-index:90;display:none}
 .toc-nav.visible{display:block}
@@ -231,6 +233,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .toc-nav-item:hover{background:var(--bg3);color:var(--acc)}
 .toc-nav-item.l2{padding-left:32px}
 .toc-nav-item.l3{padding-left:48px}
+.toc-nav-item.l4{padding-left:64px}
+.toc-nav-item.l5{padding-left:80px}
 .block-columns{margin:20px 0}
 .block-columns-wrap{display:flex;gap:0;position:relative}
 .block-col{flex:1;min-width:80px;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rad);padding:16px;position:relative}

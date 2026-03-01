@@ -270,7 +270,7 @@ export function updateNums(){
     }
   }
 }
-export function genTOC(){var hs=[];for(var i=0;i<state.page.blocks.length;i++){var b=state.page.blocks[i];if(b.type==='h1'||b.type==='h2'||b.type==='h3')hs.push(b)}if(hs.length===0)return'<div class="block-toc-title">📑 목차</div><p style="color:var(--t4)">제목이 없습니다</p>';var html='<div class="block-toc-title">📑 목차</div><ul class="block-toc-list">',tmp=document.createElement('div');for(var j=0;j<hs.length;j++){var h=hs[j];tmp.innerHTML=h.content||'';var txt=tmp.textContent||'';var lv=h.type==='h1'?1:h.type==='h2'?2:3;html+='<li class="block-toc-item l'+lv+'"><a href="#" onclick="scrollToBlk(\''+h.id+'\');return false">'+esc(txt)+'</a></li>'}html+='</ul>';return html}
+export function genTOC(){var hs=[];for(var i=0;i<state.page.blocks.length;i++){var b=state.page.blocks[i];if(b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='h4'||b.type==='h5')hs.push(b)}if(hs.length===0)return'<div class="block-toc-title">📑 목차</div><p style="color:var(--t4)">제목이 없습니다</p>';var html='<div class="block-toc-title">📑 목차</div><ul class="block-toc-list">',tmp=document.createElement('div');for(var j=0;j<hs.length;j++){var h=hs[j];tmp.innerHTML=h.content||'';var txt=tmp.textContent||'';var lv=h.type==='h1'?1:h.type==='h2'?2:h.type==='h3'?3:h.type==='h4'?4:5;html+='<li class="block-toc-item l'+lv+'"><a href="#" onclick="scrollToBlk(\''+h.id+'\');return false">'+esc(txt)+'</a></li>'}html+='</ul>';return html}
 export function scrollToBlk(id){var el=document.querySelector('[data-id="'+id+'"]');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.background='var(--accM)';setTimeout(function(){el.style.background=''},2000)}}
 
 // 플로팅 목차 네비게이션
@@ -291,9 +291,9 @@ export function updateTocNav(){
   var html='',tmp=document.createElement('div');
   for(var i=0;i<state.page.blocks.length;i++){
     var b=state.page.blocks[i];
-    if(b.type==='h1'||b.type==='h2'||b.type==='h3'){
+    if(b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='h4'||b.type==='h5'){
       tmp.innerHTML=b.content||'';var txt=tmp.textContent||'';if(!txt)txt='(빈 제목)';
-      var lv=b.type==='h1'?'l1':b.type==='h2'?'l2':'l3';
+      var lv=b.type==='h1'?'l1':b.type==='h2'?'l2':b.type==='h3'?'l3':b.type==='h4'?'l4':'l5';
       html+='<li class="toc-nav-item '+lv+'" data-block-id="'+b.id+'">'+esc(txt)+'</li>';
     }
   }

@@ -15,7 +15,7 @@ import {undo,redo,pushUndoImmediate} from './history.js';
 import {sanitizeHTML} from '../utils/sanitize.js';
 import {showTablePanel,focusCell,getTableSize,addTblRow,addTblCol,setupTableResize,deleteTable} from './table.js';
 
-var TEXT_TYPES=['text','h1','h2','h3','bullet','number','quote','todo'];
+var TEXT_TYPES=['text','h1','h2','h3','h4','h5','bullet','number','quote','todo'];
 var CONTENT_TYPES=['table','image','video','pdf','file','slide','calendar','columns','toc','divider'];
 
 // Range 기반 커서 위치 판별 (리치 텍스트에서도 정확)
@@ -179,7 +179,7 @@ export function handleKey(e,b,idx,el){
         return;
       }
       // 서식 블록(리스트/헤딩/인용/콜아웃)이면 text로 변환
-      if(b.type==='bullet'||b.type==='number'||b.type==='todo'||b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='quote'||b.type==='callout'){
+      if(b.type==='bullet'||b.type==='number'||b.type==='todo'||b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='h4'||b.type==='h5'||b.type==='quote'||b.type==='callout'){
         pushUndoImmediate();
         state.page.blocks[idx].type='text';
         delete state.page.blocks[idx].indent;
@@ -228,7 +228,7 @@ export function handleKey(e,b,idx,el){
         return;
       }
       // BS-01/BS-05: 서식 블록이면 text로 타입 변환 (내용 유지, idx 무관)
-      if(b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='quote'||b.type==='bullet'||b.type==='number'||b.type==='todo'||b.type==='callout'){
+      if(b.type==='h1'||b.type==='h2'||b.type==='h3'||b.type==='h4'||b.type==='h5'||b.type==='quote'||b.type==='bullet'||b.type==='number'||b.type==='todo'||b.type==='callout'){
         pushUndoImmediate();
         state.page.blocks[idx].type='text';
         delete state.page.blocks[idx].indent;
@@ -288,7 +288,7 @@ export function handleKey(e,b,idx,el){
     if(isAtEnd(el)&&idx<state.page.blocks.length-1){
       e.preventDefault();
       var nextB=state.page.blocks[idx+1];
-      if(['text','h1','h2','h3','bullet','number','quote','todo'].includes(nextB.type)){
+      if(['text','h1','h2','h3','h4','h5','bullet','number','quote','todo'].includes(nextB.type)){
         pushUndoImmediate();
         // sync 후 state에서 다시 읽기 (syncBlocksFromDOM이 배열을 교체하므로)
         var curBlock=state.page.blocks[idx];
