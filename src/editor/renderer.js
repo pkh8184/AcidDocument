@@ -240,7 +240,8 @@ export function createBlockEl(b,idx){
           if(r===0){
             inner+='<'+tag+' data-row="'+r+'" data-col="'+c+'"'+(cellStyle?' style="'+cellStyle+'"':'')+'>';
             inner+='<div class="cell-text"'+ce+'>'+sanitizeHTML(rows[r][c]||'')+'</div>';
-            if(state.editMode){
+            // 마지막 콜은 오른쪽 경계가 테이블 밖이라 리사이저 생략 (콜 N의 왼쪽 경계는 콜 N-1의 리사이저가 담당)
+            if(state.editMode&&c<rows[r].length-1){
               inner+='<div class="col-resizer" data-col="'+c+'" contenteditable="false"></div>';
             }
             inner+='</'+tag+'>';

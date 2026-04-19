@@ -33,15 +33,19 @@ function ensureColWidths(b){
 }
 
 // 한 열을 목표값으로 설정하고 이웃에서 차감/보충 (합계 100 유지)
-export function resizeColWithNeighborCompensation(blockId,colIdx,targetPct){
+// compensateLeftFirst=true면 왼쪽 이웃에서 보상 (드래그 리사이즈에서 사용)
+export function resizeColWithNeighborCompensation(blockId,colIdx,targetPct,compensateLeftFirst){
   var b=findBlock(blockId);if(!b||!b.rows)return;
   ensureColWidths(b);
   var n=b.colWidths.length;
+  if(colIdx<0||colIdx>=n)return;
   var target=Math.max(MIN_COL_PCT,Math.min(MAX_COL_PCT,targetPct));
   var delta=target-b.colWidths[colIdx];
   if(Math.abs(delta)<0.01)return;
-  // 보상 방향: 마지막 열이면 왼쪽으로, 아니면 오른쪽으로
-  var dir=colIdx<n-1?1:-1;
+  // 보상 방향: compensateLeftFirst면 왼쪽 우선, 없으면 기존 로직(마지막 열만 왼쪽, 나머지 오른쪽)
+  var dir;
+  if(compensateLeftFirst)dir=colIdx>0?-1:1;
+  else dir=colIdx<n-1?1:-1;
   b.colWidths[colIdx]=target;
   var remaining=delta;
   var i=colIdx+dir;
@@ -533,21 +537,23 @@ export function initTablePanel(){
   });
 }
 
-// 열 리사이즈 (기존 유지 + 개선)
+// 열 리사이즈 (경계선이 오른쪽 콜에 속한다는 사용자 모델: 콜 c 오른쪽 경계를 드래그하면 콜 c+1이 변하고 콜 c가 왼쪽 보상)
 export function setupTableResize(div){
   var resizers=div.querySelectorAll('.col-resizer');
   resizers.forEach(function(resizer){
-    var colIdx=parseInt(resizer.getAttribute('data-col'));
+    var leftColIdx=parseInt(resizer.getAttribute('data-col'));
+    var targetColIdx=leftColIdx+1;   // 오른쪽 콜이 사용자가 "건드린 콜"
     var startX,startPct,bid,tblWidth,undoPushed=false;
     resizer.addEventListener('mousedown',function(e){
       e.preventDefault();e.stopPropagation();
       bid=div.getAttribute('data-id');
       var cur=findBlock(bid);if(!cur||!cur.rows)return;
       ensureColWidths(cur);
+      if(targetColIdx>=cur.colWidths.length)return;  // 방어: 마지막 콜 리사이저는 렌더 안 되지만 이중 안전
       var tbl=div.querySelector('table');
       tblWidth=tbl?tbl.offsetWidth:0;
       if(!tblWidth)return;
-      startX=e.pageX;startPct=cur.colWidths[colIdx];
+      startX=e.pageX;startPct=cur.colWidths[targetColIdx];
       resizer.classList.add('active');
       pushUndoImmediate();undoPushed=true;
       document.addEventListener('mousemove',onMouseMove);
@@ -556,9 +562,10 @@ export function setupTableResize(div){
     function onMouseMove(e){
       var cur=findBlock(bid);if(!cur||!tblWidth)return;
       var deltaPx=e.pageX-startX;
-      var deltaPct=deltaPx/tblWidth*100;
+      // 드래그 오른쪽(deltaPx>0): 경계가 오른쪽으로 이동 → 오른쪽 콜(target)이 좁아져야 커서를 따라감
+      var deltaPct=-deltaPx/tblWidth*100;
       var target=startPct+deltaPct;
-      resizeColWithNeighborCompensation(bid,colIdx,target);
+      resizeColWithNeighborCompensation(bid,targetColIdx,target,true);  // 왼쪽 이웃 보상
       // 실시간 반영: <col> 요소 업데이트
       var tbl=div.querySelector('table');
       if(tbl){
