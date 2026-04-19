@@ -59,6 +59,33 @@ export function resizeColWithNeighborCompensation(blockId,colIdx,targetPct){
   }
 }
 
+// 패널에서 특정 열 너비 직접 지정 (undo + autosave 포함)
+export function setColWidth(blockId,colIdx,targetPct){
+  var b=findBlock(blockId);if(!b||!b.rows)return;
+  pushUndoImmediate();b=findBlock(blockId);
+  resizeColWithNeighborCompensation(blockId,colIdx,targetPct);
+  renderBlocks();triggerAutoSave();
+}
+
+// 균등 분배 (모든 열 100/N)
+export function distributeColsEvenly(blockId){
+  var b=findBlock(blockId);if(!b||!b.rows||!b.rows[0])return;
+  pushUndoImmediate();b=findBlock(blockId);
+  var n=b.rows[0].length;
+  var even=100/n;
+  b.colWidths=[];
+  for(var i=0;i<n;i++)b.colWidths.push(even);
+  renderBlocks();triggerAutoSave();toast('너비 균등 분배');
+}
+
+// colWidths 제거 (자동 맞춤 상태로 복귀)
+export function clearColWidths(blockId){
+  var b=findBlock(blockId);if(!b)return;
+  pushUndoImmediate();b=findBlock(blockId);
+  delete b.colWidths;
+  renderBlocks();triggerAutoSave();toast('너비 자동 맞춤');
+}
+
 // col-resizer 제거 후 셀 HTML 반환
 function cleanCellHtml(td){
   var clone=td.cloneNode(true);
