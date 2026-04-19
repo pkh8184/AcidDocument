@@ -460,40 +460,41 @@ export function setupTableResize(div){
   var resizers=div.querySelectorAll('.col-resizer');
   resizers.forEach(function(resizer){
     var colIdx=parseInt(resizer.getAttribute('data-col'));
-    var startX,startW,th;
+    var startX,startPct,bid,tblWidth,undoPushed=false;
     resizer.addEventListener('mousedown',function(e){
       e.preventDefault();e.stopPropagation();
-      th=div.querySelector('th[data-col="'+colIdx+'"]');
-      if(!th)return;
-      startX=e.pageX;startW=th.offsetWidth;
+      bid=div.getAttribute('data-id');
+      var cur=findBlock(bid);if(!cur||!cur.rows)return;
+      ensureColWidths(cur);
+      var tbl=div.querySelector('table');
+      tblWidth=tbl?tbl.offsetWidth:0;
+      if(!tblWidth)return;
+      startX=e.pageX;startPct=cur.colWidths[colIdx];
       resizer.classList.add('active');
-      pushUndoImmediate();
+      pushUndoImmediate();undoPushed=true;
       document.addEventListener('mousemove',onMouseMove);
       document.addEventListener('mouseup',onMouseUp);
     });
     function onMouseMove(e){
-      if(!th)return;
-      var w=Math.max(50,startW+(e.pageX-startX));
-      th.style.width=w+'px';
-      // table-layout:fixed에서 <col> 요소도 업데이트해야 반영됨
+      var cur=findBlock(bid);if(!cur||!tblWidth)return;
+      var deltaPx=e.pageX-startX;
+      var deltaPct=deltaPx/tblWidth*100;
+      var target=startPct+deltaPct;
+      resizeColWithNeighborCompensation(bid,colIdx,target);
+      // 실시간 반영: <col> 요소 업데이트
       var tbl=div.querySelector('table');
-      if(tbl){var cols=tbl.querySelectorAll('col');if(cols[colIdx])cols[colIdx].style.width=w+'px'}
-      var tds=div.querySelectorAll('td[data-col="'+colIdx+'"]');
-      tds.forEach(function(td){td.style.width=w+'px'});
+      if(tbl){
+        var cols=tbl.querySelectorAll('col');
+        for(var i=0;i<cols.length&&i<cur.colWidths.length;i++){
+          cols[i].style.width=cur.colWidths[i]+'%';
+        }
+      }
     }
     function onMouseUp(){
       resizer.classList.remove('active');
       document.removeEventListener('mousemove',onMouseMove);
       document.removeEventListener('mouseup',onMouseUp);
-      if(th){
-        var bid=div.getAttribute('data-id');
-        var cur=findBlock(bid);if(!cur)return;
-        if(!cur.colWidths)cur.colWidths=[];
-        var tbl=div.querySelector('table');
-        cur.colWidths[colIdx]=tbl?Math.round(th.offsetWidth/tbl.offsetWidth*100):Math.floor(100/(cur.rows&&cur.rows[0]?cur.rows[0].length:3));
-        normalizeColWidths(cur);
-        triggerAutoSave();
-      }
+      if(undoPushed){triggerAutoSave();undoPushed=false}
     }
   });
 }
