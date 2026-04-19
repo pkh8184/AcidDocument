@@ -8,11 +8,55 @@ import {pushUndoImmediate} from './history.js';
 import {openModal} from '../ui/modals.js';
 import {COLORS} from '../config/firebase.js';
 
-// colWidths 합계 100% 정규화
+// 열 너비 상수
+var MIN_COL_PCT = 5;
+var MAX_COL_PCT = 80;
+
+// colWidths 합계 100% 정규화 (허용 오차 0.5 이내면 건드리지 않음, 레거시 보정용)
 function normalizeColWidths(b){
   if(!b.colWidths||!b.colWidths.length)return;
   var total=0;for(var k=0;k<b.colWidths.length;k++)total+=b.colWidths[k];
-  if(total>0&&total!==100){for(var k=0;k<b.colWidths.length;k++)b.colWidths[k]=Math.round(b.colWidths[k]/total*100)}
+  if(total>0&&Math.abs(total-100)>0.5){
+    for(var k=0;k<b.colWidths.length;k++)b.colWidths[k]=b.colWidths[k]/total*100;
+  }
+}
+
+// colWidths가 없거나 길이가 안 맞으면 균등값으로 초기화 (모듈 내부 헬퍼 — Task 5 setupTableResize 내부에서도 직접 호출)
+function ensureColWidths(b){
+  if(!b.rows||!b.rows[0])return;
+  var n=b.rows[0].length;
+  if(!b.colWidths||b.colWidths.length!==n){
+    b.colWidths=[];
+    var even=100/n;
+    for(var i=0;i<n;i++)b.colWidths.push(even);
+  }
+}
+
+// 한 열을 목표값으로 설정하고 이웃에서 차감/보충 (합계 100 유지)
+export function resizeColWithNeighborCompensation(blockId,colIdx,targetPct){
+  var b=findBlock(blockId);if(!b||!b.rows)return;
+  ensureColWidths(b);
+  var n=b.colWidths.length;
+  var target=Math.max(MIN_COL_PCT,Math.min(MAX_COL_PCT,targetPct));
+  var delta=target-b.colWidths[colIdx];
+  if(Math.abs(delta)<0.01)return;
+  // 보상 방향: 마지막 열이면 왼쪽으로, 아니면 오른쪽으로
+  var dir=colIdx<n-1?1:-1;
+  b.colWidths[colIdx]=target;
+  var remaining=delta;
+  var i=colIdx+dir;
+  while(Math.abs(remaining)>0.01&&i>=0&&i<n){
+    var cur=b.colWidths[i];
+    var canTake=delta>0?(cur-MIN_COL_PCT):(MAX_COL_PCT-cur);
+    var take=Math.min(Math.abs(remaining),Math.max(0,canTake));
+    b.colWidths[i]=delta>0?cur-take:cur+take;
+    remaining=delta>0?remaining-take:remaining+take;
+    i+=dir;
+  }
+  // 여전히 remaining이 있으면 목표 조정 (이웃 한계 초과 시 target 자체 제한)
+  if(Math.abs(remaining)>0.01){
+    b.colWidths[colIdx]=target-remaining;
+  }
 }
 
 // col-resizer 제거 후 셀 HTML 반환
