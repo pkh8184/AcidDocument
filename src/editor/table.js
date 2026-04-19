@@ -389,6 +389,19 @@ export function showTablePanel(blockId,row,col){
   for(var i=0;i<COLORS.length;i++)html+='<div class="ctx-color-swatch" style="background:'+COLORS[i]+'" data-tbl-action="setColColor" data-color="'+COLORS[i]+'"></div>';
   html+='</div></div>';
   html+='<div class="tbl-panel-section"><button class="tbl-panel-btn" data-tbl-action="clearColors">색상 초기화</button></div>';
+  // 열 너비 (size.cols가 0인 경우는 이 섹션을 렌더링하지 않음)
+  if(size.cols>0){
+    var curColWidth=b.colWidths&&b.colWidths[col]!=null?b.colWidths[col]:(100/size.cols);
+    html+='<div class="tbl-panel-section"><div class="tbl-panel-title">열 너비 (열 '+(col+1)+')</div>';
+    html+='<div class="tbl-panel-width">';
+    html+='<input type="number" class="tbl-width-input" data-tbl-action="widthInput" min="5" max="80" step="0.5" value="'+curColWidth.toFixed(1)+'" aria-label="열 '+(col+1)+' 너비 퍼센트"> <span class="tbl-width-unit">%</span>';
+    html+='<input type="range" class="tbl-width-slider" data-tbl-action="widthSlider" min="5" max="80" step="0.5" value="'+curColWidth.toFixed(1)+'" aria-label="열 '+(col+1)+' 너비 슬라이더">';
+    html+='</div>';
+    html+='<div class="tbl-panel-grid">';
+    html+='<button class="tbl-panel-btn" data-tbl-action="distributeEvenly">균등 분배</button>';
+    html+='<button class="tbl-panel-btn" data-tbl-action="clearColWidths">자동 맞춤</button>';
+    html+='</div></div>';
+  }
   // 정렬
   html+='<div class="tbl-panel-section"><div class="tbl-panel-title">정렬 (열 '+(col+1)+')</div>';
   html+='<button class="tbl-panel-btn" data-tbl-action="sortAsc">↑ 오름차순</button>';
