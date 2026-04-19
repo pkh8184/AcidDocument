@@ -179,8 +179,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 /* 헤더 셀은 내부 .cell-text가 편집 영역이라 패딩을 위임 — 커서가 리사이저 근처에 놓이는 문제 방지 */
 .block-table th{background:var(--bg3);font-weight:600;position:sticky;top:0;z-index:1;color:var(--t1);padding:0}
 .block-table th .cell-text{display:block;padding:8px 12px;outline:none;min-height:1em;text-align:inherit}
-/* 셀 내부 래퍼/자식 요소가 부모 text-align을 무시 못 하도록 강제 상속 */
-.block-table td>*,.block-table th .cell-text>*{text-align:inherit}
+/* 셀 내부 모든 하위 요소가 부모 text-align을 무시하지 못하도록 강제 상속 (과거 편집 흔적의 인라인 style 방어) */
+.block-table td *,.block-table th .cell-text *{text-align:inherit !important}
 .block-table td{background:transparent}
 .block-table tr:hover td{background:var(--bg3)}
 .block-table th:focus-within,.block-table td:focus{box-shadow:inset 0 0 0 2px var(--acc);outline:none}
