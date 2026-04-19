@@ -207,6 +207,7 @@ export function collectBlocks(){
     if(b.type==='image'){var cap=el.querySelector('.block-image-caption');if(cap)b.caption=sanitizeHTML(cap.innerHTML)}
     if(b.type==='table'){
       var rows=[],trs=el.querySelectorAll('tr'),cws=[],tbl=el.querySelector('table'),tblW=tbl?tbl.offsetWidth:0;
+      var hasExistingColWidths=!!(b.colWidths&&b.colWidths.length);
       for(var ri=0;ri<trs.length;ri++){
         var cls=[],tds=trs[ri].querySelectorAll('th,td');
         for(var ci=0;ci<tds.length;ci++){
@@ -214,11 +215,13 @@ export function collectBlocks(){
           var cellResizers=cellClone.querySelectorAll('.col-resizer');
           for(var cr=0;cr<cellResizers.length;cr++)cellResizers[cr].parentNode.removeChild(cellResizers[cr]);
           cls.push(sanitizeHTML(cellClone.innerHTML));
-          if(ri===0&&tds[ci].offsetWidth&&tblW)cws[ci]=Math.round(tds[ci].offsetWidth/tblW*100)
+          // colWidths는 state가 소스 오브 트루스: 기존 값이 없을 때만 DOM에서 추출
+          if(!hasExistingColWidths&&ri===0&&tds[ci].offsetWidth&&tblW)cws[ci]=tds[ci].offsetWidth/tblW*100
         }
         rows.push(cls)
       }
-      b.rows=rows;if(cws.length)b.colWidths=cws
+      b.rows=rows;
+      if(!hasExistingColWidths&&cws.length)b.colWidths=cws;
     }
     if(b.type==='columns'){
       var cols=[],ces=el.querySelectorAll('.block-col-content'),cwc=[];
