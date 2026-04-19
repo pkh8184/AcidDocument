@@ -430,10 +430,69 @@ export function resetTablePanel(){
 export function initTablePanel(){
   var panel=$('tablePanel');
   if(!panel)return;
+
+  // 숫자/슬라이더 입력 디바운스 (500ms) — Phase 8 Undo와 호환
+  var widthInputTimer=null;
+
+  // state의 colWidths로 input/slider 값 재동기화 (클램프 후 desync 방지)
+  // 포커스된 요소는 건드리지 않아 커서 점프 방지
+  function syncWidthInputsFromState(){
+    var bid=panelState.blockId,col=panelState.col;
+    var b=findBlock(bid);
+    if(!b||!b.colWidths||b.colWidths[col]==null)return;
+    var v=b.colWidths[col];
+    var inputs=panel.querySelectorAll('[data-tbl-action="widthInput"],[data-tbl-action="widthSlider"]');
+    inputs.forEach(function(el){
+      if(document.activeElement!==el)el.value=v.toFixed(1);
+    });
+  }
+
+  // input 이벤트(타이핑/드래그 중): 양방향 시각 동기화만 + 디바운스 후 저장
+  function scheduleWidthSave(target){
+    var bid=panelState.blockId,col=panelState.col;
+    if(!bid)return;
+    var v=parseFloat(target.value);
+    if(isNaN(v))return;
+    // 입력과 슬라이더 양방향 시각 동기화 (포커스 요소 제외)
+    var allInputs=panel.querySelectorAll('[data-tbl-action="widthInput"],[data-tbl-action="widthSlider"]');
+    allInputs.forEach(function(el){if(el!==target&&document.activeElement!==el)el.value=v});
+    clearTimeout(widthInputTimer);
+    widthInputTimer=setTimeout(function(){
+      setColWidth(bid,col,v);
+      syncWidthInputsFromState();
+    },500);
+  }
+
+  panel.addEventListener('input',function(e){
+    var el=e.target.closest('[data-tbl-action]');
+    if(!el)return;
+    var action=el.getAttribute('data-tbl-action');
+    if(action==='widthInput'||action==='widthSlider')scheduleWidthSave(el);
+  });
+
+  // change 이벤트(blur/Enter/슬라이더 release): 디바운스 취소하고 즉시 확정
+  // ※ scheduleWidthSave 재호출 금지 — setTimeout과 중복 저장되면 Undo 스택에 2번 쌓임
+  panel.addEventListener('change',function(e){
+    var el=e.target.closest('[data-tbl-action]');
+    if(!el)return;
+    var action=el.getAttribute('data-tbl-action');
+    if(action==='widthInput'||action==='widthSlider'){
+      clearTimeout(widthInputTimer);
+      var bid=panelState.blockId,col=panelState.col;
+      var v=parseFloat(el.value);
+      if(!isNaN(v)&&bid){
+        setColWidth(bid,col,v);
+        syncWidthInputsFromState();
+      }
+    }
+  });
+
   panel.addEventListener('click',function(e){
     var btn=e.target.closest('[data-tbl-action]');
     if(!btn)return;
     var action=btn.getAttribute('data-tbl-action');
+    // 숫자/슬라이더 입력은 click 위임에서 제외 (input/change에서 처리됨)
+    if(action==='widthInput'||action==='widthSlider')return;
     var color=btn.hasAttribute('data-color')?btn.getAttribute('data-color'):null;
     var bid=panelState.blockId,row=panelState.row,col=panelState.col;
     if(!bid)return;
@@ -456,9 +515,10 @@ export function initTablePanel(){
       case'valignTop':setTableVAlign(bid,'top');break;
       case'valignMiddle':setTableVAlign(bid,'middle');break;
       case'valignBottom':setTableVAlign(bid,'bottom');break;
+      case'distributeEvenly':distributeColsEvenly(bid);break;
+      case'clearColWidths':clearColWidths(bid);break;
       case'deleteTable':deleteTable(bid);closeTablePanel();return;
     }
-    // 패널 갱신 (크기 변경 반영)
     var b=findBlock(bid);
     if(b&&b.rows){
       if(action==='deleteRow'&&row>=b.rows.length)panelState.row=b.rows.length-1;
