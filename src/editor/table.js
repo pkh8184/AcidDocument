@@ -183,11 +183,15 @@ export function insertColAt(id,afterCol){
   pushUndoImmediate();b=findBlock(id);
   var rows=collectTableData(id);if(rows)b.rows=rows;
   var insertIdx=Math.max(afterCol+1,0);
+  var prevLen=b.rows[0]?b.rows[0].length:0;
   for(var j=0;j<b.rows.length;j++)b.rows[j].splice(insertIdx,0,'');
-  // colWidths 조정
+  // colWidths 조정: 새 열에 (100/신규길이) 할당, 나머지는 비례 축소
   if(b.colWidths&&b.colWidths.length){
-    var avg=Math.floor(100/(b.rows[0].length));
-    b.colWidths.splice(insertIdx,0,avg);
+    var newLen=prevLen+1;
+    var newColPct=100/newLen;
+    var scale=(100-newColPct)/100;
+    for(var k=0;k<b.colWidths.length;k++)b.colWidths[k]=b.colWidths[k]*scale;
+    b.colWidths.splice(insertIdx,0,newColPct);
     normalizeColWidths(b);
   }
   renderBlocks();triggerAutoSave();
