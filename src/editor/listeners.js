@@ -610,48 +610,50 @@ export function setupBlockEvents(div,b,idx){
   });
 
   // 테이블 셀
+  // cellHost: <th>/<td> (data-row/data-col 위치) / editable: 실제 편집 가능 요소 (.cell-text 또는 td 자신)
   var cells=div.querySelectorAll('th,td');
-  for(var j=0;j<cells.length;j++){(function(cell){
-    cell.addEventListener('input',triggerAutoSave);
-    cell.addEventListener('paste',handlePaste);
-    cell.addEventListener('compositionstart',function(){state.isComposing=true});
-    cell.addEventListener('compositionend',function(){state.isComposing=false});
-    cell.addEventListener('mouseup',showFmtBar);
-    cell.addEventListener('click',function(){
+  for(var j=0;j<cells.length;j++){(function(cellHost){
+    var editable=cellHost.querySelector('.cell-text')||cellHost;
+    editable.addEventListener('input',triggerAutoSave);
+    editable.addEventListener('paste',handlePaste);
+    editable.addEventListener('compositionstart',function(){state.isComposing=true});
+    editable.addEventListener('compositionend',function(){state.isComposing=false});
+    editable.addEventListener('mouseup',showFmtBar);
+    editable.addEventListener('click',function(){
       if(state.editMode){
-        cell.focus({preventScroll:true});
+        editable.focus({preventScroll:true});
         // 테이블 패널 열려있으면 선택 셀 업데이트
         var tp=document.getElementById('tablePanel');
         if(tp&&tp.classList.contains('open')){
           var blockEl=div.closest('.block')||div;
           var bid=blockEl?blockEl.getAttribute('data-id'):null;
           if(bid){
-            var r=parseInt(cell.getAttribute('data-row'));
-            var c=parseInt(cell.getAttribute('data-col'));
+            var r=parseInt(cellHost.getAttribute('data-row'));
+            var c=parseInt(cellHost.getAttribute('data-col'));
             showTablePanel(bid,r,c);
           }
         }
       }
     });
-    cell.addEventListener('dblclick',function(){if(!state.editMode){import('../ui/sidebar.js').then(function(m){m.toggleEdit();setTimeout(function(){cell.focus({preventScroll:true})},50)})}});
+    editable.addEventListener('dblclick',function(){if(!state.editMode){import('../ui/sidebar.js').then(function(m){m.toggleEdit();setTimeout(function(){editable.focus({preventScroll:true})},50)})}});
     // 셀 우클릭 → 테이블 패널 열기
-    cell.addEventListener('contextmenu',function(e){
+    editable.addEventListener('contextmenu',function(e){
       if(!state.editMode)return;
       e.preventDefault();
       var blockEl=div.closest('.block')||div;
       var blockId=blockEl?blockEl.getAttribute('data-id'):null;
       if(!blockId)return;
-      var row=parseInt(cell.getAttribute('data-row'));
-      var col=parseInt(cell.getAttribute('data-col'));
+      var row=parseInt(cellHost.getAttribute('data-row'));
+      var col=parseInt(cellHost.getAttribute('data-col'));
       showTablePanel(blockId,row,col);
     });
     // 셀 키보드 핸들러
-    cell.addEventListener('keydown',function(e){
+    editable.addEventListener('keydown',function(e){
       if(!state.editMode)return;
       if(state.isComposing)return;
       e.stopPropagation();
-      var row=parseInt(cell.getAttribute('data-row'));
-      var col=parseInt(cell.getAttribute('data-col'));
+      var row=parseInt(cellHost.getAttribute('data-row'));
+      var col=parseInt(cellHost.getAttribute('data-col'));
       var blockEl=div.closest('.block')||div;
       var blockId=blockEl?blockEl.getAttribute('data-id'):null;
       if(!blockId)return;
@@ -663,7 +665,7 @@ export function setupBlockEvents(div,b,idx){
         // Ctrl+A → 셀 내 전체 선택
         if(e.key==='a'){
           e.preventDefault();
-          var rng=document.createRange();rng.selectNodeContents(cell);
+          var rng=document.createRange();rng.selectNodeContents(editable);
           var sel=window.getSelection();sel.removeAllRanges();sel.addRange(rng);
           return;
         }
@@ -714,21 +716,21 @@ export function setupBlockEvents(div,b,idx){
       }
       // Backspace — 빈 셀에서 아무 동작 없음
       if(e.key==='Backspace'){
-        if(cell.textContent===''||cell.innerHTML==='<br>'){
+        if(editable.textContent===''||editable.innerHTML==='<br>'){
           e.preventDefault();
           return;
         }
       }
       // Delete — 빈 셀에서 아무 동작 없음
       if(e.key==='Delete'){
-        if(cell.textContent===''||cell.innerHTML==='<br>'){
+        if(editable.textContent===''||editable.innerHTML==='<br>'){
           e.preventDefault();
           return;
         }
       }
       // ArrowUp → 위 셀 이동
       if(e.key==='ArrowUp'&&!e.shiftKey){
-        if(isAtStart(cell)&&row>0){
+        if(isAtStart(editable)&&row>0){
           e.preventDefault();
           focusCell(blockId,row-1,col);
           return;
@@ -736,7 +738,7 @@ export function setupBlockEvents(div,b,idx){
       }
       // ArrowDown → 아래 셀 이동
       if(e.key==='ArrowDown'&&!e.shiftKey){
-        if(isAtEnd(cell)){
+        if(isAtEnd(editable)){
           e.preventDefault();
           var size=getTableSize(blockId);
           if(row+1<size.rows)focusCell(blockId,row+1,col);
@@ -745,7 +747,7 @@ export function setupBlockEvents(div,b,idx){
       }
       // ArrowLeft → 왼쪽 셀 이동 (커서 맨 앞)
       if(e.key==='ArrowLeft'&&!e.shiftKey){
-        if(isAtStart(cell)&&col>0){
+        if(isAtStart(editable)&&col>0){
           e.preventDefault();
           focusCell(blockId,row,col-1);
           return;
@@ -753,7 +755,7 @@ export function setupBlockEvents(div,b,idx){
       }
       // ArrowRight → 오른쪽 셀 이동 (커서 맨 끝)
       if(e.key==='ArrowRight'&&!e.shiftKey){
-        if(isAtEnd(cell)){
+        if(isAtEnd(editable)){
           e.preventDefault();
           var size=getTableSize(blockId);
           if(col+1<size.cols)focusCell(blockId,row,col+1);
@@ -763,7 +765,7 @@ export function setupBlockEvents(div,b,idx){
       // Escape → 표 블록 바깥 포커스
       if(e.key==='Escape'){
         e.preventDefault();
-        cell.blur();
+        editable.blur();
         return;
       }
     });

@@ -214,7 +214,9 @@ export function collectBlocks(){
           var cellClone=tds[ci].cloneNode(true);
           var cellResizers=cellClone.querySelectorAll('.col-resizer');
           for(var cr=0;cr<cellResizers.length;cr++)cellResizers[cr].parentNode.removeChild(cellResizers[cr]);
-          cls.push(sanitizeHTML(cellClone.innerHTML));
+          // 헤더 셀은 .cell-text 래퍼를 쓰므로 내부 HTML만 추출, 바디 셀은 기존 방식
+          var cellInner=cellClone.querySelector('.cell-text');
+          cls.push(sanitizeHTML(cellInner?cellInner.innerHTML:cellClone.innerHTML));
           // colWidths는 state가 소스 오브 트루스: 기존 값이 없을 때만 DOM에서 추출
           if(!hasExistingColWidths&&ri===0&&tds[ci].offsetWidth&&tblW)cws[ci]=tds[ci].offsetWidth/tblW*100
         }

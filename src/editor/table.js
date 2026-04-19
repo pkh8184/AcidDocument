@@ -87,11 +87,14 @@ export function clearColWidths(blockId){
 }
 
 // col-resizer 제거 후 셀 HTML 반환
+// 헤더 셀은 <th><div class="cell-text">text</div><div class="col-resizer"/></th> 구조
+// 바디 셀은 <td>text</td> 구조 — 양쪽 모두 대응
 function cleanCellHtml(td){
   var clone=td.cloneNode(true);
   var rs=clone.querySelectorAll('.col-resizer');
   for(var i=0;i<rs.length;i++)rs[i].parentNode.removeChild(rs[i]);
-  return clone.innerHTML;
+  var inner=clone.querySelector('.cell-text');
+  return inner?inner.innerHTML:clone.innerHTML;
 }
 
 // DOM에서 현재 테이블 데이터 수집
@@ -130,9 +133,11 @@ export function focusCell(blockId,row,col){
   if(!el)return;
   var cell=el.querySelector('[data-row="'+row+'"][data-col="'+col+'"]');
   if(cell){
-    cell.focus({preventScroll:true});
+    // 헤더 셀은 내부 .cell-text가 편집 대상, 바디 셀은 cell 자체가 편집 대상
+    var editable=cell.querySelector('.cell-text')||cell;
+    editable.focus({preventScroll:true});
     var rng=document.createRange();var sel=window.getSelection();
-    rng.selectNodeContents(cell);rng.collapse(false);
+    rng.selectNodeContents(editable);rng.collapse(false);
     sel.removeAllRanges();sel.addRange(rng);
   }
 }

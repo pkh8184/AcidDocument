@@ -235,11 +235,18 @@ export function createBlockEl(b,idx){
           var cellStyle=bgColor?'background:'+bgColor+';':'';
           if(b.tableAlign)cellStyle+='text-align:'+b.tableAlign+';';
           if(b.tableVAlign)cellStyle+='vertical-align:'+b.tableVAlign+';';
-          inner+='<'+tag+ce+' data-row="'+r+'" data-col="'+c+'"'+(cellStyle?' style="'+cellStyle+'"':'')+'>'+sanitizeHTML(rows[r][c]||'');
-          if(state.editMode&&r===0){
-            inner+='<div class="col-resizer" data-col="'+c+'" contenteditable="false"></div>';
+          // 헤더 셀은 리사이저가 붙으므로 편집 영역을 .cell-text로 격리 (커서 위치 문제 방지)
+          // 바디 셀은 기존 구조 유지 (리사이저 없음)
+          if(r===0){
+            inner+='<'+tag+' data-row="'+r+'" data-col="'+c+'"'+(cellStyle?' style="'+cellStyle+'"':'')+'>';
+            inner+='<div class="cell-text"'+ce+'>'+sanitizeHTML(rows[r][c]||'')+'</div>';
+            if(state.editMode){
+              inner+='<div class="col-resizer" data-col="'+c+'" contenteditable="false"></div>';
+            }
+            inner+='</'+tag+'>';
+          }else{
+            inner+='<'+tag+ce+' data-row="'+r+'" data-col="'+c+'"'+(cellStyle?' style="'+cellStyle+'"':'')+'>'+sanitizeHTML(rows[r][c]||'')+'</'+tag+'>';
           }
-          inner+='</'+tag+'>';
         }
         inner+='</tr>';
       }
