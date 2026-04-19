@@ -175,7 +175,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .block-table{margin:16px 0;position:relative}
 .block-table-wrap{position:relative;border-radius:var(--rad);overflow-x:auto}
 .block-table table{width:100%;border-collapse:collapse;table-layout:fixed}
-.block-table th,.block-table td{padding:8px 12px;border:1px solid var(--bdr);outline:none;position:relative;vertical-align:top;min-width:50px;word-wrap:break-word;font-size:14px;line-height:1.5}
+.block-table th,.block-table td{padding:8px 12px;border:1px solid var(--bdr);outline:none;position:relative;vertical-align:top;min-width:50px;max-width:1200px;word-wrap:break-word;overflow-wrap:break-word;font-size:14px;line-height:1.5}
 .block-table th{background:var(--bg3);font-weight:600;position:sticky;top:0;z-index:1;color:var(--t1)}
 .block-table td{background:transparent}
 .block-table tr:hover td{background:var(--bg3)}
@@ -207,6 +207,12 @@ input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0
 .tbl-align-btn:hover{background:var(--accM);color:var(--acc);border-color:var(--acc)}
 .tbl-align-btn.active{background:var(--acc);color:#fff;border-color:var(--acc)}
 .tbl-align-sep{width:1px;height:20px;background:var(--bdr);margin:0 4px}
+/* 열 너비 조정 UI */
+.tbl-panel-width{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.tbl-width-input{width:72px;padding:6px 8px;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--bg3);color:var(--t1);font-size:13px}
+.tbl-width-input:focus{outline:2px solid var(--acc);outline-offset:-1px}
+.tbl-width-unit{color:var(--t3);font-size:13px}
+.tbl-width-slider{flex:1;min-width:100px;accent-color:var(--acc)}
 /* 테이블 그리드 셀렉터 */
 .table-grid-selector{position:fixed;background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:12px;box-shadow:0 10px 40px rgba(0,0,0,.25);z-index:300}
 .table-grid{display:grid;grid-template-columns:repeat(10,24px);gap:2px}
