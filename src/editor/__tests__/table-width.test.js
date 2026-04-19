@@ -39,6 +39,7 @@ import {
   distributeColsEvenly,
   clearColWidths,
   insertColAt,
+  sortTable,
 } from '../table.js';
 
 describe('Column Width', function() {
@@ -118,6 +119,32 @@ describe('Column Width', function() {
       var cw = mockState.page.blocks[0].colWidths;
       expect(cw.length).toBe(4);
       expect(Math.round(cw.reduce(function(a,b){return a+b},0))).toBe(100);
+    });
+  });
+
+  describe('통합 시나리오', function() {
+    it('드래그 → 실제 정렬 → 드래그 반복 시 colWidths 일관성 유지', function() {
+      resizeColWithNeighborCompensation('tbl1', 0, 50);
+      var before = mockState.page.blocks[0].colWidths.slice();
+      sortTable('tbl1', 0, 'asc');
+      expect(mockState.page.blocks[0].colWidths).toEqual(before);
+      resizeColWithNeighborCompensation('tbl1', 1, 25);
+      var sum = mockState.page.blocks[0].colWidths.reduce(function(a,b){return a+b},0);
+      expect(Math.round(sum)).toBe(100);
+    });
+    it('균등 분배 → 자동 맞춤 → 균등 분배 순서 이상 없음', function() {
+      distributeColsEvenly('tbl1');
+      clearColWidths('tbl1');
+      expect(mockState.page.blocks[0].colWidths).toBeUndefined();
+      distributeColsEvenly('tbl1');
+      expect(mockState.page.blocks[0].colWidths.length).toBe(3);
+    });
+    it('insertColAt 후 resizeColWithNeighborCompensation 정상 동작', function() {
+      insertColAt('tbl1', 0);
+      expect(mockState.page.blocks[0].colWidths.length).toBe(4);
+      resizeColWithNeighborCompensation('tbl1', 0, 40);
+      var sum = mockState.page.blocks[0].colWidths.reduce(function(a,b){return a+b},0);
+      expect(Math.round(sum)).toBe(100);
     });
   });
 });
