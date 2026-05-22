@@ -2,7 +2,7 @@
 
 import state from '../data/store.js';
 import {$,esc} from '../utils/helpers.js';
-import {sanitizeHTML} from '../utils/sanitize.js';
+import {sanitizeHTML,sanitizeURL} from '../utils/sanitize.js';
 import {updateNums,genTOC,triggerAutoSave,focusBlock,deleteBlock,addBlockBelow,scrollToBlk,findBlock,findBlockIndex,getChildren,updateTocNavVisibility} from './blocks.js';
 import {renderCalendar} from './calendar.js';
 import {renderChart} from './chart.js';
@@ -168,7 +168,8 @@ export function createBlockEl(b,idx){
         inner+='<div class="img-resize-handle" data-idx="'+idx+'"></div>';
         inner+='<div class="img-resize-tooltip"></div>';
       }
-      inner+='<img src="'+esc(b.src||'')+'" style="width:100%;border-radius:var(--rad);display:block;cursor:'+(state.editMode?'default':'zoom-in')+'" onerror="this.style.display=\'none\'"'+(state.editMode?'':' onclick="openImageViewer([\''+esc(b.src||'')+'\'],0)"')+'>';
+      var safeSrc=esc(sanitizeURL(b.src||''));
+      inner+='<img src="'+safeSrc+'" style="width:100%;border-radius:var(--rad);display:block;cursor:'+(state.editMode?'default':'zoom-in')+'" onerror="this.style.display=\'none\'"'+(state.editMode?'':' onclick="openImageViewer([\''+safeSrc+'\'],0)"')+'>';
       inner+='</div>';
       inner+='<div class="block-image-caption"'+ce+'>'+sanitizeHTML(b.caption||'')+'</div>';
       inner+='</div>';

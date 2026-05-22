@@ -51,7 +51,7 @@ export function addImageBlock(src){
 export function openImageViewer(images,index){
   state.viewerImages=images;
   state.viewerIndex=index||0;
-  $('viewerImg').src=state.viewerImages[state.viewerIndex];
+  $('viewerImg').src=sanitizeURL(state.viewerImages[state.viewerIndex]||'');
   updateViewerCounter();
   $('imageViewer').classList.add('open');
   document.body.style.overflow='hidden';
@@ -66,7 +66,7 @@ export function viewerNav(dir,e){
   state.viewerIndex+=dir;
   if(state.viewerIndex<0)state.viewerIndex=state.viewerImages.length-1;
   if(state.viewerIndex>=state.viewerImages.length)state.viewerIndex=0;
-  $('viewerImg').src=state.viewerImages[state.viewerIndex];
+  $('viewerImg').src=sanitizeURL(state.viewerImages[state.viewerIndex]||'');
   updateViewerCounter();
 }
 export function updateViewerCounter(){
@@ -132,7 +132,7 @@ export function renderSlideBlock(b,idx){
   }else{
     for(var i=0;i<images.length;i++){
       html+='<div class="block-slide-item" onclick="'+(state.editMode?'':'openImageViewer(getSlideImages('+idx+'),'+i+')')+'">';
-      html+='<img src="'+esc(images[i])+'" onerror="this.style.display=\'none\'">';
+      html+='<img src="'+esc(sanitizeURL(images[i]))+'" onerror="this.style.display=\'none\'">';
       html+='</div>';
     }
   }
@@ -164,7 +164,7 @@ export function renderSlideBlock(b,idx){
     html+='</div>';
     html+='<div class="block-slide-images">';
     for(var i=0;i<images.length;i++){
-      html+='<div style="position:relative"><img class="block-slide-thumb'+(i===current?' active':'')+'" src="'+esc(images[i])+'" onclick="slideTo('+idx+','+i+')">';
+      html+='<div style="position:relative"><img class="block-slide-thumb'+(i===current?' active':'')+'" src="'+esc(sanitizeURL(images[i]))+'" onclick="slideTo('+idx+','+i+')">';
       html+='<button style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--err);color:#fff;border:none;font-size:12px;cursor:pointer" onclick="removeSlideImage('+idx+','+i+')">✕</button></div>';
     }
     html+='<div class="block-slide-add" onclick="addSlideImage('+idx+')">+</div>';
