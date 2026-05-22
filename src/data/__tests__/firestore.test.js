@@ -179,6 +179,10 @@ describe('validateUploadFile', () => {
     var file = { type: 'application/zip', name: 'a.zip', size: 1000 };
     expect(validateUploadFile(file, null, 10 * 1024 * 1024)).toBeNull();
   });
+  it('MIME이 비어있지 않으면 확장자가 허용 목록이어도 MIME으로 거부한다', () => {
+    var file = { type: 'image/jpeg', name: 'a.png', size: 1000 };
+    expect(validateUploadFile(file, ['image/png'], 10 * 1024 * 1024)).not.toBeNull();
+  });
 });
 
 describe('uploadToStorage', () => {

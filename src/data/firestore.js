@@ -570,7 +570,7 @@ export function validateUploadFile(file,allowedTypes,maxSize){
     }
     if(!ok)return '허용되지 않는 파일 형식입니다.\n파일 타입: '+(fileType||'(알 수 없음)')+'\n허용: '+allowedTypes.join(', ');
   }
-  if(file&&maxSize&&file.size>maxSize)return '파일 크기가 너무 큽니다.\n최대: '+formatBytes(maxSize);
+  if(file&&maxSize!=null&&file.size>maxSize)return '파일 크기가 너무 큽니다.\n최대: '+formatBytes(maxSize);
   return null;
 }
 // Cloudinary unsigned 업로드 (Firebase Storage 대체)
