@@ -12,6 +12,8 @@ export var MAX_VER=10;
 // Storage 용량 제한 (bytes)
 export var STORAGE_LIMIT=5*1024*1024*1024; // 5GB
 export var MAX_FILE_SIZE=10*1024*1024; // 파일당 최대 10MB
+// base64(문서 내 저장) 모드 이미지 최대 크기 — base64는 ~33% 팽창, Firestore 문서 한도 1MB 고려한 보수값
+export var MAX_BASE64_IMAGE_SIZE=800*1024;
 
 // Cloudinary (Firebase Storage 대체 — 이미지/파일을 외부 호스팅, Confluence식 공유)
 // cloudName / uploadPreset 은 클라이언트 노출 안전. API Secret은 절대 코드에 넣지 않음.

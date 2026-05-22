@@ -1,8 +1,8 @@
 // src/editor/listeners.js — 키보드, 클립보드, 드래그&드롭 이벤트
 
 import state from '../data/store.js';
-import {ALLOWED_IMAGE_TYPES} from '../config/firebase.js';
-import {$,$$,genId,toast,esc} from '../utils/helpers.js';
+import {ALLOWED_IMAGE_TYPES,MAX_BASE64_IMAGE_SIZE} from '../config/firebase.js';
+import {$,$$,genId,toast,esc,readFileAsDataURL} from '../utils/helpers.js';
 import {uploadToStorage} from '../data/firestore.js';
 import {renderBlocks} from './renderer.js';
 import {triggerAutoSave,focusBlock,insertBlock,deleteBlock,addBlockBelow,updateNums,setupBlockTracking,copyCode,downloadCode,findBlock,findBlockIndex,getChildren,getCurrentIdx,moveBlockUp,moveBlockDown} from './blocks.js';
@@ -462,16 +462,16 @@ export function handlePaste(e){
             toast(err.message||'이미지 업로드 실패','err');
           });
         }else{
-          var reader=new FileReader();
-          reader.onload=function(ev){
+          readFileAsDataURL(file,MAX_BASE64_IMAGE_SIZE).then(function(dataUrl){
             pushUndoImmediate();
-            var b={id:genId(),type:'image',src:ev.target.result,caption:''};
+            var b={id:genId(),type:'image',src:dataUrl,caption:''};
             var idx=state.currentInsertIdx!==null?state.currentInsertIdx+1:state.page.blocks.length;
             state.page.blocks.splice(idx,0,b);
             renderBlocks();triggerAutoSave();
             toast('이미지 삽입');
-          };
-          reader.readAsDataURL(file);
+          }).catch(function(err){
+            toast(err.message||'이미지 읽기 실패','err');
+          });
         }
         return;
       }
@@ -1316,9 +1316,11 @@ export function setupListeners(){
             toast(err.message||'이미지 업로드 실패','err');
           });
         }else{
-          var reader=new FileReader();
-          reader.onload=function(ev){addImageBlock(ev.target.result)};
-          reader.readAsDataURL(file);
+          readFileAsDataURL(file,MAX_BASE64_IMAGE_SIZE).then(function(dataUrl){
+            addImageBlock(dataUrl);
+          }).catch(function(err){
+            toast(err.message||'이미지 읽기 실패','err');
+          });
         }
       }else if(file.type==='application/pdf'){
         var reader=new FileReader();

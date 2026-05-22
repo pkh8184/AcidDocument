@@ -21,6 +21,7 @@ import {
   highlightText,
   getLoginState,
   saveLoginState,
+  readFileAsDataURL,
 } from '../helpers.js';
 
 // ─── genId ────────────────────────────────────────────────
@@ -209,5 +210,20 @@ describe('getLoginState / saveLoginState', () => {
     const loaded = getLoginState();
     expect(loaded.attempts).toBe(5);
     expect(loaded.blocked).toBe(true);
+  });
+});
+
+describe('readFileAsDataURL', () => {
+  it('파일을 data URL로 읽는다', async () => {
+    var file = new File(['hello'], 'a.txt', { type: 'text/plain' });
+    var result = await readFileAsDataURL(file, 1024 * 1024);
+    expect(result).toMatch(/^data:/);
+  });
+  it('maxSize 초과 시 reject한다', async () => {
+    var big = new File([new Uint8Array(2000)], 'big.png', { type: 'image/png' });
+    await expect(readFileAsDataURL(big, 1000)).rejects.toThrow('너무 큽니다');
+  });
+  it('파일이 없으면 reject한다', async () => {
+    await expect(readFileAsDataURL(null, 1000)).rejects.toThrow();
   });
 });

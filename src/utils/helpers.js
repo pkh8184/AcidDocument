@@ -31,3 +31,17 @@ export function fetchIP(){
     .then(function(d){return d.ip})
     .catch(function(){return '(알 수 없음)'});
 }
+// 파일을 data URL(base64)로 읽음 — maxSize(bytes) 초과 시 거부, 읽기 실패 시 reject
+export function readFileAsDataURL(file,maxSize){
+  return new Promise(function(resolve,reject){
+    if(!file){reject(new Error('파일이 없습니다'));return}
+    if(maxSize&&file.size>maxSize){
+      reject(new Error('파일이 너무 큽니다 (최대 '+Math.round(maxSize/1024)+'KB). Storage 저장 방식을 사용하세요.'));
+      return;
+    }
+    var reader=new FileReader();
+    reader.onload=function(e){resolve(e.target.result)};
+    reader.onerror=function(){reject(new Error('파일을 읽지 못했습니다'))};
+    reader.readAsDataURL(file);
+  });
+}

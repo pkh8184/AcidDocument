@@ -1,8 +1,8 @@
 // src/editor/media.js — 이미지, 동영상, PDF, 파일, 북마크, 슬라이드
 
 import state from '../data/store.js';
-import {ALLOWED_IMAGE_TYPES} from '../config/firebase.js';
-import {$,genId,esc,toast} from '../utils/helpers.js';
+import {ALLOWED_IMAGE_TYPES,MAX_BASE64_IMAGE_SIZE} from '../config/firebase.js';
+import {$,genId,esc,toast,readFileAsDataURL} from '../utils/helpers.js';
 import {sanitizeURL} from '../utils/sanitize.js';
 import {saveDB,uploadToStorage} from '../data/firestore.js';
 import {renderBlocks} from './renderer.js';
@@ -32,9 +32,11 @@ export function submitImage(){
         toast(err.message||'이미지 업로드 실패','err');
       });
     }else{
-      var reader=new FileReader();
-      reader.onload=function(e){addImageBlock(e.target.result)};
-      reader.readAsDataURL(file);
+      readFileAsDataURL(file,MAX_BASE64_IMAGE_SIZE).then(function(dataUrl){
+        addImageBlock(dataUrl);
+      }).catch(function(err){
+        toast(err.message||'이미지 읽기 실패','err');
+      });
     }
   }else if(url){var safe=sanitizeURL(url);if(!safe){toast('유효하지 않은 URL입니다','err');return}addImageBlock(safe)}
   else{toast('URL 또는 파일을 선택하세요','err');return}
@@ -225,9 +227,11 @@ export function submitSlideImage(){
         toast(err.message||'업로드 실패','err');
       });
     }else{
-      var reader=new FileReader();
-      reader.onload=function(e){addSlideImageSrc(e.target.result)};
-      reader.readAsDataURL(file);
+      readFileAsDataURL(file,MAX_BASE64_IMAGE_SIZE).then(function(dataUrl){
+        addSlideImageSrc(dataUrl);
+      }).catch(function(err){
+        toast(err.message||'이미지 읽기 실패','err');
+      });
     }
   }else if(url){
     var safe=sanitizeURL(url);if(!safe){toast('유효하지 않은 URL입니다','err');return}
