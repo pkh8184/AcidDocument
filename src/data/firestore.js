@@ -1,7 +1,7 @@
 // src/data/firestore.js — Firestore CRUD
 
 import state from './store.js';
-import {firestore,storage,STORAGE_LIMIT,MAX_FILE_SIZE} from '../config/firebase.js';
+import {firestore,MAX_FILE_SIZE,CLOUDINARY_CLOUD_NAME,CLOUDINARY_UPLOAD_PRESET} from '../config/firebase.js';
 import {$,genId,toast,formatBytes,fetchIP} from '../utils/helpers.js';
 import {generateSalt,hashPassword} from '../auth/crypto.js';
 
@@ -557,6 +557,8 @@ export function updateStorageUsage(addBytes){
   state.db.storageUsage+=addBytes;
   return saveDB();
 }
+// Cloudinary unsigned 업로드 (Firebase Storage 대체)
+// folder/allowedTypes 인자는 기존 호출부 호환을 위해 유지
 export function uploadToStorage(file,folder,allowedTypes){
   return new Promise(function(resolve,reject){
     // 파일 타입 체크 (더 유연하게)
@@ -581,33 +583,41 @@ export function uploadToStorage(file,folder,allowedTypes){
       reject(new Error('파일 크기가 너무 큽니다.\n최대: '+formatBytes(MAX_FILE_SIZE)));
       return;
     }
-    // 총 용량 체크
-    getStorageUsage().then(function(used){
-      if(used+file.size>STORAGE_LIMIT){
-        reject(new Error('저장 공간이 부족합니다.\n사용: '+formatBytes(used)+' / '+formatBytes(STORAGE_LIMIT)));
-        return;
+    // Cloudinary unsigned 업로드 — auto/upload 가 이미지/비디오/raw 자동 판별
+    var formData=new FormData();
+    formData.append('file',file);
+    formData.append('upload_preset',CLOUDINARY_UPLOAD_PRESET);
+    if(folder)formData.append('folder',folder);
+    toast('업로드 중...','warn');
+    var xhr=new XMLHttpRequest();
+    xhr.open('POST','https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD_NAME+'/auto/upload');
+    xhr.upload.onprogress=function(e){
+      if(e.lengthComputable){
+        var progress=Math.round((e.loaded/e.total)*100);
+        toast('업로드 중... '+progress+'%','warn');
       }
-      // 업로드 진행
-      var fileName=folder+'/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'');
-      var ref=storage.ref().child(fileName);
-      var uploadTask=ref.put(file);
-
-      uploadTask.on('state_changed',
-        function(snapshot){
-          var progress=Math.round((snapshot.bytesTransferred/snapshot.totalBytes)*100);
-          toast('업로드 중... '+progress+'%','warn');
-        },
-        function(error){
-          reject(error);
-        },
-        function(){
-          uploadTask.snapshot.ref.getDownloadURL().then(function(url){
+    };
+    xhr.onload=function(){
+      if(xhr.status>=200&&xhr.status<300){
+        try{
+          var data=JSON.parse(xhr.responseText);
+          if(data&&data.secure_url){
             updateStorageUsage(file.size);
-            resolve({url:url,size:file.size,name:file.name});
-          });
+            resolve({url:data.secure_url,size:file.size,name:file.name});
+          }else{
+            reject(new Error('업로드 응답에 URL이 없습니다.'));
+          }
+        }catch(e){
+          reject(new Error('업로드 응답 파싱 실패'));
         }
-      );
-    });
+      }else{
+        var msg='업로드 실패 (HTTP '+xhr.status+')';
+        try{var err=JSON.parse(xhr.responseText);if(err&&err.error&&err.error.message)msg+='\n'+err.error.message;}catch(e2){}
+        reject(new Error(msg));
+      }
+    };
+    xhr.onerror=function(){reject(new Error('네트워크 오류로 업로드 실패'));};
+    xhr.send(formData);
   });
 }
 

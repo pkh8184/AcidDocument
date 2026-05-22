@@ -359,6 +359,14 @@ window.filterPageLinks=function(q){renderPageLinkList(q)};
 // 디버그 상태 덤프 (loginDebug.dump()에서 사용)
 window.__debugState=function(){return{user:state.user?{id:state.user.id,role:state.user.role}:null,appInitialized:state.appInitialized,loginInProgress:state.loginInProgress,loggingOut:state.loggingOut,editMode:state.editMode,pageId:state.page?state.page.id:null,pagesCount:state.db?state.db.pages.length:0}};
 
+// 이미지 마이그레이션 (Firebase Storage → Cloudinary, 일회성)
+// 로그인 후 콘솔에서 migrateImagesDryRun() 으로 스캔, migrateImages() 로 실제 이전
+window.migrateImagesDryRun=function(){return import('./data/migrate-images.js').then(function(m){return m.migrateImagesToCloudinary(true)})};
+window.migrateImages=function(){return import('./data/migrate-images.js').then(function(m){return m.migrateImagesToCloudinary(false)})};
+// 깨진 Firebase 이미지 데이터 정리 (복구 포기 시) — DryRun 으로 먼저 확인
+window.cleanupBrokenImagesDryRun=function(){return import('./data/migrate-images.js').then(function(m){return m.cleanupFirebaseAssets(true)})};
+window.cleanupBrokenImages=function(){return import('./data/migrate-images.js').then(function(m){return m.cleanupFirebaseAssets(false)})};
+
 // DOMContentLoaded
 function onReady(){initTablePanel();initTocNav();init()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',onReady);else onReady();

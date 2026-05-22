@@ -12,6 +12,11 @@ export var MAX_VER=10;
 // Storage 용량 제한 (bytes)
 export var STORAGE_LIMIT=5*1024*1024*1024; // 5GB
 export var MAX_FILE_SIZE=10*1024*1024; // 파일당 최대 10MB
+
+// Cloudinary (Firebase Storage 대체 — 이미지/파일을 외부 호스팅, Confluence식 공유)
+// cloudName / uploadPreset 은 클라이언트 노출 안전. API Secret은 절대 코드에 넣지 않음.
+export var CLOUDINARY_CLOUD_NAME='dayb03xfn';
+export var CLOUDINARY_UPLOAD_PRESET='acid_unsigned';
 export var ALLOWED_IMAGE_TYPES=['image/jpeg','image/png','image/gif','image/webp'];
 export var ALLOWED_VIDEO_TYPES=['video/mp4','video/webm','video/ogg'];
 export var ALLOWED_FILE_TYPES=['application/pdf','application/zip','application/x-zip-compressed','text/plain','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
