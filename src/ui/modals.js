@@ -9,6 +9,7 @@ import {generateSalt,hashPassword,verifyPassword,validatePassword} from '../auth
 import {renderTree} from './sidebar.js';
 import {getPage} from '../editor/blocks.js';
 import {renderBlocks} from '../editor/renderer.js';
+
 var _previousFocus=null;
 
 export function trapFocus(modalId){
@@ -64,7 +65,7 @@ export function renderStorageSettings(){
 export function setImageStorageMode(mode){
   state.db.settings.imageStorage=mode;
   saveDB();
-  toast(mode==='storage'?'Storage 사용':'Base64 사용');
+  toast(mode==='storage'?'외부 호스팅 사용 (Cloudinary)':'문서 내 저장 (Base64) 사용');
 }
 export function renderIpLog(){
   var list=$('ipLogList');
