@@ -278,23 +278,18 @@ export function setupSlideAutoPlay(){
   }
 }
 
-export function insertVideo(){openModal('videoUploadModal');$('videoUrlInput').value='';$('videoFileInput').value=''}
+export function insertVideo(){openModal('videoUploadModal');$('videoUrlInput').value=''}
 export function submitVideo(){
-  var url=$('videoUrlInput').value.trim(),file=$('videoFileInput').files[0];
-  if(file){
-    var reader=new FileReader();
-    reader.onload=function(e){addVideoBlock(e.target.result,file.name)};
-    reader.readAsDataURL(file)
-  }else if(url){
-    var safe=sanitizeURL(url);
-    if(!safe){toast('유효하지 않은 URL입니다','err');return}
-    var vid=getYTId(safe);
-    if(!vid){toast('유효한 YouTube URL을 입력하세요','err');return}
-    addVideoBlock(safe,null)
-  }else{toast('URL 또는 파일을 선택하세요','err');return}
+  var url=$('videoUrlInput').value.trim();
+  if(!url){toast('YouTube URL을 입력하세요','err');return}
+  var safe=sanitizeURL(url);
+  if(!safe){toast('유효하지 않은 URL입니다','err');return}
+  var vid=getYTId(safe);
+  if(!vid){toast('유효한 YouTube URL을 입력하세요','err');return}
+  addVideoBlock(safe);
 }
-export function addVideoBlock(src,fname){
-  var b={id:genId(),type:'video',url:src,isFile:!!fname,fileName:fname||''};
+export function addVideoBlock(src){
+  var b={id:genId(),type:'video',url:src};
   insertMediaBlock(b);
   renderBlocks();triggerAutoSave();closeModal('videoUploadModal');toast('동영상 삽입')
 }
