@@ -557,32 +557,28 @@ export function updateStorageUsage(addBytes){
   state.db.storageUsage+=addBytes;
   return saveDB();
 }
+// 업로드 파일 검증 — 통과 시 null, 실패 시 에러 메시지(string) 반환
+export function validateUploadFile(file,allowedTypes,maxSize){
+  var fileType=(file&&file.type)||'';
+  if(allowedTypes&&allowedTypes.length){
+    var ok=allowedTypes.indexOf(fileType)!==-1;
+    if(!ok&&!fileType){
+      // 일부 브라우저는 MIME을 비워 전달 — 확장자로만 폴백
+      var ext=((file&&file.name)||'').split('.').pop().toLowerCase();
+      var extMap={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp'};
+      if(extMap[ext]&&allowedTypes.indexOf(extMap[ext])!==-1)ok=true;
+    }
+    if(!ok)return '허용되지 않는 파일 형식입니다.\n파일 타입: '+(fileType||'(알 수 없음)')+'\n허용: '+allowedTypes.join(', ');
+  }
+  if(file&&maxSize&&file.size>maxSize)return '파일 크기가 너무 큽니다.\n최대: '+formatBytes(maxSize);
+  return null;
+}
 // Cloudinary unsigned 업로드 (Firebase Storage 대체)
 // folder/allowedTypes 인자는 기존 호출부 호환을 위해 유지
 export function uploadToStorage(file,folder,allowedTypes){
   return new Promise(function(resolve,reject){
-    // 파일 타입 체크 (더 유연하게)
-    var fileType=file.type||'';
-    var isAllowed=false;
-    if(allowedTypes){
-      for(var i=0;i<allowedTypes.length;i++){
-        if(fileType===allowedTypes[i]||fileType.indexOf(allowedTypes[i].split('/')[1])!==-1){
-          isAllowed=true;break;
-        }
-      }
-      // 확장자로도 체크
-      var ext=(file.name||'').split('.').pop().toLowerCase();
-      if(['jpg','jpeg','png','gif','webp'].indexOf(ext)!==-1)isAllowed=true;
-      if(!isAllowed){
-        reject(new Error('허용되지 않는 파일 형식입니다.\n파일 타입: '+fileType+'\n허용: '+allowedTypes.join(', ')));
-        return;
-      }
-    }
-    // 파일 크기 체크
-    if(file.size>MAX_FILE_SIZE){
-      reject(new Error('파일 크기가 너무 큽니다.\n최대: '+formatBytes(MAX_FILE_SIZE)));
-      return;
-    }
+    var validationError=validateUploadFile(file,allowedTypes,MAX_FILE_SIZE);
+    if(validationError){reject(new Error(validationError));return;}
     // Cloudinary unsigned 업로드 — auto/upload 가 이미지/비디오/raw 자동 판별
     var formData=new FormData();
     formData.append('file',file);

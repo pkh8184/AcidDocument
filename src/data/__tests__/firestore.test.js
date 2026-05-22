@@ -21,9 +21,9 @@ var { mockBatch, mockFirestore, mockToast } = vi.hoisted(() => {
 
 vi.mock('../../config/firebase.js', () => ({
   firestore: mockFirestore,
-  storage: {},
-  STORAGE_LIMIT: 5 * 1024 * 1024 * 1024,
   MAX_FILE_SIZE: 10 * 1024 * 1024,
+  CLOUDINARY_CLOUD_NAME: 'testcloud',
+  CLOUDINARY_UPLOAD_PRESET: 'testpreset',
 }));
 
 vi.mock('../../utils/helpers.js', () => ({
@@ -49,7 +49,7 @@ vi.mock('../store.js', () => ({
 }));
 
 // 모듈 import (mock 적용 후)
-import { firestoreCall, batchDeletePages } from '../firestore.js';
+import { firestoreCall, batchDeletePages, uploadToStorage, validateUploadFile } from '../firestore.js';
 
 // --- 테스트 ---
 
@@ -147,5 +147,72 @@ describe('batchDeletePages', () => {
     await expect(batchDeletePages(['page1'])).rejects.toThrow('batch fail');
 
     console.error.mockRestore();
+  });
+});
+
+describe('validateUploadFile', () => {
+  it('허용 타입과 정확히 일치하면 null을 반환한다', () => {
+    var file = { type: 'image/png', name: 'a.png', size: 1000 };
+    expect(validateUploadFile(file, ['image/png', 'image/jpeg'], 10 * 1024 * 1024)).toBeNull();
+  });
+  it('허용되지 않은 타입이면 에러 메시지를 반환한다', () => {
+    var file = { type: 'application/x-msdownload', name: 'a.exe', size: 1000 };
+    expect(validateUploadFile(file, ['image/png'], 10 * 1024 * 1024)).toContain('허용되지 않는');
+  });
+  it('substring 매칭으로 우회되지 않는다', () => {
+    var file = { type: 'application/png-fake', name: 'a.dat', size: 1000 };
+    expect(validateUploadFile(file, ['image/png'], 10 * 1024 * 1024)).not.toBeNull();
+  });
+  it('MIME이 비어있으면 확장자로 폴백한다', () => {
+    var file = { type: '', name: 'photo.PNG', size: 1000 };
+    expect(validateUploadFile(file, ['image/png'], 10 * 1024 * 1024)).toBeNull();
+  });
+  it('MIME이 비어있고 확장자도 허용 목록 밖이면 거부한다', () => {
+    var file = { type: '', name: 'photo.exe', size: 1000 };
+    expect(validateUploadFile(file, ['image/png'], 10 * 1024 * 1024)).not.toBeNull();
+  });
+  it('파일 크기가 maxSize를 초과하면 에러를 반환한다', () => {
+    var file = { type: 'image/png', name: 'a.png', size: 20 * 1024 * 1024 };
+    expect(validateUploadFile(file, ['image/png'], 10 * 1024 * 1024)).toContain('너무 큽니다');
+  });
+  it('allowedTypes가 없으면 타입 검사를 건너뛴다', () => {
+    var file = { type: 'application/zip', name: 'a.zip', size: 1000 };
+    expect(validateUploadFile(file, null, 10 * 1024 * 1024)).toBeNull();
+  });
+});
+
+describe('uploadToStorage', () => {
+  it('허용되지 않은 타입이면 reject한다', async () => {
+    var file = { type: 'application/x-msdownload', name: 'a.exe', size: 100 };
+    await expect(uploadToStorage(file, 'images', ['image/png'])).rejects.toThrow('허용되지 않는');
+  });
+  it('크기 초과면 reject한다', async () => {
+    var file = { type: 'image/png', name: 'a.png', size: 20 * 1024 * 1024 };
+    await expect(uploadToStorage(file, 'images', ['image/png'])).rejects.toThrow('너무 큽니다');
+  });
+  it('Cloudinary 성공 응답 시 secure_url을 반환한다', async () => {
+    var fakeXHR = {
+      open: vi.fn(), upload: {}, status: 0, responseText: '',
+      send: function () {
+        this.status = 200;
+        this.responseText = JSON.stringify({ secure_url: 'https://res.cloudinary.com/x.png' });
+        this.onload();
+      },
+    };
+    vi.stubGlobal('XMLHttpRequest', function () { return fakeXHR; });
+    var file = { type: 'image/png', name: 'a.png', size: 100 };
+    var result = await uploadToStorage(file, 'images', ['image/png']);
+    expect(result.url).toBe('https://res.cloudinary.com/x.png');
+    vi.unstubAllGlobals();
+  });
+  it('네트워크 오류 시 reject한다', async () => {
+    var fakeXHR = {
+      open: vi.fn(), upload: {}, status: 0, responseText: '',
+      send: function () { this.onerror(); },
+    };
+    vi.stubGlobal('XMLHttpRequest', function () { return fakeXHR; });
+    var file = { type: 'image/png', name: 'a.png', size: 100 };
+    await expect(uploadToStorage(file, 'images', ['image/png'])).rejects.toThrow();
+    vi.unstubAllGlobals();
   });
 });
