@@ -1,16 +1,14 @@
 // src/ui/modals.js — 모달, 설정
 
 import state from '../data/store.js';
-import {ICONS,STORAGE_LIMIT,auth} from '../config/firebase.js';
-import {$,$$,esc,toast,formatDate,formatBytes} from '../utils/helpers.js';
-import {saveDB,savePage,savePages,uploadToStorage,updateStorageUsage,batchUpdateUserIdInPages,updateUserIdInLogs,getErrorLogs,clearErrorLogs} from '../data/firestore.js';
+import {ICONS,auth} from '../config/firebase.js';
+import {$,$$,esc,toast,formatDate} from '../utils/helpers.js';
+import {saveDB,savePage,batchUpdateUserIdInPages,updateUserIdInLogs,getErrorLogs,clearErrorLogs} from '../data/firestore.js';
 import {isSuper,updateUidMapping} from '../auth/auth.js';
 import {generateSalt,hashPassword,verifyPassword,validatePassword} from '../auth/crypto.js';
 import {renderTree} from './sidebar.js';
 import {getPage} from '../editor/blocks.js';
 import {renderBlocks} from '../editor/renderer.js';
-import {storage} from '../config/firebase.js';
-
 var _previousFocus=null;
 
 export function trapFocus(modalId){
@@ -56,107 +54,12 @@ export function openSettings(){
   renderUsers();genNewUser();
   showSettingsTab('profile',document.querySelector('.tab-btn.on'))
 }
-export function showSettingsTab(tab,btn){$$('.tab-btn').forEach(function(b){b.classList.remove('on')});$$('.tab-panel').forEach(function(p){p.classList.remove('on')});btn.classList.add('on');$('tab'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('on');if(tab==='iplog')renderIpLog();if(tab==='storage')renderStorageUsage();if(tab==='deletelog')renderDeleteLog();if(tab==='errorlog')loadErrorLogs()}
+export function showSettingsTab(tab,btn){$$('.tab-btn').forEach(function(b){b.classList.remove('on')});$$('.tab-panel').forEach(function(p){p.classList.remove('on')});btn.classList.add('on');$('tab'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('on');if(tab==='iplog')renderIpLog();if(tab==='storage')renderStorageSettings();if(tab==='deletelog')renderDeleteLog();if(tab==='errorlog')loadErrorLogs()}
 
-export function renderStorageUsage(){
-  var used=state.db.storageUsage||0;
-  var pct=Math.min((used/STORAGE_LIMIT)*100,100);
-  $('storageUsageFill').style.width=pct+'%';
-  $('storageUsageFill').style.background=pct>90?'var(--err)':pct>70?'var(--warn)':'var(--acc)';
-  $('storageUsageText').innerHTML='<strong>'+formatBytes(used)+'</strong> / '+formatBytes(STORAGE_LIMIT)+' 사용 ('+pct.toFixed(1)+'%)';
-  // 이미지 저장 방식 라디오버튼 설정
+export function renderStorageSettings(){
   var mode=state.db.settings.imageStorage||'storage';
   $('imgStorageOn').checked=(mode==='storage');
   $('imgStorageOff').checked=(mode==='base64');
-}
-export function migrateImages(){
-  if(!isSuper()){toast('최고관리자만 가능합니다','err');return}
-  if(!confirm('기존 base64 이미지를 Storage로 이전합니다.\n시간이 걸릴 수 있습니다. 진행하시겠습니까?'))return;
-
-  var status=$('migrationStatus');
-  status.style.display='block';
-  status.innerHTML='🔍 base64 이미지 검색 중...';
-
-  // base64 이미지 찾기
-  var targets=[];
-  for(var i=0;i<state.db.pages.length;i++){
-    var pg=state.db.pages[i];
-    if(!pg.blocks)continue;
-    for(var j=0;j<pg.blocks.length;j++){
-      var blk=pg.blocks[j];
-      if(blk.type==='image'&&blk.src&&blk.src.startsWith('data:image/')){
-        targets.push({pageIdx:i,blockIdx:j,src:blk.src});
-      }
-    }
-  }
-
-  if(targets.length===0){
-    status.innerHTML='✅ 마이그레이션할 이미지가 없습니다.';
-    toast('이미 완료됨');
-    return;
-  }
-
-  status.innerHTML='📤 '+targets.length+'개 이미지 발견. 업로드 중... (0/'+targets.length+')';
-
-  var completed=0;
-  var failed=0;
-
-  function uploadNext(idx){
-    if(idx>=targets.length){
-      status.innerHTML='✅ 완료! 성공: '+completed+', 실패: '+failed;
-      if(completed>0){
-        saveDB();
-        // 변경된 페이지들 개별 저장
-        var modifiedPages={};
-        for(var k=0;k<targets.length;k++){modifiedPages[state.db.pages[targets[k].pageIdx].id]=state.db.pages[targets[k].pageIdx]}
-        var pArr=[];for(var pid in modifiedPages){if(modifiedPages.hasOwnProperty(pid))pArr.push(modifiedPages[pid])}
-        savePages(pArr).then(function(){
-          toast('마이그레이션 완료');
-          renderStorageUsage();
-        });
-      }
-      return;
-    }
-
-    var t=targets[idx];
-    status.innerHTML='📤 업로드 중... ('+(idx+1)+'/'+targets.length+')';
-
-    // base64 → Blob 변환
-    try{
-      var parts=t.src.split(',');
-      var mime=parts[0].match(/:(.*?);/)[1];
-      var bstr=atob(parts[1]);
-      var n=bstr.length;
-      var u8arr=new Uint8Array(n);
-      for(var k=0;k<n;k++)u8arr[k]=bstr.charCodeAt(k);
-      var blob=new Blob([u8arr],{type:mime});
-
-      // Storage에 업로드
-      var ext=mime.split('/')[1]||'png';
-      var fileName='images/migrate_'+Date.now()+'_'+idx+'.'+ext;
-      var ref=storage.ref().child(fileName);
-
-      ref.put(blob).then(function(snapshot){
-        return snapshot.ref.getDownloadURL();
-      }).then(function(url){
-        // 원본 교체
-        state.db.pages[t.pageIdx].blocks[t.blockIdx].src=url;
-        updateStorageUsage(blob.size);
-        completed++;
-        uploadNext(idx+1);
-      }).catch(function(err){
-        console.error('업로드 실패:',err);
-        failed++;
-        uploadNext(idx+1);
-      });
-    }catch(err){
-      console.error('변환 실패:',err);
-      failed++;
-      uploadNext(idx+1);
-    }
-  }
-
-  uploadNext(0);
 }
 export function setImageStorageMode(mode){
   state.db.settings.imageStorage=mode;

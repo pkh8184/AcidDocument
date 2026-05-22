@@ -5,12 +5,9 @@ firebase.initializeApp(firebaseConfig);
 export var firestore=firebase.firestore();
 // Edge Tracking Prevention 등으로 WebChannel 연결 실패 시 Long Polling 자동 전환
 firestore.settings({experimentalAutoDetectLongPolling:true});
-export var storage=firebase.storage();
 export var auth=firebase.auth();
 
 export var MAX_VER=10;
-// Storage 용량 제한 (bytes)
-export var STORAGE_LIMIT=5*1024*1024*1024; // 5GB
 export var MAX_FILE_SIZE=10*1024*1024; // 파일당 최대 10MB
 // base64(문서 내 저장) 모드 이미지 최대 크기 — base64는 ~33% 팽창, Firestore 문서 한도 1MB 고려한 보수값
 export var MAX_BASE64_IMAGE_SIZE=800*1024;

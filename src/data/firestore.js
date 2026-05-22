@@ -369,8 +369,6 @@ function initDBNewStructure(){
 
       // settings
       var settings=settingsDoc.exists?settingsDoc.data():{wsName:'AcidDocument',theme:'dark',notice:''};
-      var storageUsage=settings.storageUsage||0;
-      delete settings.storageUsage; // state.db.storageUsage로 분리 관리
 
       // templates
       var templates=[];
@@ -391,7 +389,6 @@ function initDBNewStructure(){
         pages:pages,
         templates:templates,
         settings:settings,
-        storageUsage:storageUsage,
         session:null,
         recent:[]
       };
@@ -468,8 +465,6 @@ function saveDBNewStructure(){
       if(state.db.settings.hasOwnProperty(k))settingsData[k]=state.db.settings[k];
     }
   }
-  settingsData.storageUsage=state.db.storageUsage||0;
-
   var legacyData={users:state.db.users||[]};
   if(state.db.ipLogs)legacyData.ipLogs=state.db.ipLogs;
   if(state.db.deleteLogs)legacyData.deleteLogs=state.db.deleteLogs;
@@ -545,18 +540,6 @@ export function loadPageFull(pageId){
   },'페이지 로드 실패').catch(function(){return null});
 }
 
-// Storage 용량 체크 및 업로드
-export function getStorageUsage(){
-  return new Promise(function(resolve){
-    if(!state.db.storageUsage)state.db.storageUsage=0;
-    resolve(state.db.storageUsage);
-  });
-}
-export function updateStorageUsage(addBytes){
-  if(!state.db.storageUsage)state.db.storageUsage=0;
-  state.db.storageUsage+=addBytes;
-  return saveDB();
-}
 // 업로드 파일 검증 — 통과 시 null, 실패 시 에러 메시지(string) 반환
 export function validateUploadFile(file,allowedTypes,maxSize){
   var fileType=(file&&file.type)||'';
@@ -598,7 +581,6 @@ export function uploadToStorage(file,folder,allowedTypes){
         try{
           var data=JSON.parse(xhr.responseText);
           if(data&&data.secure_url){
-            updateStorageUsage(file.size);
             resolve({url:data.secure_url,size:file.size,name:file.name});
           }else{
             reject(new Error('업로드 응답에 URL이 없습니다.'));

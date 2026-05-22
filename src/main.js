@@ -47,7 +47,7 @@ import {
   saveWorkspace,
   saveNotice,clearNotice,updateNoticeBar,closeNoticeBar,showNotice,
   openShortcutHelp,openSearch,openIconPicker,selectIcon,
-  migrateImages,setImageStorageMode,
+  setImageStorageMode,
   clearIpLog,clearDeleteLog,restoreFromLog,renderUsers,
   loadErrorLogs,clearErrorLogsUI
 } from './ui/modals.js';
@@ -281,7 +281,6 @@ window.clearDeleteLog=clearDeleteLog;
 window.restoreFromLog=restoreFromLog;
 window.loadErrorLogs=loadErrorLogs;
 window.clearErrorLogsUI=clearErrorLogsUI;
-window.migrateImages=migrateImages;
 window.setImageStorageMode=setImageStorageMode;
 window.showNotice=showNotice;
 window.closeNoticeBar=closeNoticeBar;

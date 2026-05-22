@@ -210,37 +210,25 @@
 </div>
 </div>
 <div class="tab-panel" id="tabStorage">
-<div style="margin-bottom:20px">
-<h3 style="margin-bottom:12px;font-size:16px">📦 저장소 사용량</h3>
-<div id="storageUsageBar" style="background:var(--bg3);border-radius:8px;height:24px;overflow:hidden;margin-bottom:8px">
-<div id="storageUsageFill" style="height:100%;background:var(--acc);transition:width 0.3s"></div>
-</div>
-<div id="storageUsageText" style="font-size:13px;color:var(--t3)"></div>
-</div>
 <div style="padding:16px;background:var(--bg3);border-radius:8px;font-size:13px;margin-bottom:16px">
 <p style="margin-bottom:12px"><strong>⚙️ 이미지 저장 방식</strong></p>
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px">
 <input type="radio" name="imgStorage" value="storage" id="imgStorageOn" onchange="setImageStorageMode('storage')">
-<span><strong>Storage 사용</strong> (권장) - 이미지를 Firebase Storage에 저장</span>
+<span><strong>외부 호스팅 사용</strong> (권장) - 이미지를 Cloudinary에 업로드해 공유 URL로 저장</span>
 </label>
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
 <input type="radio" name="imgStorage" value="base64" id="imgStorageOff" onchange="setImageStorageMode('base64')">
-<span><strong>Base64 사용</strong> - 이미지를 문서에 직접 저장 (1MB 제한 주의)</span>
+<span><strong>문서 내 저장 (Base64)</strong> - 작은 이미지를 문서에 직접 저장 (대용량 비권장)</span>
 </label>
 </div>
-<div style="padding:16px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--t3);margin-bottom:16px">
-<p style="margin-bottom:8px"><strong>📌 용량 제한</strong></p>
+<div style="padding:16px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--t3)">
+<p style="margin-bottom:8px"><strong>📌 안내</strong></p>
 <ul style="margin-left:16px;line-height:1.8">
-<li>총 저장 공간: 5GB</li>
+<li>이미지는 Cloudinary에 업로드되어 공유 URL로 표시됩니다</li>
 <li>파일당 최대: 10MB</li>
 <li>허용 이미지: JPEG, PNG, GIF, WebP</li>
+<li>동영상은 YouTube 임베드만 지원합니다</li>
 </ul>
-</div>
-<div style="padding:16px;background:var(--bg3);border-radius:8px;font-size:13px">
-<p style="margin-bottom:12px"><strong>🔄 이미지 마이그레이션</strong></p>
-<p style="color:var(--t3);margin-bottom:12px">기존 base64 이미지를 Storage로 이전합니다.<br>Firestore 문서 크기 오류 해결에 필요합니다.</p>
-<div id="migrationStatus" style="margin-bottom:12px;padding:8px;background:var(--bg2);border-radius:4px;display:none"></div>
-<button class="btn btn-p" onclick="migrateImages()">마이그레이션 시작</button>
 </div>
 </div>
 <div class="tab-panel" id="tabDeletelog">

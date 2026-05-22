@@ -40,7 +40,6 @@ vi.mock('../store.js', () => ({
       pages: [],
       templates: [],
       settings: { wsName: 'Test', theme: 'dark', notice: '' },
-      storageUsage: 0,
       session: null,
       recent: [],
     },
